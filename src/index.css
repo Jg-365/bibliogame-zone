@@ -2,39 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* ReadQuest Design System - Gamified Reading Experience */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Base colors */
+    --background: 220 15% 97%;
+    --foreground: 220 25% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 25% 10%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary - Deep Knowledge Blue */
+    --primary: 220 70% 25%;
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 220 70% 35%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary - Soft Reading Gray */
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 25% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Accent - Achievement Gold */
+    --accent: 45 100% 60%;
+    --accent-foreground: 220 25% 10%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Success - Progress Green */
+    --success: 142 75% 40%;
+    --success-foreground: 0 0% 98%;
+    --success-glow: 142 75% 50%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 95%;
+    --ring: 220 70% 25%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220 70% 25%), hsl(220 70% 35%));
+    --gradient-success: linear-gradient(135deg, hsl(142 75% 40%), hsl(142 75% 50%));
+    --gradient-gold: linear-gradient(135deg, hsl(45 100% 60%), hsl(35 100% 65%));
+    --gradient-background: linear-gradient(180deg, hsl(220 15% 97%), hsl(220 15% 94%));
+    
+    /* Shadows */
+    --shadow-card: 0 4px 12px -2px hsl(220 25% 10% / 0.1);
+    --shadow-glow: 0 0 24px hsl(220 70% 35% / 0.3);
+    --shadow-gold: 0 4px 20px hsl(45 100% 60% / 0.25);
+
+    /* Animations */
+    --animation-bounce: bounce 0.6s ease-in-out;
+    --animation-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
     --radius: 0.5rem;
 
