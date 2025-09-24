@@ -14,7 +14,164 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      achievements: {
+        Row: {
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          rarity: string
+          requirement_type: string
+          requirement_value: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          icon: string
+          id?: string
+          rarity?: string
+          requirement_type: string
+          requirement_value: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          rarity?: string
+          requirement_type?: string
+          requirement_value?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      books: {
+        Row: {
+          author: string
+          cover_url: string | null
+          created_at: string
+          date_added: string
+          date_completed: string | null
+          google_books_id: string | null
+          id: string
+          pages_read: number | null
+          status: string
+          title: string
+          total_pages: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author: string
+          cover_url?: string | null
+          created_at?: string
+          date_added?: string
+          date_completed?: string | null
+          google_books_id?: string | null
+          id?: string
+          pages_read?: number | null
+          status?: string
+          title: string
+          total_pages: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author?: string
+          cover_url?: string | null
+          created_at?: string
+          date_added?: string
+          date_completed?: string | null
+          google_books_id?: string | null
+          id?: string
+          pages_read?: number | null
+          status?: string
+          title?: string
+          total_pages?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          books_completed: number | null
+          created_at: string
+          full_name: string | null
+          id: string
+          level: string | null
+          points: number | null
+          preferred_genres: string[] | null
+          total_pages_read: number | null
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          books_completed?: number | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          level?: string | null
+          points?: number | null
+          preferred_genres?: string[] | null
+          total_pages_read?: number | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          books_completed?: number | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          level?: string | null
+          points?: number | null
+          preferred_genres?: string[] | null
+          total_pages_read?: number | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
