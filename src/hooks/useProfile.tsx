@@ -1,22 +1,33 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 
-export interface Profile {
-  id: string;
-  user_id: string;
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-  bio: string | null;
-  preferred_genres: string[] | null;
-  points: number;
-  level: string;
-  books_completed: number;
-  total_pages_read: number;
-  created_at: string;
-  updated_at: string;
+export type Profile =
+  Database["public"]["Tables"]["profiles"]["Row"];
+
+// Define allowed update fields (excluding system fields)
+interface ProfileUpdateFields {
+  username?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  preferred_genres?: string[] | null;
+  points?: number;
+  level?: string;
+  books_completed?: number;
+  total_pages_read?: number;
+  reading_streak?: number;
+  best_streak?: number;
+  is_private?: boolean;
+  theme?: "light" | "dark";
+  notifications_enabled?: boolean;
+  current_book_id?: string | null;
 }
 
 export const useProfile = () => {
@@ -35,21 +46,18 @@ export const useProfile = () => {
         .eq("user_id", user.id)
         .single();
 
-      if (error) {
-        console.error("Error fetching profile:", error);
-        return null;
-      }
-
-      return data as Profile;
+      if (error) throw error;
+      return data;
     },
     enabled: !!user?.id,
   });
 
   const updateProfile = useMutation({
-    mutationFn: async (updates: Partial<Profile>) => {
-      if (!user?.id) throw new Error("User not authenticated");
+    mutationFn: async (updates: ProfileUpdateFields) => {
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("profiles")
         .update(updates)
         .eq("user_id", user.id)
@@ -60,10 +68,13 @@ export const useProfile = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["profile", user?.id],
+      });
       toast({
         title: "Perfil atualizado!",
-        description: "Suas informações foram salvas com sucesso.",
+        description:
+          "Suas informações foram salvas com sucesso.",
       });
     },
     onError: (error: any) => {

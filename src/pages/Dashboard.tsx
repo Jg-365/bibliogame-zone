@@ -1,310 +1,769 @@
-import { Book, BookOpen, Star, Trophy, TrendingUp, Award, LogOut, Plus, Target } from "lucide-react";
+import React, { useState } from "react";
+import {
+  Book,
+  BookOpen,
+  Star,
+  Trophy,
+  TrendingUp,
+  Award,
+  LogOut,
+  Plus,
+  Target,
+  Search,
+  Users,
+  Flame,
+  Calendar,
+  Settings,
+} from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
 import { ProgressBar } from "@/components/ProgressBar";
 import { AchievementBadge } from "@/components/AchievementBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useBooks } from "@/hooks/useBooks";
+import { BookSearch } from "@/components/BookSearch";
+import { AchievementsPanel } from "@/components/AchievementsPanel";
+import { Leaderboard } from "@/components/Leaderboard";
+import { ActivityFeed } from "@/components/ActivityFeed";
+import { EnhancedDashboard } from "@/components/EnhancedDashboard";
+import { BookCard } from "@/components/BookCard";
+import { UserSearch } from "@/components/UserSearch";
+import { ReadingSessionManager } from "@/components/ReadingSessionManager";
+import { AccountResetManager } from "@/components/AccountResetManager";
+import { CustomBookDialog } from "@/components/CustomBookForm";
+import { DebugAchievements } from "@/components/DebugAchievements";
 import heroImage from "@/assets/hero-reading.jpg";
 
 // Level thresholds
 const levelThresholds = {
-  "Iniciante": 0,
-  "Explorador": 50,
-  "Aventureiro": 150,
-  "Mestre": 300,
-  "Lenda": 500
+  Iniciante: 0,
+  Explorador: 50,
+  Aventureiro: 150,
+  Mestre: 300,
+  Lenda: 500,
 };
 
 const getNextLevel = (currentLevel: string) => {
   const levels = Object.keys(levelThresholds);
   const currentIndex = levels.indexOf(currentLevel);
-  return levels[currentIndex + 1] || currentLevel;
+  return currentIndex < levels.length - 1
+    ? levels[currentIndex + 1]
+    : currentLevel;
 };
 
 const getNextLevelThreshold = (currentLevel: string) => {
   const nextLevel = getNextLevel(currentLevel);
-  return levelThresholds[nextLevel as keyof typeof levelThresholds] || 1000;
+  return levelThresholds[
+    nextLevel as keyof typeof levelThresholds
+  ];
 };
 
-const getPreviousLevelThreshold = (currentLevel: string) => {
-  return levelThresholds[currentLevel as keyof typeof levelThresholds] || 0;
+const getPreviousLevelThreshold = (
+  currentLevel: string
+) => {
+  return levelThresholds[
+    currentLevel as keyof typeof levelThresholds
+  ];
 };
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const { books } = useBooks();
+  const [showBookSearch, setShowBookSearch] =
+    useState(false);
+  const [activeTab, setActiveTab] = useState("enhanced");
 
-  const currentlyReading = books.filter(book => book.status === "reading");
-  const completedBooks = books.filter(book => book.status === "completed");
-  
+  // Safe access for profile (with default values)
+  const safeProfile = profile || {
+    level: "Iniciante",
+    points: 0,
+    books_completed: 0,
+    total_pages_read: 0,
+    reading_streak: 0,
+    best_streak: 0,
+    full_name: null,
+    avatar_url: null,
+  };
+
+  const currentlyReading = books.filter(
+    (book) => book.status === "reading"
+  );
+  const completedBooks = books.filter(
+    (book) => book.status === "completed"
+  );
+  const wantToRead = books.filter(
+    (book) => book.status === "want-to-read"
+  );
+
   // Calculate level progress
-  const currentLevel = profile?.level || "Iniciante";
-  const currentPoints = profile?.points || 0;
-  const nextLevelThreshold = getNextLevelThreshold(currentLevel);
-  const previousLevelThreshold = getPreviousLevelThreshold(currentLevel);
-  const levelProgress = currentPoints - previousLevelThreshold;
-  const levelMax = nextLevelThreshold - previousLevelThreshold;
-
+  const currentLevel = safeProfile.level;
+  const currentPoints = safeProfile.points;
+  const nextLevelThreshold =
+    getNextLevelThreshold(currentLevel);
+  const previousLevelThreshold =
+    getPreviousLevelThreshold(currentLevel);
+  const levelProgress =
+    currentPoints - previousLevelThreshold;
+  const levelMax =
+    nextLevelThreshold - previousLevelThreshold;
   const currentBook = currentlyReading[0];
-  const pointsToNext = Math.max(0, nextLevelThreshold - currentPoints);
+  const pointsToNext = Math.max(
+    0,
+    nextLevelThreshold - currentPoints
+  );
+
+  // Calculate reading streak
+  const readingStreak =
+    (safeProfile as any).current_streak ||
+    (safeProfile as any).reading_streak ||
+    0;
+  const bestStreak =
+    (safeProfile as any).current_streak ||
+    (safeProfile as any).best_streak ||
+    0;
+
+  if (!user) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-background">
-      {/* Header */}
-      <header className="bg-card/50 backdrop-blur-sm border-b border-border/50 sticky top-0 z-40">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-8 w-8 text-primary" />
-                <h1 className="text-2xl font-bold text-foreground">ReadQuest</h1>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/80 to-accent/5">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-foreground">
+                Olá,{" "}
+                {safeProfile.full_name ??
+                  user?.email ??
+                  "Usuário"}
+                !
+              </h1>
+              <p className="text-muted-foreground">
+                {safeProfile.level}
+              </p>
             </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="font-semibold text-foreground">{profile?.full_name || user?.email}</p>
-                <p className="text-sm text-muted-foreground">{profile?.level || "Iniciante"}</p>
-              </div>
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={profile?.avatar_url || undefined} />
+            <div className="flex items-center gap-3">
+              <Avatar className="h-12 w-12 border-2 border-primary/20">
+                <AvatarImage
+                  src={safeProfile.avatar_url ?? undefined}
+                  alt="Profile"
+                />
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {(profile?.full_name || user?.email || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
+                  {(
+                    safeProfile.full_name ??
+                    user?.email ??
+                    "U"
+                  )
+                    .charAt(0)
+                    .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="sm" onClick={() => signOut()}>
-                <LogOut className="h-4 w-4" />
-              </Button>
             </div>
           </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="relative mb-8 rounded-2xl overflow-hidden shadow-glow">
-          <div 
-            className="h-64 bg-cover bg-center relative"
-            style={{ backgroundImage: `url(${heroImage})` }}
-          >
-            <div className="absolute inset-0 bg-gradient-primary/80 flex items-center">
-              <div className="container mx-auto px-8">
-                <div className="text-white max-w-2xl">
-                  <h2 className="text-4xl font-bold mb-4">
-                    Continue sua jornada de leitura
-                  </h2>
-                  <p className="text-lg opacity-90 mb-6">
-                    Você está fazendo um ótimo progresso! Continue lendo para ganhar mais pontos.
-                  </p>
-                  {pointsToNext > 0 && (
-                    <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-                      <p className="text-sm mb-2">Próximo nível em: {pointsToNext} pontos</p>
-                      <ProgressBar 
-                        progress={levelProgress} 
-                        max={levelMax}
-                        color="accent"
-                        showPercentage
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <Button variant="outline" onClick={signOut}>
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
-            title="Livros Completos"
-            value={profile?.books_completed || 0}
-            icon={Book}
-            color="primary"
-            gradient
-          />
-          <StatsCard
-            title="Páginas Lidas"
-            value={(profile?.total_pages_read || 0).toLocaleString()}
+            title="Livros Concluídos"
+            value={completedBooks.length}
             icon={BookOpen}
             color="success"
             gradient
           />
           <StatsCard
-            title="Pontos Totais"
-            value={profile?.points || 0}
+            title="Páginas Lidas"
+            value={`${Intl.NumberFormat().format(
+              books.reduce(
+                (total, book) =>
+                  total + (book.pages_read || 0),
+                0
+              )
+            )}`}
+            icon={Book}
+            color="primary"
+            gradient
+          />
+          <StatsCard
+            title="Pontos de Experiência"
+            value={books.reduce(
+              (total, book) =>
+                total + (book.pages_read || 0),
+              0
+            )}
             icon={Star}
             color="accent"
             gradient
           />
           <StatsCard
             title="Nível Atual"
-            value={profile?.level || "Iniciante"}
-            icon={Trophy}
+            value={safeProfile.level}
+            icon={Award}
+            color="primary"
+            gradient
+          />
+          <StatsCard
+            title="Sequência Atual"
+            value={readingStreak}
+            icon={Flame}
+            color="accent"
+          />
+          <StatsCard
+            title="Melhor Sequência"
+            value={bestStreak}
+            icon={TrendingUp}
+            color="primary"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Current Reading */}
-          <div className="lg:col-span-2">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  Leitura Atual
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {currentBook ? (
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">{currentBook.title}</h3>
-                      <p className="text-muted-foreground">por {currentBook.author}</p>
-                    </div>
+        {/* Main Navigation Tabs */}
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
+          <TabsList className="grid w-full grid-cols-8">
+            <TabsTrigger
+              value="enhanced"
+              className="flex items-center gap-2"
+            >
+              <Star className="h-4 w-4" />
+              Novo
+            </TabsTrigger>
+            <TabsTrigger
+              value="overview"
+              className="flex items-center gap-2"
+            >
+              <BookOpen className="h-4 w-4" />
+              Visão Geral
+            </TabsTrigger>
+            <TabsTrigger
+              value="library"
+              className="flex items-center gap-2"
+            >
+              <Book className="h-4 w-4" />
+              Biblioteca
+            </TabsTrigger>
+            <TabsTrigger
+              value="sessions"
+              className="flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              Sessões
+            </TabsTrigger>
+            <TabsTrigger
+              value="achievements"
+              className="flex items-center gap-2"
+            >
+              <Target className="h-4 w-4" />
+              Conquistas
+            </TabsTrigger>
+            <TabsTrigger
+              value="social"
+              className="flex items-center gap-2"
+            >
+              <Award className="h-4 w-4" />
+              Social
+            </TabsTrigger>
+            <TabsTrigger
+              value="discover"
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Descobrir
+            </TabsTrigger>
+            <TabsTrigger
+              value="settings"
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Config
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Enhanced Dashboard Tab */}
+          <TabsContent value="enhanced">
+            <EnhancedDashboard />
+          </TabsContent>
+
+          {/* Overview Tab */}
+          <TabsContent
+            value="overview"
+            className="space-y-6"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Current Reading */}
+              <div className="lg:col-span-2">
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-primary" />
+                      Leitura Atual
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {currentBook ? (
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {currentBook.title}
+                          </h3>
+                          <p className="text-muted-foreground">
+                            por {currentBook.author}
+                          </p>
+                        </div>
+                        <ProgressBar
+                          progress={currentBook.pages_read}
+                          max={currentBook.total_pages}
+                          label="Progresso da Leitura"
+                          color="success"
+                          showPercentage
+                        />
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>
+                            Páginas restantes:{" "}
+                            {currentBook.total_pages -
+                              currentBook.pages_read}
+                          </span>
+                          <span>
+                            {Math.round(
+                              (currentBook.pages_read /
+                                currentBook.total_pages) *
+                                100
+                            )}
+                            % concluído
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">
+                          Nenhuma leitura em andamento
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-2 mb-4">
+                          Adicione um novo livro para
+                          começar sua jornada!
+                        </p>
+                        <Dialog
+                          open={showBookSearch}
+                          onOpenChange={setShowBookSearch}
+                        >
+                          <DialogTrigger asChild>
+                            <Button>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Adicionar Livro
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>
+                                Adicionar Novo Livro
+                              </DialogTitle>
+                              <DialogDescription>
+                                Pesquise por livros ou
+                                adicione manualmente à sua
+                                biblioteca.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <BookSearch />
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-3 gap-4 mt-6">
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-green-600">
+                        {completedBooks.length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Concluídos
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {currentlyReading.length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Lendo
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {wantToRead.length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Quero Ler
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Sidebar */}
+              <div className="space-y-6">
+                {/* Debug Area - Temporary */}
+                <DebugAchievements />
+
+                {/* Progress Overview */}
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-primary" />
+                      Progresso do Nível
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <ProgressBar
-                      progress={currentBook.pages_read}
-                      max={currentBook.total_pages}
-                      label="Progresso da Leitura"
-                      color="success"
+                      progress={levelProgress}
+                      max={levelMax}
+                      label={`Progresso para ${getNextLevel(
+                        currentLevel
+                      )}`}
                       showPercentage
                     />
-                    <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Páginas restantes: {currentBook.total_pages - currentBook.pages_read}</span>
-                      <span>
-                        {Math.round((currentBook.pages_read / currentBook.total_pages) * 100)}% concluído
-                      </span>
+                    <div className="text-sm text-muted-foreground">
+                      {pointsToNext} pontos para o próximo
+                      nível
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Nenhuma leitura em andamento</p>
-                    <p className="text-sm text-muted-foreground mt-2 mb-4">
-                      Adicione um novo livro para começar sua jornada!
-                    </p>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Livro
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
 
-            {/* Recent Achievements */}
-            <Card className="shadow-card mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-accent" />
-                  Conquistas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <AchievementBadge
-                    title="Primeiro Livro"
-                    description="Complete seu primeiro livro"
-                    icon={Trophy}
-                    unlocked={completedBooks.length >= 1}
-                    rarity="common"
-                  />
-                  <AchievementBadge
-                    title="Leitor Dedicado"
-                    description="Complete 5 livros"
-                    icon={Award}
-                    unlocked={completedBooks.length >= 5}
-                    rarity="rare"
-                  />
-                  <AchievementBadge
-                    title="Bibliófilo"
-                    description="Complete 10 livros"
-                    icon={Star}
-                    unlocked={completedBooks.length >= 10}
-                    rarity="epic"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Progress Overview */}
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  Progresso
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ProgressBar 
-                  progress={levelProgress} 
-                  max={levelMax} 
-                  label={`Progresso para ${getNextLevel(currentLevel)}`}
-                  showPercentage
-                />
-                
-                {currentlyReading.slice(1).map(book => (
-                  <div key={book.id} className="space-y-2">
+                {/* Reading Activity */}
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-primary" />
+                      Atividade de Leitura
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="font-medium text-sm">{book.title}</span>
-                      <Badge variant="secondary">Lendo</Badge>
+                      <span className="text-sm">
+                        Sequência atual
+                      </span>
+                      <Badge variant="outline">
+                        {readingStreak} dias
+                      </Badge>
                     </div>
-                    <ProgressBar 
-                      progress={book.pages_read} 
-                      max={book.total_pages}
-                      showPercentage
-                    />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">
+                        Melhor sequência
+                      </span>
+                      <Badge variant="outline">
+                        {bestStreak} dias
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">
+                        Última leitura
+                      </span>
+                      <Badge variant="secondary">
+                        Hoje
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Quick Actions */}
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>Ações Rápidas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full bg-gradient-primary text-primary-foreground hover:shadow-glow">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Livro
-                </Button>
-                <Button variant="outline" className="w-full">
-                  <Target className="h-4 w-4 mr-2" />
-                  Atualizar Progresso
-                </Button>
-                <Button variant="ghost" className="w-full">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Ver Biblioteca
-                </Button>
-              </CardContent>
-            </Card>
+                {/* Quick Actions */}
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle>Ações Rápidas</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Dialog
+                      open={showBookSearch}
+                      onOpenChange={setShowBookSearch}
+                    >
+                      <DialogTrigger asChild>
+                        <Button className="w-full bg-gradient-primary text-primary-foreground hover:shadow-glow">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Adicionar Livro
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>
+                            Adicionar Novo Livro
+                          </DialogTitle>
+                          <DialogDescription>
+                            Pesquise por livros ou adicione
+                            manualmente à sua biblioteca.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <BookSearch />
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() =>
+                        setActiveTab("achievements")
+                      }
+                    >
+                      <Award className="h-4 w-4 mr-2" />
+                      Ver Conquistas
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => setActiveTab("social")}
+                    >
+                      <Users className="h-4 w-4 mr-2" />
+                      Feed Social
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
 
-            {/* Coming Soon */}
-            <Card className="shadow-card">
+          {/* Library Tab */}
+          <TabsContent
+            value="library"
+            className="space-y-6"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-3">
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div>
+                        <CardTitle>
+                          Minha Biblioteca
+                        </CardTitle>
+                        <CardDescription>
+                          Gerencie sua coleção de livros e
+                          acompanhe seu progresso.
+                        </CardDescription>
+                      </div>
+                      {books.length > 0 && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setShowBookSearch(true)
+                            }
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Buscar Livro
+                          </Button>
+                          <CustomBookDialog />
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {books.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Book className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                        <h3 className="text-lg font-medium mb-2">
+                          Sua biblioteca está vazia
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          Adicione seu primeiro livro para
+                          começar!
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                          <Button
+                            onClick={() =>
+                              setShowBookSearch(true)
+                            }
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Buscar Livro
+                          </Button>
+                          <CustomBookDialog />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {books.map((book) => (
+                          <BookCard
+                            key={book.id}
+                            book={book}
+                            onUpdate={() => {
+                              // The updates are handled by the mutations in the BookCard
+                              // No need for manual reload
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Estatísticas</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">
+                        {books.length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Total de livros
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">
+                        {books.reduce(
+                          (total, book) =>
+                            total + (book.pages_read || 0),
+                          0
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Páginas lidas
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">
+                        {currentlyReading.length > 0
+                          ? Math.round(
+                              (currentlyReading.reduce(
+                                (acc, book) =>
+                                  acc +
+                                  book.pages_read /
+                                    book.total_pages,
+                                0
+                              ) /
+                                currentlyReading.length) *
+                                100
+                            )
+                          : 0}
+                        %
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Progresso médio
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Reading Sessions Tab */}
+          <TabsContent
+            value="sessions"
+            className="space-y-6"
+          >
+            <ReadingSessionManager />
+          </TabsContent>
+
+          {/* Achievements Tab */}
+          <TabsContent
+            value="achievements"
+            className="space-y-6"
+          >
+            <AchievementsPanel />
+          </TabsContent>
+
+          {/* Social Tab */}
+          <TabsContent value="social" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <ActivityFeed />
+              </div>
+              <div className="space-y-6">
+                <UserSearch />
+                <Leaderboard />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Discover Tab */}
+          <TabsContent
+            value="discover"
+            className="space-y-6"
+          >
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Ranking Global
+                  <Search className="h-5 w-5" />
+                  Descobrir Novos Livros
                 </CardTitle>
+                <CardDescription>
+                  Encontre seu próximo livro favorito
+                  pesquisando nossa base de dados.
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-6 text-muted-foreground">
-                  <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Em breve!</p>
-                  <p className="text-xs mt-1">Ranking será implementado quando tivermos mais usuários.</p>
-                </div>
+                <BookSearch />
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent
+            value="settings"
+            className="space-y-6"
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Configurações da Conta
+                </CardTitle>
+                <CardDescription>
+                  Gerencie suas configurações e dados da
+                  conta
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AccountResetManager />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
