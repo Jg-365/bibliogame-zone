@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://seu-usuario.github.io/bibliogame-zone",
+  "homepage": "https://jg-365.github.io/bibliogame-zone",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
