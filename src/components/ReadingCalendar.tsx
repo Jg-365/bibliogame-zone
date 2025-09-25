@@ -243,7 +243,7 @@ export const ReadingCalendar = () => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -254,23 +254,27 @@ export const ReadingCalendar = () => {
               do mês
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center sm:justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigateMonth("prev")}
+              className="shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
+              <span className="sr-only">Mês anterior</span>
             </Button>
-            <span className="font-semibold min-w-[140px] text-center">
+            <span className="font-semibold min-w-[120px] sm:min-w-[140px] text-center text-sm sm:text-base">
               {monthNames[currentMonth]} {currentYear}
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigateMonth("next")}
+              className="shrink-0"
             >
               <ChevronRight className="h-4 w-4" />
+              <span className="sr-only">Próximo mês</span>
             </Button>
           </div>
         </div>
@@ -278,36 +282,36 @@ export const ReadingCalendar = () => {
 
       <CardContent className="space-y-6">
         {/* Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-secondary rounded-lg">
-            <div className="text-2xl font-bold text-primary">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="text-center p-2 sm:p-3 bg-secondary rounded-lg">
+            <div className="text-lg sm:text-2xl font-bold text-primary">
               {totalPagesThisMonth}
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               Páginas Lidas
             </div>
           </div>
-          <div className="text-center p-3 bg-secondary rounded-lg">
-            <div className="text-2xl font-bold text-primary">
+          <div className="text-center p-2 sm:p-3 bg-secondary rounded-lg">
+            <div className="text-lg sm:text-2xl font-bold text-primary">
               {activeDaysThisMonth}
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               Dias Ativos
             </div>
           </div>
-          <div className="text-center p-3 bg-secondary rounded-lg">
-            <div className="text-2xl font-bold text-primary">
+          <div className="text-center p-2 sm:p-3 bg-secondary rounded-lg">
+            <div className="text-lg sm:text-2xl font-bold text-primary">
               {totalSessionsThisMonth}
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               Sessões
             </div>
           </div>
-          <div className="text-center p-3 bg-secondary rounded-lg">
-            <div className="text-2xl font-bold text-primary">
+          <div className="text-center p-2 sm:p-3 bg-secondary rounded-lg">
+            <div className="text-lg sm:text-2xl font-bold text-primary">
               {totalBooksCompletedThisMonth}
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               Livros Concluídos
             </div>
           </div>
@@ -316,11 +320,11 @@ export const ReadingCalendar = () => {
         {/* Calendar */}
         <div className="space-y-2">
           {/* Week days header */}
-          <div className="grid grid-cols-7 gap-2 mb-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
             {weekDays.map((day) => (
               <div
                 key={day}
-                className="text-center text-sm font-medium text-muted-foreground py-2"
+                className="text-center text-xs sm:text-sm font-medium text-muted-foreground py-1 sm:py-2"
               >
                 {day}
               </div>
@@ -328,11 +332,14 @@ export const ReadingCalendar = () => {
           </div>
 
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
             {getDaysInMonth().map((day, index) => {
               if (day === null) {
                 return (
-                  <div key={index} className="h-10"></div>
+                  <div
+                    key={index}
+                    className="h-8 sm:h-10"
+                  ></div>
                 );
               }
 
@@ -351,8 +358,8 @@ export const ReadingCalendar = () => {
                 <div
                   key={day}
                   className={`
-                    relative h-10 rounded border-2 flex items-center justify-center cursor-pointer
-                    transition-all hover:scale-105
+                    relative h-8 sm:h-10 rounded border-2 flex items-center justify-center cursor-pointer
+                    transition-all hover:scale-105 active:scale-95
                     ${activityLevel}
                     ${
                       isToday
@@ -374,7 +381,7 @@ export const ReadingCalendar = () => {
                       : `${day}: Nenhuma atividade`
                   }
                 >
-                  <span className="text-sm font-medium">
+                  <span className="text-xs sm:text-sm font-medium">
                     {day}
                   </span>
                   {activity &&
@@ -382,7 +389,7 @@ export const ReadingCalendar = () => {
                       <div className="absolute -top-1 -right-1">
                         <Badge
                           variant="default"
-                          className="h-4 w-4 p-0 rounded-full flex items-center justify-center text-xs"
+                          className="h-3 w-3 sm:h-4 sm:w-4 p-0 rounded-full flex items-center justify-center text-[10px] sm:text-xs"
                         >
                           {activity.books_completed}
                         </Badge>
@@ -395,14 +402,14 @@ export const ReadingCalendar = () => {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-center gap-4 text-sm">
+        <div className="flex items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm">
           <span>Menos</span>
           <div className="flex gap-1">
-            <div className="w-3 h-3 rounded bg-gray-100"></div>
-            <div className="w-3 h-3 rounded bg-green-200"></div>
-            <div className="w-3 h-3 rounded bg-green-300"></div>
-            <div className="w-3 h-3 rounded bg-green-400"></div>
-            <div className="w-3 h-3 rounded bg-green-500"></div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded bg-gray-100"></div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded bg-green-200"></div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded bg-green-300"></div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded bg-green-400"></div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 rounded bg-green-500"></div>
           </div>
           <span>Mais</span>
         </div>

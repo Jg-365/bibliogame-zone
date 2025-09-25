@@ -66,7 +66,6 @@ import { UserSearch } from "@/components/UserSearch";
 import { ReadingSessionManager } from "@/components/ReadingSessionManager";
 import { AccountResetManager } from "@/components/AccountResetManager";
 import { CustomBookDialog } from "@/components/CustomBookForm";
-import { DebugAchievements } from "@/components/DebugAchievements";
 import { StatsDetailDialog } from "@/components/StatsDetailDialog";
 import heroImage from "@/assets/hero-reading.jpg";
 
@@ -791,9 +790,6 @@ const Dashboard = () => {
 
               {/* Sidebar */}
               <div className="space-y-6">
-                {/* Debug Area - Temporary */}
-                <DebugAchievements />
-
                 {/* Progress Overview */}
                 <Card className="shadow-card">
                   <CardHeader>

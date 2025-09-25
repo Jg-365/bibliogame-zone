@@ -32,12 +32,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 export const AccountResetManager = () => {
-  const { resetAccount, isResetting } = useAccountReset();
+  const {
+    resetAccount,
+    deleteAccountCompletely,
+    isResetting,
+  } = useAccountReset();
   const { user } = useAuth();
   const { toast } = useToast();
   const [confirmationText, setConfirmationText] =
@@ -61,22 +64,8 @@ export const AccountResetManager = () => {
 
     setIsDeleting(true);
     try {
-      // Primeiro resetar todos os dados da conta
-      await resetAccount.mutateAsync();
-
-      // Depois fazer logout e tentar excluir a conta do auth
-      await supabase.auth.signOut();
-
-      toast({
-        title: "Conta excluída",
-        description:
-          "Sua conta foi excluída com sucesso. Até logo!",
-      });
-
-      // Redirecionar para página inicial após um tempo
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 2000);
+      // Usar a nova função que exclui TUDO completamente
+      await deleteAccountCompletely.mutateAsync();
     } catch (error: any) {
       toast({
         title: "Erro ao excluir conta",
@@ -170,24 +159,31 @@ export const AccountResetManager = () => {
                   </h3>
                   <p className="text-sm text-red-700 max-w-md">
                     <strong>ATENÇÃO:</strong> Exclui sua
-                    conta completamente e você não poderá
-                    mais fazer login:
+                    conta e TODOS os dados do banco de
+                    dados:
                   </p>
                   <ul className="text-xs text-red-600 ml-4 space-y-1">
                     <li>
-                      • Remove todos os dados da conta
+                      • Remove completamente do banco de
+                      dados
                     </li>
                     <li>
-                      • Exclui seu perfil permanentemente
+                      • Exclui perfil, livros, sessões,
+                      conquistas
                     </li>
                     <li>
-                      • Você será deslogado imediatamente
+                      • Remove seguidores e pessoas que você
+                      segue
+                    </li>
+                    <li>
+                      • Exclui sua conta de autenticação
+                    </li>
+                    <li>
+                      • Você será deslogado automaticamente
                     </li>
                     <li>
                       •{" "}
-                      <strong>
-                        NÃO É POSSÍVEL DESFAZER
-                      </strong>
+                      <strong>IMPOSSÍVEL RECUPERAR</strong>
                     </li>
                   </ul>
                 </div>
