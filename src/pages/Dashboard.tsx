@@ -63,6 +63,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { EnhancedDashboard } from "@/components/EnhancedDashboard";
 import { BookCard } from "@/components/BookCard";
 import { UserSearch } from "@/components/UserSearch";
+import { useAccountGuard } from "@/hooks/useAccountGuard";
 import { ReadingSessionManager } from "@/components/ReadingSessionManager";
 import { AccountResetManager } from "@/components/AccountResetManager";
 import { CustomBookDialog } from "@/components/CustomBookForm";
@@ -200,6 +201,9 @@ const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const { books } = useBooks();
+
+  // Monitora se a conta foi deletada e força logout
+  useAccountGuard();
   const [showBookSearch, setShowBookSearch] =
     useState(false);
   const [activeTab, setActiveTab] = useState("enhanced");

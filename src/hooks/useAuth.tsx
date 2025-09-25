@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+  useCallback,
+} from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -7,6 +14,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  checkAccountStatus: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -14,12 +22,15 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: true,
   signOut: async () => {},
+  checkAccountStatus: async () => true,
 });
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error(
+      "useAuth must be used within an AuthProvider"
+    );
   }
   return context;
 };
@@ -28,27 +39,106 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
+export const AuthProvider = ({
+  children,
+}: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Function to check if account is deleted
+    const checkAccountStatus = async (user: User) => {
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("level, full_name")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error checking profile:", error);
+          return true; // Allow access if we can't check
+        }
+
+        // If account is marked as deleted, sign out immediately
+        if (
+          profile?.level === "DELETADA" ||
+          profile?.full_name === "CONTA_DELETADA"
+        ) {
+          console.log(
+            "🚫 Conta deletada detectada, fazendo logout..."
+          );
+          await supabase.auth.signOut();
+
+          // Clear all local storage
+          if (typeof window !== "undefined") {
+            localStorage.clear();
+            sessionStorage.clear();
+          }
+
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error(
+          "Error in checkAccountStatus:",
+          error
+        );
+        return true; // Allow access if there's an error
+      }
+    };
+
     // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          // Check if account is deleted before setting user
+          const isValid = await checkAccountStatus(
+            session.user
+          );
+          if (isValid) {
+            setSession(session);
+            setUser(session.user);
+          } else {
+            setSession(null);
+            setUser(null);
+          }
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
         setIsLoading(false);
       }
     );
 
     // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        if (session?.user) {
+          // Check if account is deleted before setting user
+          const isValid = await checkAccountStatus(
+            session.user
+          );
+          if (isValid) {
+            setSession(session);
+            setUser(session.user);
+          } else {
+            setSession(null);
+            setUser(null);
+          }
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
+        }
+        setIsLoading(false);
+      });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -57,11 +147,58 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await supabase.auth.signOut();
   };
 
+  // Function to check if account is deleted - can be called from other components
+  const checkAccountStatus =
+    useCallback(async (): Promise<boolean> => {
+      if (!user) return true;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("level, full_name")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error checking profile:", error);
+          return true; // Allow access if we can't check
+        }
+
+        // If account is marked as deleted, sign out immediately
+        if (
+          profile?.level === "DELETADA" ||
+          profile?.full_name === "CONTA_DELETADA"
+        ) {
+          console.log(
+            "🚫 Conta deletada detectada durante verificação, fazendo logout..."
+          );
+          await supabase.auth.signOut();
+
+          // Clear all local storage
+          if (typeof window !== "undefined") {
+            localStorage.clear();
+            sessionStorage.clear();
+          }
+
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error(
+          "Error in checkAccountStatus:",
+          error
+        );
+        return true; // Allow access if there's an error
+      }
+    }, [user]);
+
   const value = {
     user,
     session,
     isLoading,
     signOut,
+    checkAccountStatus,
   };
 
   return (

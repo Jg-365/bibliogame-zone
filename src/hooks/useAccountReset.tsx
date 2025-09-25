@@ -333,19 +333,40 @@ export const useAccountReset = () => {
           );
         }
 
-        // 5. Delete the user profile
+        // 5. Instead of deleting profile, mark it as deleted and clear all data
         const { error: profileError } = await supabase
           .from("profiles")
-          .delete()
+          .update({
+            // Mark as deleted and clear all personal data
+            full_name: "CONTA_DELETADA",
+            bio: null,
+            avatar_url: null,
+            username: null,
+            books_completed: 0,
+            total_pages_read: 0,
+            current_streak: 0,
+            longest_streak: 0,
+            points: 0,
+            experience_points: 0,
+            level: "DELETADA",
+            current_book_id: null,
+            last_activity_date: null,
+            favorite_genres: null,
+            preferred_genres: null,
+            reading_level: null,
+            reading_speed: null,
+            total_books_read: 0,
+            updated_at: new Date().toISOString(),
+          })
           .eq("user_id", userId);
 
         if (profileError) {
           console.error(
-            "Erro ao deletar perfil:",
+            "Erro ao marcar perfil como deletado:",
             profileError
           );
         } else {
-          console.log("✅ Perfil removido");
+          console.log("✅ Perfil marcado como deletado");
         }
 
         // 6. CRITICAL: Sign out from ALL devices and sessions
