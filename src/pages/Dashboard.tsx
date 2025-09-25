@@ -67,15 +67,103 @@ import { ReadingSessionManager } from "@/components/ReadingSessionManager";
 import { AccountResetManager } from "@/components/AccountResetManager";
 import { CustomBookDialog } from "@/components/CustomBookForm";
 import { DebugAchievements } from "@/components/DebugAchievements";
+import { StatsDetailDialog } from "@/components/StatsDetailDialog";
 import heroImage from "@/assets/hero-reading.jpg";
 
-// Level thresholds
+// Level thresholds - Sistema baseado em múltiplos critérios
 const levelThresholds = {
-  Iniciante: 0,
-  Explorador: 50,
-  Aventureiro: 150,
-  Mestre: 300,
-  Lenda: 500,
+  Iniciante: { points: 0, books: 0, streak: 0, pages: 0 },
+  Explorador: {
+    points: 100,
+    books: 1,
+    streak: 3,
+    pages: 100,
+  },
+  Aventureiro: {
+    points: 300,
+    books: 3,
+    streak: 7,
+    pages: 500,
+  },
+  Mestre: {
+    points: 750,
+    books: 7,
+    streak: 15,
+    pages: 1500,
+  },
+  Lenda: {
+    points: 1500,
+    books: 15,
+    streak: 30,
+    pages: 3000,
+  },
+  "Grande Mestre": {
+    points: 3000,
+    books: 25,
+    streak: 50,
+    pages: 6000,
+  },
+  Imortal: {
+    points: 5000,
+    books: 50,
+    streak: 100,
+    pages: 12000,
+  },
+};
+
+// Função para verificar se o usuário pode subir de nível
+const canLevelUp = (
+  userStats: any,
+  currentLevel: string
+) => {
+  const nextLevel = getNextLevel(currentLevel);
+  if (nextLevel === currentLevel) return false;
+
+  const requirements =
+    levelThresholds[
+      nextLevel as keyof typeof levelThresholds
+    ];
+  const userPoints = userStats.points || 0;
+  const userBooks = userStats.books_completed || 0;
+  const userStreak = userStats.best_streak || 0;
+  const userPages = userStats.total_pages_read || 0;
+
+  return (
+    userPoints >= requirements.points &&
+    userBooks >= requirements.books &&
+    userStreak >= requirements.streak &&
+    userPages >= requirements.pages
+  );
+};
+
+// Função para determinar o nível atual baseado nas estatísticas
+const determineCurrentLevel = (userStats: any) => {
+  const levels = Object.keys(levelThresholds);
+  let currentLevel = "Iniciante";
+
+  for (let i = levels.length - 1; i >= 0; i--) {
+    const level = levels[i];
+    const requirements =
+      levelThresholds[
+        level as keyof typeof levelThresholds
+      ];
+    const userPoints = userStats.points || 0;
+    const userBooks = userStats.books_completed || 0;
+    const userStreak = userStats.best_streak || 0;
+    const userPages = userStats.total_pages_read || 0;
+
+    if (
+      userPoints >= requirements.points &&
+      userBooks >= requirements.books &&
+      userStreak >= requirements.streak &&
+      userPages >= requirements.pages
+    ) {
+      currentLevel = level;
+      break;
+    }
+  }
+
+  return currentLevel;
 };
 
 const getNextLevel = (currentLevel: string) => {
@@ -93,12 +181,20 @@ const getNextLevelThreshold = (currentLevel: string) => {
   ];
 };
 
+const getLevelRequirements = (level: string) => {
+  return levelThresholds[
+    level as keyof typeof levelThresholds
+  ];
+};
+
 const getPreviousLevelThreshold = (
   currentLevel: string
 ) => {
-  return levelThresholds[
-    currentLevel as keyof typeof levelThresholds
-  ];
+  return (
+    levelThresholds[
+      currentLevel as keyof typeof levelThresholds
+    ] || { points: 0, books: 0, streak: 0, pages: 0 }
+  );
 };
 
 const Dashboard = () => {
@@ -108,6 +204,16 @@ const Dashboard = () => {
   const [showBookSearch, setShowBookSearch] =
     useState(false);
   const [activeTab, setActiveTab] = useState("enhanced");
+  const [statsDialog, setStatsDialog] = useState<{
+    open: boolean;
+    type:
+      | "completed"
+      | "pages"
+      | "points"
+      | "level"
+      | "streak"
+      | "bestStreak";
+  }>({ open: false, type: "completed" });
 
   // Safe access for profile (with default values)
   const safeProfile = profile || {
@@ -131,17 +237,68 @@ const Dashboard = () => {
     (book) => book.status === "want-to-read"
   );
 
-  // Calculate level progress
-  const currentLevel = safeProfile.level;
-  const currentPoints = safeProfile.points;
-  const nextLevelThreshold =
-    getNextLevelThreshold(currentLevel);
-  const previousLevelThreshold =
-    getPreviousLevelThreshold(currentLevel);
-  const levelProgress =
-    currentPoints - previousLevelThreshold;
-  const levelMax =
-    nextLevelThreshold - previousLevelThreshold;
+  // Calculate level progress with new system
+  const userStats = {
+    points: safeProfile.points || 0,
+    books_completed: safeProfile.books_completed || 0,
+    best_streak: safeProfile.best_streak || 0,
+    total_pages_read: safeProfile.total_pages_read || 0,
+  };
+
+  // Determine actual level based on stats
+  const actualLevel = determineCurrentLevel(userStats);
+  const currentLevel = actualLevel;
+
+  const nextLevel = getNextLevel(currentLevel);
+  const nextLevelRequirements =
+    getLevelRequirements(nextLevel);
+
+  // Calculate progress for each requirement (0-100)
+  const pointsProgress =
+    nextLevelRequirements.points > 0
+      ? Math.min(
+          100,
+          (userStats.points /
+            nextLevelRequirements.points) *
+            100
+        )
+      : 100;
+  const booksProgress =
+    nextLevelRequirements.books > 0
+      ? Math.min(
+          100,
+          (userStats.books_completed /
+            nextLevelRequirements.books) *
+            100
+        )
+      : 100;
+  const streakProgress =
+    nextLevelRequirements.streak > 0
+      ? Math.min(
+          100,
+          (userStats.best_streak /
+            nextLevelRequirements.streak) *
+            100
+        )
+      : 100;
+  const pagesProgress =
+    nextLevelRequirements.pages > 0
+      ? Math.min(
+          100,
+          (userStats.total_pages_read /
+            nextLevelRequirements.pages) *
+            100
+        )
+      : 100;
+
+  // Overall progress is the minimum of all requirements
+  const levelProgress = Math.min(
+    pointsProgress,
+    booksProgress,
+    streakProgress,
+    pagesProgress
+  );
+  const levelMax = 100;
 
   // Definir livro atual baseado no current_book_id do perfil ou primeiro livro sendo lido
   const currentBook = profile?.current_book_id
@@ -149,9 +306,22 @@ const Dashboard = () => {
         (book) => book.id === profile.current_book_id
       )
     : currentlyReading[0];
-  const pointsToNext = Math.max(
+  // Calculate missing requirements for next level
+  const missingPoints = Math.max(
     0,
-    nextLevelThreshold - currentPoints
+    nextLevelRequirements.points - userStats.points
+  );
+  const missingBooks = Math.max(
+    0,
+    nextLevelRequirements.books - userStats.books_completed
+  );
+  const missingStreak = Math.max(
+    0,
+    nextLevelRequirements.streak - userStats.best_streak
+  );
+  const missingPages = Math.max(
+    0,
+    nextLevelRequirements.pages - userStats.total_pages_read
   );
 
   // Calculate reading streak
@@ -221,6 +391,12 @@ const Dashboard = () => {
             icon={BookOpen}
             color="success"
             gradient
+            onClick={() =>
+              setStatsDialog({
+                open: true,
+                type: "completed",
+              })
+            }
           />
           <StatsCard
             title="Páginas Lidas"
@@ -234,6 +410,9 @@ const Dashboard = () => {
             icon={Book}
             color="primary"
             gradient
+            onClick={() =>
+              setStatsDialog({ open: true, type: "pages" })
+            }
           />
           <StatsCard
             title="Pontos de Experiência"
@@ -245,6 +424,9 @@ const Dashboard = () => {
             icon={Star}
             color="accent"
             gradient
+            onClick={() =>
+              setStatsDialog({ open: true, type: "points" })
+            }
           />
           <StatsCard
             title="Nível Atual"
@@ -252,18 +434,30 @@ const Dashboard = () => {
             icon={Award}
             color="primary"
             gradient
+            onClick={() =>
+              setStatsDialog({ open: true, type: "level" })
+            }
           />
           <StatsCard
             title="Sequência Atual"
             value={readingStreak}
             icon={Flame}
             color="accent"
+            onClick={() =>
+              setStatsDialog({ open: true, type: "streak" })
+            }
           />
           <StatsCard
             title="Melhor Sequência"
             value={bestStreak}
             icon={TrendingUp}
             color="primary"
+            onClick={() =>
+              setStatsDialog({
+                open: true,
+                type: "bestStreak",
+              })
+            }
           />
         </div>
 
@@ -614,9 +808,32 @@ const Dashboard = () => {
                       )}`}
                       showPercentage
                     />
-                    <div className="text-sm text-muted-foreground">
-                      {pointsToNext} pontos para o próximo
-                      nível
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div className="font-medium mb-2">
+                        Requisitos para {nextLevel}:
+                      </div>
+                      <div className="grid grid-cols-2 gap-1">
+                        <div>
+                          📚 {userStats.books_completed}/
+                          {nextLevelRequirements.books}{" "}
+                          livros
+                        </div>
+                        <div>
+                          🔥 {userStats.best_streak}/
+                          {nextLevelRequirements.streak}{" "}
+                          sequência
+                        </div>
+                        <div>
+                          ⭐ {userStats.points}/
+                          {nextLevelRequirements.points}{" "}
+                          pontos
+                        </div>
+                        <div>
+                          📖 {userStats.total_pages_read}/
+                          {nextLevelRequirements.pages}{" "}
+                          páginas
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -786,6 +1003,26 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Dialog para BookSearch na biblioteca */}
+              <Dialog
+                open={showBookSearch}
+                onOpenChange={setShowBookSearch}
+              >
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>
+                      Buscar e Adicionar Livro
+                    </DialogTitle>
+                    <DialogDescription>
+                      Pesquise por livros ou adicione
+                      manualmente à sua biblioteca.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <BookSearch />
+                </DialogContent>
+              </Dialog>
+
               <div>
                 <Card>
                   <CardHeader>
@@ -914,6 +1151,17 @@ const Dashboard = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Stats Detail Dialog */}
+        <StatsDetailDialog
+          open={statsDialog.open}
+          onOpenChange={(open) =>
+            setStatsDialog({ ...statsDialog, open })
+          }
+          type={statsDialog.type}
+          books={books}
+          profile={safeProfile}
+        />
       </div>
     </div>
   );

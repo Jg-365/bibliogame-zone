@@ -7,12 +7,22 @@ interface StatsCardProps {
   icon: LucideIcon;
   color?: "primary" | "success" | "accent";
   gradient?: boolean;
+  onClick?: () => void;
 }
 
-export const StatsCard = ({ title, value, icon: Icon, color = "primary", gradient = false }: StatsCardProps) => {
+export const StatsCard = ({
+  title,
+  value,
+  icon: Icon,
+  color = "primary",
+  gradient = false,
+  onClick,
+}: StatsCardProps) => {
   const getCardClasses = () => {
-    const baseClasses = "relative overflow-hidden transition-all duration-300 hover:scale-105";
-    
+    const baseClasses = `relative overflow-hidden transition-all duration-300 hover:scale-105 ${
+      onClick ? "cursor-pointer hover:shadow-lg" : ""
+    }`;
+
     if (gradient) {
       switch (color) {
         case "success":
@@ -23,22 +33,38 @@ export const StatsCard = ({ title, value, icon: Icon, color = "primary", gradien
           return `${baseClasses} bg-gradient-primary text-primary-foreground shadow-glow`;
       }
     }
-    
+
     return `${baseClasses} shadow-card hover:shadow-glow`;
   };
 
   return (
-    <Card className={getCardClasses()}>
+    <Card className={getCardClasses()} onClick={onClick}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className={`text-sm font-medium ${gradient ? "opacity-90" : "text-muted-foreground"}`}>
+            <p
+              className={`text-sm font-medium ${
+                gradient
+                  ? "opacity-90"
+                  : "text-muted-foreground"
+              }`}
+            >
               {title}
             </p>
-            <p className="text-3xl font-bold mt-2">{value}</p>
+            <p className="text-3xl font-bold mt-2">
+              {value}
+            </p>
           </div>
-          <div className={`p-3 rounded-full ${gradient ? "bg-white/20" : "bg-primary/10"}`}>
-            <Icon className={`h-6 w-6 ${gradient ? "text-white" : "text-primary"}`} />
+          <div
+            className={`p-3 rounded-full ${
+              gradient ? "bg-white/20" : "bg-primary/10"
+            }`}
+          >
+            <Icon
+              className={`h-6 w-6 ${
+                gradient ? "text-white" : "text-primary"
+              }`}
+            />
           </div>
         </div>
       </CardContent>

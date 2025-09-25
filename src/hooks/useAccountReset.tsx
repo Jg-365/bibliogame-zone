@@ -18,14 +18,20 @@ export const useAccountReset = () => {
 
       const userId = user.id;
 
-      // Reset user profile stats
+      // Reset user profile stats - TUDO limpo
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
           current_streak: 0,
+          best_streak: 0,
           books_completed: 0,
           experience_points: 0,
           total_pages_read: 0,
+          reading_streak: 0,
+          level: "Iniciante",
+          points: 0,
+          current_book_id: null,
+          created_at: new Date().toISOString(),
         })
         .eq("user_id", userId);
 
