@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,8 +23,14 @@ export const BookSearch = () => {
     GoogleBook[]
   >([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { addBook, isAddingBook } = useBooks();
   const { toast } = useToast();
+
+  // Força a renderização quando o componente é montado
+  useEffect(() => {
+    setIsInitialized(true);
+  }, []);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -75,6 +81,21 @@ export const BookSearch = () => {
       handleSearch();
     }
   };
+
+  // Garantir que o componente seja renderizado
+  if (!isInitialized) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-10 bg-gray-200 rounded mb-4"></div>
+          <div className="text-center py-8">
+            <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p className="text-gray-500">Carregando pesquisa de livros...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
