@@ -2,8 +2,19 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Sparkles } from "lucide-react";
@@ -12,7 +23,11 @@ export const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSignUp = async (email: string, password: string, fullName: string) => {
+  const handleSignUp = async (
+    email: string,
+    password: string,
+    fullName: string
+  ) => {
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signUp({
@@ -22,15 +37,16 @@ export const AuthPage = () => {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             full_name: fullName,
-          }
-        }
+          },
+        },
       });
 
       if (error) throw error;
 
       toast({
         title: "Conta criada com sucesso!",
-        description: "Verifique seu email para confirmar a conta.",
+        description:
+          "Verifique seu email para confirmar a conta.",
       });
     } catch (error: any) {
       toast({
@@ -43,24 +59,101 @@ export const AuthPage = () => {
     }
   };
 
-  const handleSignIn = async (email: string, password: string) => {
+  const handleSignIn = async (
+    email: string,
+    password: string
+  ) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      if (error) throw error;
+      if (authError) {
+        // Handle specific authentication errors
+        if (
+          authError.message.includes(
+            "Invalid login credentials"
+          )
+        ) {
+          throw new Error(
+            "Email ou senha incorretos. Verifique suas credenciais."
+          );
+        }
+        throw authError;
+      }
 
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo de volta ao ReadQuest!",
-      });
+      // Check if user has a profile (account not deleted)
+      if (authData.user) {
+        const { data: profile, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select("level, full_name, user_id")
+            .eq("user_id", authData.user.id)
+            .single();
+
+        if (profileError || !profile) {
+          // Profile doesn't exist - account was deleted
+          console.log(
+            "🚫 Perfil não encontrado - conta foi deletada"
+          );
+
+          // Sign out immediately
+          await supabase.auth.signOut();
+
+          throw new Error(
+            "Esta conta não está mais ativa. Usuário não cadastrado."
+          );
+        }
+
+        // Check if account is marked as deleted
+        if (
+          profile.level === "DELETADA" ||
+          profile.full_name === "CONTA_DELETADA"
+        ) {
+          console.log("🚫 Conta marcada como deletada");
+
+          // Sign out immediately
+          await supabase.auth.signOut();
+
+          throw new Error(
+            "Esta conta foi excluída. Usuário não cadastrado."
+          );
+        }
+
+        // Account is valid
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo de volta ao ReadQuest!",
+        });
+      }
     } catch (error: any) {
+      console.error("Erro no login:", error);
+
+      // Customize error messages
+      let errorMessage = error.message;
+
+      if (
+        error.message.includes("não cadastrado") ||
+        error.message.includes("não está mais ativa")
+      ) {
+        errorMessage = "Usuário não cadastrado";
+      } else if (
+        error.message.includes("Invalid login credentials")
+      ) {
+        errorMessage = "Email ou senha incorretos";
+      } else if (
+        error.message.includes("Email not confirmed")
+      ) {
+        errorMessage =
+          "Email não confirmado. Verifique sua caixa de entrada.";
+      }
+
       toast({
         title: "Erro ao fazer login",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -113,7 +206,11 @@ export const AuthPage = () => {
             required
           />
         </div>
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isLoading}
+        >
           {isLoading ? "Criando conta..." : "Criar conta"}
         </Button>
       </form>
@@ -153,7 +250,11 @@ export const AuthPage = () => {
             required
           />
         </div>
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isLoading}
+        >
           {isLoading ? "Entrando..." : "Entrar"}
         </Button>
       </form>
@@ -168,7 +269,9 @@ export const AuthPage = () => {
             <BookOpen className="h-8 w-8 text-primary" />
             <Sparkles className="h-6 w-6 text-accent" />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">ReadQuest</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            ReadQuest
+          </h1>
           <p className="text-muted-foreground">
             Transforme sua leitura em uma aventura épica
           </p>
@@ -176,16 +279,23 @@ export const AuthPage = () => {
 
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle className="text-center">Entre na sua conta</CardTitle>
+            <CardTitle className="text-center">
+              Entre na sua conta
+            </CardTitle>
             <CardDescription className="text-center">
-              Faça login ou crie uma nova conta para começar sua jornada
+              Faça login ou crie uma nova conta para começar
+              sua jornada
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Login</TabsTrigger>
-                <TabsTrigger value="signup">Criar conta</TabsTrigger>
+                <TabsTrigger value="signin">
+                  Login
+                </TabsTrigger>
+                <TabsTrigger value="signup">
+                  Criar conta
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="signin" className="mt-6">
                 <SignInForm />

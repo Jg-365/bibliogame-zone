@@ -97,22 +97,41 @@ export const AuthProvider = ({
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (session?.user) {
-          // Check if account is deleted before setting user
-          const isValid = await checkAccountStatus(
-            session.user
-          );
-          if (isValid) {
-            setSession(session);
-            setUser(session.user);
+        console.log(
+          "🔐 Auth state changed:",
+          event,
+          session?.user?.id
+        );
+
+        // Only do automatic validation for SIGNED_OUT events or token refresh
+        // Login validation is now handled in AuthPage.tsx
+        if (
+          event === "SIGNED_OUT" ||
+          event === "TOKEN_REFRESHED"
+        ) {
+          if (session?.user) {
+            // For token refresh, check if account is still valid
+            const isValid = await checkAccountStatus(
+              session.user
+            );
+            if (isValid) {
+              setSession(session);
+              setUser(session.user);
+            } else {
+              // Account was deleted, sign out
+              setSession(null);
+              setUser(null);
+            }
           } else {
-            setSession(null);
-            setUser(null);
+            setSession(session);
+            setUser(session?.user ?? null);
           }
         } else {
+          // For SIGNED_IN events, trust the validation done in AuthPage
           setSession(session);
           setUser(session?.user ?? null);
         }
+
         setIsLoading(false);
       }
     );
@@ -122,7 +141,7 @@ export const AuthProvider = ({
       .getSession()
       .then(async ({ data: { session } }) => {
         if (session?.user) {
-          // Check if account is deleted before setting user
+          // Check if account is deleted for existing sessions
           const isValid = await checkAccountStatus(
             session.user
           );
@@ -130,6 +149,7 @@ export const AuthProvider = ({
             setSession(session);
             setUser(session.user);
           } else {
+            // Account was deleted, sign out
             setSession(null);
             setUser(null);
           }
