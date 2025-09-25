@@ -90,7 +90,9 @@ export const BookSearch = () => {
           <div className="h-10 bg-gray-200 rounded mb-4"></div>
           <div className="text-center py-8">
             <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">Carregando pesquisa de livros...</p>
+            <p className="text-gray-500">
+              Carregando pesquisa de livros...
+            </p>
           </div>
         </div>
       </div>
