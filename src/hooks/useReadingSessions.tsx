@@ -124,18 +124,40 @@ export const useReadingSessions = () => {
       if (!user?.id)
         throw new Error("User not authenticated");
 
+      // Prevent negative or zero pages
+      if (sessionData.pages_read <= 0) {
+        throw new Error(
+          "Número de páginas deve ser maior que zero"
+        );
+      }
+
       // First, get the current book data
       const { data: book, error: bookError } =
         await supabase
           .from("books")
-          .select("pages_read, total_pages")
+          .select("pages_read, total_pages, status")
           .eq("id", sessionData.book_id)
           .eq("user_id", user.id)
           .single();
 
       if (bookError) throw bookError;
 
-      // Add the reading session
+      // Calculate new total pages read
+      const newPagesRead =
+        (book.pages_read || 0) + sessionData.pages_read;
+
+      // Prevent reading more pages than the book has
+      if (newPagesRead > book.total_pages) {
+        throw new Error(
+          `Não é possível ler ${
+            sessionData.pages_read
+          } páginas. Restam apenas ${
+            book.total_pages - (book.pages_read || 0)
+          } páginas para terminar o livro.`
+        );
+      }
+
+      // Add the reading session first
       const { data: session, error: sessionError } =
         await supabase
           .from("reading_sessions")
@@ -153,9 +175,7 @@ export const useReadingSessions = () => {
 
       if (sessionError) throw sessionError;
 
-      // Update the book's total pages read
-      const newPagesRead =
-        (book.pages_read || 0) + sessionData.pages_read;
+      // Determine new status
       const status =
         newPagesRead >= book.total_pages
           ? "completed"
@@ -163,6 +183,7 @@ export const useReadingSessions = () => {
           ? "reading"
           : "want-to-read";
 
+      // Update the book's total pages read and status
       const { error: updateError } = await supabase
         .from("books")
         .update({
@@ -254,14 +275,25 @@ export const useReadingSessions = () => {
         session.pages_read - pagesToRemove
       );
 
-      // Update the session
-      const { error: updateSessionError } = await supabase
-        .from("reading_sessions")
-        .update({ pages_read: newPagesRead })
-        .eq("id", sessionId)
-        .eq("user_id", user.id);
+      // If newPagesRead is 0, delete the session instead of updating
+      if (newPagesRead === 0) {
+        const { error: deleteError } = await supabase
+          .from("reading_sessions")
+          .delete()
+          .eq("id", sessionId)
+          .eq("user_id", user.id);
 
-      if (updateSessionError) throw updateSessionError;
+        if (deleteError) throw deleteError;
+      } else {
+        // Update the session
+        const { error: updateSessionError } = await supabase
+          .from("reading_sessions")
+          .update({ pages_read: newPagesRead })
+          .eq("id", sessionId)
+          .eq("user_id", user.id);
+
+        if (updateSessionError) throw updateSessionError;
+      }
 
       // Update the book's total pages read
       const { data: book, error: bookError } =

@@ -10,18 +10,82 @@ import {
   AlertTriangle,
   RotateCcw,
   Trash2,
+  UserX,
+  LogOut,
 } from "lucide-react";
 import { useAccountReset } from "@/hooks/useAccountReset";
 import {
   Alert,
   AlertDescription,
 } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export const AccountResetManager = () => {
   const { resetAccount, isResetting } = useAccountReset();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [confirmationText, setConfirmationText] =
+    useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleReset = () => {
     resetAccount.mutate();
+  };
+
+  const handleDeleteAccount = async () => {
+    if (confirmationText !== "EXCLUIR CONTA") {
+      toast({
+        title: "Confirmação incorreta",
+        description:
+          "Digite exatamente 'EXCLUIR CONTA' para confirmar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // Primeiro resetar todos os dados da conta
+      await resetAccount.mutateAsync();
+
+      // Depois fazer logout e tentar excluir a conta do auth
+      await supabase.auth.signOut();
+
+      toast({
+        title: "Conta excluída",
+        description:
+          "Sua conta foi excluída com sucesso. Até logo!",
+      });
+
+      // Redirecionar para página inicial após um tempo
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 2000);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir conta",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -49,18 +113,19 @@ export const AccountResetManager = () => {
           </Alert>
 
           <div className="space-y-4">
-            <div className="p-4 border border-destructive/20 rounded-lg bg-background">
+            {/* Resetar Dados */}
+            <div className="p-4 border border-orange-200 rounded-lg bg-orange-50/50">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <h3 className="font-semibold text-destructive flex items-center gap-2">
-                    <Trash2 className="h-4 w-4" />
-                    Resetar Conta Completamente
+                  <h3 className="font-semibold text-orange-800 flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Resetar Dados da Conta
                   </h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Remove TODOS os dados da sua conta
-                    permanentemente:
+                  <p className="text-sm text-orange-700 max-w-md">
+                    Remove todos os dados, mas mantém sua
+                    conta ativa:
                   </p>
-                  <ul className="text-xs text-muted-foreground ml-4 space-y-1">
+                  <ul className="text-xs text-orange-600 ml-4 space-y-1">
                     <li>• Todos os livros adicionados</li>
                     <li>• Todas as conquistas obtidas</li>
                     <li>• Todo o progresso de leitura</li>
@@ -74,11 +139,11 @@ export const AccountResetManager = () => {
                   </ul>
                 </div>
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   size="sm"
                   onClick={handleReset}
                   disabled={isResetting}
-                  className="ml-4 shrink-0"
+                  className="ml-4 shrink-0 border-orange-300 text-orange-800 hover:bg-orange-100"
                 >
                   {isResetting ? (
                     <>
@@ -87,11 +152,137 @@ export const AccountResetManager = () => {
                     </>
                   ) : (
                     <>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Resetar Tudo
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Resetar Dados
                     </>
                   )}
                 </Button>
+              </div>
+            </div>
+
+            {/* Excluir Conta Completamente */}
+            <div className="p-4 border border-red-200 rounded-lg bg-red-50/50">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-red-800 flex items-center gap-2">
+                    <UserX className="h-4 w-4" />
+                    Excluir Conta Permanentemente
+                  </h3>
+                  <p className="text-sm text-red-700 max-w-md">
+                    <strong>ATENÇÃO:</strong> Exclui sua
+                    conta completamente e você não poderá
+                    mais fazer login:
+                  </p>
+                  <ul className="text-xs text-red-600 ml-4 space-y-1">
+                    <li>
+                      • Remove todos os dados da conta
+                    </li>
+                    <li>
+                      • Exclui seu perfil permanentemente
+                    </li>
+                    <li>
+                      • Você será deslogado imediatamente
+                    </li>
+                    <li>
+                      •{" "}
+                      <strong>
+                        NÃO É POSSÍVEL DESFAZER
+                      </strong>
+                    </li>
+                  </ul>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={isDeleting}
+                      className="ml-4 shrink-0"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+                          Excluindo...
+                        </>
+                      ) : (
+                        <>
+                          <UserX className="h-4 w-4 mr-2" />
+                          Excluir Conta
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-red-800">
+                        ⚠️ Excluir Conta Permanentemente
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-3">
+                        <p className="text-red-700">
+                          <strong>
+                            Esta ação é IRREVERSÍVEL!
+                          </strong>
+                        </p>
+                        <p>
+                          Ao excluir sua conta, todos os
+                          seus dados serão removidos
+                          permanentemente e você não poderá
+                          mais acessar o BiblioGame Zone.
+                        </p>
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="confirmation"
+                            className="text-sm font-medium"
+                          >
+                            Para confirmar, digite{" "}
+                            <strong>"EXCLUIR CONTA"</strong>
+                            :
+                          </Label>
+                          <Input
+                            id="confirmation"
+                            value={confirmationText}
+                            onChange={(e) =>
+                              setConfirmationText(
+                                e.target.value
+                              )
+                            }
+                            placeholder="Digite EXCLUIR CONTA"
+                            className="border-red-200"
+                          />
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel
+                        onClick={() =>
+                          setConfirmationText("")
+                        }
+                      >
+                        Cancelar
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteAccount}
+                        disabled={
+                          confirmationText !==
+                            "EXCLUIR CONTA" || isDeleting
+                        }
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        {isDeleting ? (
+                          <>
+                            <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+                            Excluindo...
+                          </>
+                        ) : (
+                          <>
+                            <UserX className="h-4 w-4 mr-2" />
+                            Sim, Excluir Minha Conta
+                          </>
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>

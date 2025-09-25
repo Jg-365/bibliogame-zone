@@ -117,29 +117,11 @@ export const BookCard: React.FC<BookCardProps> = ({
   };
 
   const handleAddReadingSession = () => {
+    // Apenas adicionar a sessão - o hook já cuida da atualização do livro
     addReadingSession({
       book_id: book.id,
       pages_read: readingSessionData.pages_read,
       notes: readingSessionData.notes,
-    });
-
-    // Atualizar o total de páginas lidas do livro
-    const newTotalPages =
-      book.pages_read + readingSessionData.pages_read;
-    const newStatus =
-      newTotalPages >= book.total_pages
-        ? "completed"
-        : book.status;
-
-    updateBook({
-      id: book.id,
-      updates: {
-        pages_read: newTotalPages,
-        status: newStatus,
-        ...(newStatus === "completed" && {
-          date_completed: new Date().toISOString(),
-        }),
-      },
     });
 
     setShowReadingDialog(false);
@@ -208,46 +190,72 @@ export const BookCard: React.FC<BookCardProps> = ({
             </div>
           </div>
 
-          {/* Menu de Ações */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
+          {/* Botões de Ação Rápida */}
+          <div className="flex items-center gap-1">
+            {/* Botão de Adicionar Páginas */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowReadingDialog(true)}
+              disabled={book.status === "completed"}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+
+            {/* Botão de Definir como Atual */}
+            {book.status !== "completed" && (
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSetCurrentBook}
               >
-                <Target className="h-4 w-4 mr-2" />
-                Definir como Atual
-              </DropdownMenuItem>
+                <Target className="h-4 w-4" />
+              </Button>
+            )}
 
-              <DropdownMenuItem
-                onClick={() => setShowReadingDialog(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Páginas
-              </DropdownMenuItem>
+            {/* Menu de Ações Extras */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleSetCurrentBook}
+                  disabled={book.status === "completed"}
+                >
+                  <Target className="h-4 w-4 mr-2" />
+                  Definir como Atual
+                </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onClick={() => setShowUpdateDialog(true)}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Editar Livro
-              </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowReadingDialog(true)}
+                  disabled={book.status === "completed"}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Páginas
+                </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowUpdateDialog(true)}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Livro
+                </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onClick={() => setShowDeleteDialog(true)}
-                className="text-red-600"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remover Livro
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-red-600"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remover Livro
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
 

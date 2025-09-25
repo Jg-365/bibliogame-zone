@@ -142,7 +142,13 @@ const Dashboard = () => {
     currentPoints - previousLevelThreshold;
   const levelMax =
     nextLevelThreshold - previousLevelThreshold;
-  const currentBook = currentlyReading[0];
+
+  // Definir livro atual baseado no current_book_id do perfil ou primeiro livro sendo lido
+  const currentBook = profile?.current_book_id
+    ? books.find(
+        (book) => book.id === profile.current_book_id
+      )
+    : currentlyReading[0];
   const pointsToNext = Math.max(
     0,
     nextLevelThreshold - currentPoints
@@ -187,7 +193,7 @@ const Dashboard = () => {
               <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
                 Olá,{" "}
                 {safeProfile.full_name ??
-                  user?.email?.split('@')[0] ??
+                  user?.email?.split("@")[0] ??
                   "Usuário"}
                 !
               </h1>
@@ -196,8 +202,8 @@ const Dashboard = () => {
               </p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={signOut}
             size="sm"
             className="self-start sm:self-auto"
@@ -269,7 +275,10 @@ const Dashboard = () => {
         >
           {/* Mobile Navigation - Select Dropdown */}
           <div className="block lg:hidden">
-            <Select value={activeTab} onValueChange={setActiveTab}>
+            <Select
+              value={activeTab}
+              onValueChange={setActiveTab}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue>
                   <div className="flex items-center gap-2">
@@ -385,56 +394,72 @@ const Dashboard = () => {
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
               >
                 <Star className="h-4 w-4" />
-                <span className="hidden sm:inline">Novo</span>
+                <span className="hidden sm:inline">
+                  Novo
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="overview"
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
               >
                 <BookOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">Visão Geral</span>
+                <span className="hidden sm:inline">
+                  Visão Geral
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="library"
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
               >
                 <Book className="h-4 w-4" />
-                <span className="hidden sm:inline">Biblioteca</span>
+                <span className="hidden sm:inline">
+                  Biblioteca
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="sessions"
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
               >
                 <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Sessões</span>
+                <span className="hidden sm:inline">
+                  Sessões
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="achievements"
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
               >
                 <Target className="h-4 w-4" />
-                <span className="hidden sm:inline">Conquistas</span>
+                <span className="hidden sm:inline">
+                  Conquistas
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="social"
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
               >
                 <Award className="h-4 w-4" />
-                <span className="hidden sm:inline">Social</span>
+                <span className="hidden sm:inline">
+                  Social
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="discover"
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
               >
                 <Search className="h-4 w-4" />
-                <span className="hidden sm:inline">Descobrir</span>
+                <span className="hidden sm:inline">
+                  Descobrir
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="settings"
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
               >
                 <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Config</span>
+                <span className="hidden sm:inline">
+                  Config
+                </span>
               </TabsTrigger>
             </TabsList>
           </div>
