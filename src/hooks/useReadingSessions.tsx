@@ -328,9 +328,117 @@ export const useReadingSessions = () => {
 
       if (updateBookError) throw updateBookError;
 
-      return { sessionId, newPagesRead };
+      return {
+        sessionId,
+        newPagesRead,
+        wasDeleted: newPagesRead === 0,
+      };
     },
-    onSuccess: () => {
+    onMutate: async ({ sessionId, pagesToRemove }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ["reading-sessions", user?.id],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ["today-sessions", user?.id],
+      });
+
+      // Snapshot the previous values
+      const previousSessions = queryClient.getQueryData([
+        "reading-sessions",
+        user?.id,
+      ]);
+      const previousTodaySessions =
+        queryClient.getQueryData([
+          "today-sessions",
+          user?.id,
+        ]);
+
+      // Optimistically update to remove or update the session
+      queryClient.setQueryData(
+        ["reading-sessions", user?.id],
+        (old: ReadingSession[] | undefined) => {
+          if (!old) return old;
+          const sessionIndex = old.findIndex(
+            (s) => s.id === sessionId
+          );
+          if (sessionIndex === -1) return old;
+
+          const session = old[sessionIndex];
+          const newPagesRead = Math.max(
+            0,
+            session.pages_read - pagesToRemove
+          );
+
+          if (newPagesRead === 0) {
+            // Remove the session completely
+            return old.filter((s) => s.id !== sessionId);
+          } else {
+            // Update the session
+            const newSessions = [...old];
+            newSessions[sessionIndex] = {
+              ...session,
+              pages_read: newPagesRead,
+            };
+            return newSessions;
+          }
+        }
+      );
+
+      queryClient.setQueryData(
+        ["today-sessions", user?.id],
+        (old: ReadingSession[] | undefined) => {
+          if (!old) return old;
+          const sessionIndex = old.findIndex(
+            (s) => s.id === sessionId
+          );
+          if (sessionIndex === -1) return old;
+
+          const session = old[sessionIndex];
+          const newPagesRead = Math.max(
+            0,
+            session.pages_read - pagesToRemove
+          );
+
+          if (newPagesRead === 0) {
+            // Remove the session completely
+            return old.filter((s) => s.id !== sessionId);
+          } else {
+            // Update the session
+            const newSessions = [...old];
+            newSessions[sessionIndex] = {
+              ...session,
+              pages_read: newPagesRead,
+            };
+            return newSessions;
+          }
+        }
+      );
+
+      return { previousSessions, previousTodaySessions };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousSessions) {
+        queryClient.setQueryData(
+          ["reading-sessions", user?.id],
+          context.previousSessions
+        );
+      }
+      if (context?.previousTodaySessions) {
+        queryClient.setQueryData(
+          ["today-sessions", user?.id],
+          context.previousTodaySessions
+        );
+      }
+      toast({
+        title: "Erro ao remover páginas",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+    onSuccess: (result) => {
+      // Force refetch to ensure consistency
       queryClient.invalidateQueries({
         queryKey: ["reading-sessions", user?.id],
       });
@@ -343,17 +451,14 @@ export const useReadingSessions = () => {
       queryClient.invalidateQueries({
         queryKey: ["profile", user?.id],
       });
+
       toast({
-        title: "Páginas removidas!",
-        description:
-          "O progresso foi ajustado com sucesso.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao remover páginas",
-        description: error.message,
-        variant: "destructive",
+        title: result.wasDeleted
+          ? "Sessão removida!"
+          : "Páginas removidas!",
+        description: result.wasDeleted
+          ? "A sessão foi completamente removida."
+          : "O progresso foi ajustado com sucesso.",
       });
     },
   });
@@ -419,7 +524,73 @@ export const useReadingSessions = () => {
 
       return sessionId;
     },
+    onMutate: async (sessionId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: ["reading-sessions", user?.id],
+      });
+      await queryClient.cancelQueries({
+        queryKey: ["today-sessions", user?.id],
+      });
+
+      // Snapshot the previous values
+      const previousSessions = queryClient.getQueryData([
+        "reading-sessions",
+        user?.id,
+      ]);
+      const previousTodaySessions =
+        queryClient.getQueryData([
+          "today-sessions",
+          user?.id,
+        ]);
+
+      // Optimistically remove the session
+      queryClient.setQueryData(
+        ["reading-sessions", user?.id],
+        (old: ReadingSession[] | undefined) => {
+          return (
+            old?.filter(
+              (session) => session.id !== sessionId
+            ) || []
+          );
+        }
+      );
+
+      queryClient.setQueryData(
+        ["today-sessions", user?.id],
+        (old: ReadingSession[] | undefined) => {
+          return (
+            old?.filter(
+              (session) => session.id !== sessionId
+            ) || []
+          );
+        }
+      );
+
+      return { previousSessions, previousTodaySessions };
+    },
+    onError: (err, sessionId, context) => {
+      // Rollback on error
+      if (context?.previousSessions) {
+        queryClient.setQueryData(
+          ["reading-sessions", user?.id],
+          context.previousSessions
+        );
+      }
+      if (context?.previousTodaySessions) {
+        queryClient.setQueryData(
+          ["today-sessions", user?.id],
+          context.previousTodaySessions
+        );
+      }
+      toast({
+        title: "Erro ao remover sessão",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
     onSuccess: () => {
+      // Force refetch to ensure consistency
       queryClient.invalidateQueries({
         queryKey: ["reading-sessions", user?.id],
       });
@@ -436,13 +607,6 @@ export const useReadingSessions = () => {
         title: "Sessão removida!",
         description:
           "A sessão de leitura foi removida completamente.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao remover sessão",
-        description: error.message,
-        variant: "destructive",
       });
     },
   });

@@ -241,7 +241,10 @@ const Dashboard = () => {
   const userStats = {
     points: safeProfile.points || 0,
     books_completed: safeProfile.books_completed || 0,
-    best_streak: safeProfile.best_streak || 0,
+    best_streak:
+      (safeProfile as any).best_streak ||
+      (safeProfile as any).current_streak ||
+      0,
     total_pages_read: safeProfile.total_pages_read || 0,
   };
 
