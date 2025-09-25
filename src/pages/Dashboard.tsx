@@ -46,6 +46,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useBooks } from "@/hooks/useBooks";
@@ -159,46 +166,49 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background/80 to-accent/5">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/20 flex-shrink-0">
+              <AvatarImage
+                src={safeProfile.avatar_url ?? undefined}
+                alt="Profile"
+              />
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {(
+                  safeProfile.full_name ??
+                  user?.email ??
+                  "U"
+                )
+                  .charAt(0)
+                  .toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
                 Olá,{" "}
                 {safeProfile.full_name ??
-                  user?.email ??
+                  user?.email?.split('@')[0] ??
                   "Usuário"}
                 !
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {safeProfile.level}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12 border-2 border-primary/20">
-                <AvatarImage
-                  src={safeProfile.avatar_url ?? undefined}
-                  alt="Profile"
-                />
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  {(
-                    safeProfile.full_name ??
-                    user?.email ??
-                    "U"
-                  )
-                    .charAt(0)
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="h-4 w-4" />
-            Sair
+          <Button 
+            variant="outline" 
+            onClick={signOut}
+            size="sm"
+            className="self-start sm:self-auto"
+          >
+            <LogOut className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Sair</span>
           </Button>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6 mb-8">
           <StatsCard
             title="Livros Concluídos"
             value={completedBooks.length}
@@ -251,70 +261,183 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* Main Navigation Tabs */}
+        {/* Main Navigation */}
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
           className="space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-8">
-            <TabsTrigger
-              value="enhanced"
-              className="flex items-center gap-2"
-            >
-              <Star className="h-4 w-4" />
-              Novo
-            </TabsTrigger>
-            <TabsTrigger
-              value="overview"
-              className="flex items-center gap-2"
-            >
-              <BookOpen className="h-4 w-4" />
-              Visão Geral
-            </TabsTrigger>
-            <TabsTrigger
-              value="library"
-              className="flex items-center gap-2"
-            >
-              <Book className="h-4 w-4" />
-              Biblioteca
-            </TabsTrigger>
-            <TabsTrigger
-              value="sessions"
-              className="flex items-center gap-2"
-            >
-              <Calendar className="h-4 w-4" />
-              Sessões
-            </TabsTrigger>
-            <TabsTrigger
-              value="achievements"
-              className="flex items-center gap-2"
-            >
-              <Target className="h-4 w-4" />
-              Conquistas
-            </TabsTrigger>
-            <TabsTrigger
-              value="social"
-              className="flex items-center gap-2"
-            >
-              <Award className="h-4 w-4" />
-              Social
-            </TabsTrigger>
-            <TabsTrigger
-              value="discover"
-              className="flex items-center gap-2"
-            >
-              <Users className="h-4 w-4" />
-              Descobrir
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              className="flex items-center gap-2"
-            >
-              <Settings className="h-4 w-4" />
-              Config
-            </TabsTrigger>
-          </TabsList>
+          {/* Mobile Navigation - Select Dropdown */}
+          <div className="block lg:hidden">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full">
+                <SelectValue>
+                  <div className="flex items-center gap-2">
+                    {activeTab === "enhanced" && (
+                      <>
+                        <Star className="h-4 w-4" />
+                        Novo
+                      </>
+                    )}
+                    {activeTab === "overview" && (
+                      <>
+                        <BookOpen className="h-4 w-4" />
+                        Visão Geral
+                      </>
+                    )}
+                    {activeTab === "library" && (
+                      <>
+                        <Book className="h-4 w-4" />
+                        Biblioteca
+                      </>
+                    )}
+                    {activeTab === "sessions" && (
+                      <>
+                        <Calendar className="h-4 w-4" />
+                        Sessões
+                      </>
+                    )}
+                    {activeTab === "achievements" && (
+                      <>
+                        <Target className="h-4 w-4" />
+                        Conquistas
+                      </>
+                    )}
+                    {activeTab === "social" && (
+                      <>
+                        <Award className="h-4 w-4" />
+                        Social
+                      </>
+                    )}
+                    {activeTab === "discover" && (
+                      <>
+                        <Search className="h-4 w-4" />
+                        Descobrir
+                      </>
+                    )}
+                    {activeTab === "settings" && (
+                      <>
+                        <Settings className="h-4 w-4" />
+                        Configurações
+                      </>
+                    )}
+                  </div>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="enhanced">
+                  <div className="flex items-center gap-2">
+                    <Star className="h-4 w-4" />
+                    Novo
+                  </div>
+                </SelectItem>
+                <SelectItem value="overview">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Visão Geral
+                  </div>
+                </SelectItem>
+                <SelectItem value="library">
+                  <div className="flex items-center gap-2">
+                    <Book className="h-4 w-4" />
+                    Biblioteca
+                  </div>
+                </SelectItem>
+                <SelectItem value="sessions">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Sessões
+                  </div>
+                </SelectItem>
+                <SelectItem value="achievements">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Conquistas
+                  </div>
+                </SelectItem>
+                <SelectItem value="social">
+                  <div className="flex items-center gap-2">
+                    <Award className="h-4 w-4" />
+                    Social
+                  </div>
+                </SelectItem>
+                <SelectItem value="discover">
+                  <div className="flex items-center gap-2">
+                    <Search className="h-4 w-4" />
+                    Descobrir
+                  </div>
+                </SelectItem>
+                <SelectItem value="settings">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Configurações
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop Navigation - Tabs */}
+          <div className="hidden lg:block">
+            <TabsList className="grid w-full grid-cols-8 h-auto p-1">
+              <TabsTrigger
+                value="enhanced"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
+              >
+                <Star className="h-4 w-4" />
+                <span className="hidden sm:inline">Novo</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="overview"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
+              >
+                <BookOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">Visão Geral</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="library"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
+              >
+                <Book className="h-4 w-4" />
+                <span className="hidden sm:inline">Biblioteca</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="sessions"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
+              >
+                <Calendar className="h-4 w-4" />
+                <span className="hidden sm:inline">Sessões</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="achievements"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
+              >
+                <Target className="h-4 w-4" />
+                <span className="hidden sm:inline">Conquistas</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="social"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
+              >
+                <Award className="h-4 w-4" />
+                <span className="hidden sm:inline">Social</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="discover"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
+              >
+                <Search className="h-4 w-4" />
+                <span className="hidden sm:inline">Descobrir</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="settings"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2"
+              >
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Config</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Enhanced Dashboard Tab */}
           <TabsContent value="enhanced">
