@@ -4,11 +4,12 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export const useAccountReset = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const resetAccount = useMutation({
     mutationFn: async () => {
@@ -23,15 +24,15 @@ export const useAccountReset = () => {
         .from("profiles")
         .update({
           current_streak: 0,
-          best_streak: 0,
+          longest_streak: 0,
           books_completed: 0,
-          experience_points: 0,
           total_pages_read: 0,
-          reading_streak: 0,
           level: "Iniciante",
           points: 0,
+          experience_points: 0,
           current_book_id: null,
-          created_at: new Date().toISOString(),
+          last_activity_date: null,
+          updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId);
 
