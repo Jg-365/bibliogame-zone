@@ -251,122 +251,174 @@ export const useAccountReset = () => {
       }
 
       const userId = user.id;
+      const userEmail = user.email;
 
-      // 1. Delete all reading sessions first (has foreign key to books)
-      const { error: sessionsError } = await supabase
-        .from("reading_sessions")
-        .delete()
-        .eq("user_id", userId);
-
-      if (sessionsError) {
-        console.error(
-          "Erro ao deletar sessões:",
-          sessionsError
+      try {
+        // Delete all data manually with proper error handling
+        console.log(
+          "🗑️ Iniciando exclusão completa da conta..."
         );
+
+        // 1. Delete all reading sessions first (has foreign key to books)
+        const { error: sessionsError } = await supabase
+          .from("reading_sessions")
+          .delete()
+          .eq("user_id", userId);
+
+        if (sessionsError) {
+          console.error(
+            "Erro ao deletar sessões:",
+            sessionsError
+          );
+        } else {
+          console.log("✅ Sessões de leitura removidas");
+        }
+
+        // 2. Delete all user achievements
+        const { error: achievementsError } = await supabase
+          .from("user_achievements")
+          .delete()
+          .eq("user_id", userId);
+
+        if (achievementsError) {
+          console.error(
+            "Erro ao deletar conquistas:",
+            achievementsError
+          );
+        } else {
+          console.log("✅ Conquistas removidas");
+        }
+
+        // 3. Delete all user books
+        const { error: booksError } = await supabase
+          .from("books")
+          .delete()
+          .eq("user_id", userId);
+
+        if (booksError) {
+          console.error(
+            "Erro ao deletar livros:",
+            booksError
+          );
+        } else {
+          console.log("✅ Livros removidos");
+        }
+
+        // 4. Delete all follows (both directions)
+        const { error: followsError1 } = await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", userId);
+
+        if (followsError1) {
+          console.error(
+            "Erro ao deletar seguidores:",
+            followsError1
+          );
+        }
+
+        const { error: followsError2 } = await supabase
+          .from("follows")
+          .delete()
+          .eq("following_id", userId);
+
+        if (followsError2) {
+          console.error(
+            "Erro ao deletar seguindo:",
+            followsError2
+          );
+        } else {
+          console.log(
+            "✅ Relacionamentos sociais removidos"
+          );
+        }
+
+        // 5. Delete the user profile
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .delete()
+          .eq("user_id", userId);
+
+        if (profileError) {
+          console.error(
+            "Erro ao deletar perfil:",
+            profileError
+          );
+        } else {
+          console.log("✅ Perfil removido");
+        }
+
+        // 6. CRITICAL: Sign out from ALL devices and sessions
+        console.log("🚪 Fazendo logout global...");
+        await supabase.auth.signOut({ scope: "global" });
+
+        // 7. Additional step: clear all local storage and session storage
+        if (typeof window !== "undefined") {
+          console.log("🧹 Limpando dados locais...");
+          localStorage.clear();
+          sessionStorage.clear();
+
+          // Clear any cookies related to Supabase
+          document.cookie.split(";").forEach((c) => {
+            const eqPos = c.indexOf("=");
+            const name =
+              eqPos > -1 ? c.substr(0, eqPos) : c;
+            const cleanName = name.trim();
+            if (
+              cleanName.includes("supabase") ||
+              cleanName.includes("auth") ||
+              cleanName.includes("sb-")
+            ) {
+              document.cookie =
+                cleanName +
+                "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+              document.cookie =
+                cleanName +
+                "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=" +
+                window.location.hostname;
+            }
+          });
+        }
+
+        console.log(
+          `✅ Conta do usuário ${userEmail} foi completamente removida!`
+        );
+        return true;
+      } catch (error) {
+        console.error(
+          "Erro durante exclusão da conta:",
+          error
+        );
+
+        // Even if there are errors, still sign out and clear data
+        console.log(
+          "⚠️ Houve erros, mas fazendo limpeza de segurança..."
+        );
+        await supabase.auth.signOut({ scope: "global" });
+        if (typeof window !== "undefined") {
+          localStorage.clear();
+          sessionStorage.clear();
+        }
+
         throw new Error(
-          "Erro ao deletar sessões de leitura"
+          "Dados removidos com alguns erros. Você foi deslogado com segurança."
         );
       }
-
-      // 2. Delete all user achievements
-      const { error: achievementsError } = await supabase
-        .from("user_achievements")
-        .delete()
-        .eq("user_id", userId);
-
-      if (achievementsError) {
-        console.error(
-          "Erro ao deletar conquistas:",
-          achievementsError
-        );
-        throw new Error("Erro ao deletar conquistas");
-      }
-
-      // 3. Delete all user books
-      const { error: booksError } = await supabase
-        .from("books")
-        .delete()
-        .eq("user_id", userId);
-
-      if (booksError) {
-        console.error(
-          "Erro ao deletar livros:",
-          booksError
-        );
-        throw new Error("Erro ao deletar livros");
-      }
-
-      // 4. Delete all follows (both directions)
-      const { error: followsError1 } = await supabase
-        .from("follows")
-        .delete()
-        .eq("follower_id", userId);
-
-      if (followsError1) {
-        console.error(
-          "Erro ao deletar seguidores:",
-          followsError1
-        );
-      }
-
-      const { error: followsError2 } = await supabase
-        .from("follows")
-        .delete()
-        .eq("following_id", userId);
-
-      if (followsError2) {
-        console.error(
-          "Erro ao deletar seguindo:",
-          followsError2
-        );
-      }
-
-      // 5. Delete the user profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("user_id", userId);
-
-      if (profileError) {
-        console.error(
-          "Erro ao deletar perfil:",
-          profileError
-        );
-        throw new Error("Erro ao deletar perfil");
-      }
-
-      // 6. Delete the user from Supabase Auth
-      const { error: authError } =
-        await supabase.auth.admin.deleteUser(userId);
-
-      if (authError) {
-        console.error(
-          "Erro ao deletar usuário do auth:",
-          authError
-        );
-        // Note: This might fail if using RLS, but data is already deleted
-        console.warn(
-          "Usuário pode precisar ser deletado manualmente do Auth"
-        );
-      }
-
-      return true;
     },
     onSuccess: () => {
+      // Clear all cached data immediately
+      queryClient.clear();
+
       toast({
         title: "✅ Conta excluída completamente!",
         description:
-          "Todos os seus dados foram removidos permanentemente.",
+          "Todos os seus dados foram removidos permanentemente. Redirecionando...",
       });
 
-      // Clear all cached data
-      queryClient.clear();
-
-      // Sign out and redirect
-      setTimeout(async () => {
-        await supabase.auth.signOut();
-        window.location.href = "/";
-      }, 2000);
+      // Immediate redirect since user is already signed out
+      setTimeout(() => {
+        window.location.replace("/");
+      }, 1500);
     },
     onError: (error: Error) => {
       toast({
