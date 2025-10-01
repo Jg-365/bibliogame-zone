@@ -13,12 +13,10 @@ import {
   PerformanceDebugger,
   BundleAnalysisDisplay,
 } from "@/shared/performance";
-import { AccessibilityDevPanel } from "@/shared/accessibility/testing";
 import { useAnnouncer } from "@/shared/accessibility";
 import { useResponsive } from "@/shared/utils/responsive";
 import {
   NavigationProvider,
-  NavigationTabs,
   PageTransition,
   NavigationAnnouncer,
   KeyboardNavigationHandler,
@@ -88,16 +86,6 @@ const AppRouter = () => {
           {/* Accessibility Announcer */}
           <NavigationAnnouncer />
           {AnnouncerComponent && <AnnouncerComponent />}
-
-          {/* Navigation */}
-          <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <ResponsiveContainer>
-              <div className="flex h-16 items-center justify-between">
-                <h1 className="text-xl font-bold">BiblioGame Zone</h1>
-                <NavigationTabs variant={isMobile ? "buttons" : "pills"} />
-              </div>
-            </ResponsiveContainer>
-          </header>
 
           {/* Main Content */}
           <main id="main-content" className="flex-1" tabIndex={-1}>
@@ -169,21 +157,19 @@ const PageLoader = () => (
 );
 
 const App = () => (
-  <AccessibilityDevPanel>
-    <AppPerformanceProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <AppRouter />
-            <PerformanceDebugger />
-            <BundleAnalysisDisplay />
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </AppPerformanceProvider>
-  </AccessibilityDevPanel>
+  <AppPerformanceProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AppRouter />
+          <PerformanceDebugger />
+          <BundleAnalysisDisplay />
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </AppPerformanceProvider>
 );
 
 export default App;

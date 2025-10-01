@@ -40,13 +40,13 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   const content = (
     <div className="flex items-center justify-between">
       <div className="space-y-2">
-        <p className={cn("font-medium text-muted-foreground", isMobile ? "text-xs" : "text-sm")}>
+        <p className={cn("font-semibold text-slate-700", isMobile ? "text-xs" : "text-sm")}>
           {data.title}
         </p>
-        <p className={cn("font-bold text-foreground", isMobile ? "text-xl" : "text-3xl")}>
+        <p className={cn("font-bold text-slate-900", isMobile ? "text-xl" : "text-3xl")}>
           {data.value}
         </p>
-        {data.subtitle && <p className="text-xs text-muted-foreground">{data.subtitle}</p>}
+        {data.subtitle && <p className="text-xs text-slate-600 font-medium">{data.subtitle}</p>}
         {data.trend && (
           <div
             className={cn(
@@ -60,9 +60,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         )}
       </div>
       {data.icon && (
-        <div className={cn("text-muted-foreground", isMobile ? "text-xl" : "text-2xl")}>
-          {data.icon}
-        </div>
+        <div className={cn("text-slate-600", isMobile ? "text-xl" : "text-2xl")}>{data.icon}</div>
       )}
     </div>
   );
