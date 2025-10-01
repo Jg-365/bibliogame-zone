@@ -68,7 +68,8 @@ import { ReadingSessionManager } from "@/components/ReadingSessionManager";
 import { AccountResetManager } from "@/components/AccountResetManager";
 import { CustomBookDialog } from "@/components/CustomBookForm";
 import { StatsDetailDialog } from "@/components/StatsDetailDialog";
-import heroImage from "@/assets/hero-reading.jpg";
+import { StreakDisplay } from "@/components/StreakDisplay";
+import { StreakBadge } from "@/components/StreakBadge";
 
 // Level thresholds - Sistema baseado em múltiplos critérios
 const levelThresholds = {
@@ -244,10 +245,7 @@ const Dashboard = () => {
   const userStats = {
     points: safeProfile.points || 0,
     books_completed: safeProfile.books_completed || 0,
-    best_streak:
-      (safeProfile as any).best_streak ||
-      (safeProfile as any).current_streak ||
-      0,
+    best_streak: (safeProfile as any).best_streak || 0,
     total_pages_read: safeProfile.total_pages_read || 0,
   };
 
@@ -332,13 +330,8 @@ const Dashboard = () => {
 
   // Calculate reading streak
   const readingStreak =
-    (safeProfile as any).current_streak ||
-    (safeProfile as any).reading_streak ||
-    0;
-  const bestStreak =
-    (safeProfile as any).current_streak ||
-    (safeProfile as any).best_streak ||
-    0;
+    (safeProfile as any).reading_streak || 0;
+  const bestStreak = (safeProfile as any).best_streak || 0;
 
   if (!user) {
     return <div>Loading...</div>;
@@ -373,9 +366,12 @@ const Dashboard = () => {
                   "Usuário"}
                 !
               </h1>
-              <p className="text-sm text-muted-foreground">
-                {safeProfile.level}
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-muted-foreground">
+                  {safeProfile.level}
+                </p>
+                <StreakBadge size="sm" />
+              </div>
             </div>
           </div>
           <Button
@@ -841,41 +837,8 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                {/* Reading Activity */}
-                <Card className="shadow-card">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5 text-primary" />
-                      Atividade de Leitura
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">
-                        Sequência atual
-                      </span>
-                      <Badge variant="outline">
-                        {readingStreak} dias
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">
-                        Melhor sequência
-                      </span>
-                      <Badge variant="outline">
-                        {bestStreak} dias
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">
-                        Última leitura
-                      </span>
-                      <Badge variant="secondary">
-                        Hoje
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Streak Display */}
+                <StreakDisplay className="shadow-card" />
 
                 {/* Quick Actions */}
                 <Card className="shadow-card">

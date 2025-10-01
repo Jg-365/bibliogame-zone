@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 import { useCheckAchievements } from "./useAchievements";
+import { useStreakUpdate } from "./useStreakUpdate";
 
 export interface ReadingSession {
   id: string;
@@ -28,6 +29,7 @@ export const useReadingSessions = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const checkAchievements = useCheckAchievements();
+  const { checkStreakUpdate } = useStreakUpdate();
 
   // Get all reading sessions for the user
   const { data: sessions = [], isLoading } = useQuery({
@@ -211,7 +213,7 @@ export const useReadingSessions = () => {
         queryKey: ["profile", user?.id],
       });
 
-      // Check for new achievements after adding a reading session
+      // Check for new achievements and update streak after adding a reading session
       try {
         const { data: profile, error } = await supabase
           .from("profiles")
@@ -223,8 +225,12 @@ export const useReadingSessions = () => {
           await checkAchievements.mutateAsync({
             booksCompleted: profile.books_completed || 0,
             totalPagesRead: profile.total_pages_read || 0,
-            readingStreak: profile.current_streak || 0,
+            readingStreak:
+              (profile as any).reading_streak || 0,
           });
+
+          // Update streak after reading session
+          checkStreakUpdate();
         }
       } catch (error) {
         console.error(
