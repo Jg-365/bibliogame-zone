@@ -5,6 +5,7 @@ Uma plataforma moderna e gamificada para acompanhar e compartilhar sua jornada d
 ## ✨ Recursos Principais
 
 ### 📖 Gestão de Livros
+
 - Busca integrada com Google Books API
 - Adição manual de livros personalizados
 - Acompanhamento de progresso de leitura
@@ -12,30 +13,35 @@ Uma plataforma moderna e gamificada para acompanhar e compartilhar sua jornada d
 - Histórico completo de sessões de leitura
 
 ### 🔥 Sistema de Sequência (Streaks)
+
 - Contagem automática de dias consecutivos de leitura
 - Animações e celebrações para marcos alcançados
 - Acompanhamento visual da sequência atual e recorde
 - Integração automática com sessões de leitura
 
 ### 🏆 Gamificação e Conquistas
+
 - Sistema de pontos por páginas lidas
 - Conquistas desbloqueáveis por marcos
 - Níveis de usuário baseados em múltiplos critérios
 - Leaderboards públicos por diferentes métricas
 
 ### 👥 Recursos Sociais
+
 - Feed social com posts sobre leituras
 - Sistema de curtidas e comentários
 - Posts automáticos para sessões e conquistas
 - Compartilhamento de reflexões sobre livros
 
 ### 🌐 Design Responsivo Completo
+
 - Interface adaptável para desktop, tablet e mobile
 - Navegação otimizada para cada dispositivo
 - Menu lateral para desktop, navegação inferior para mobile
 - Experiência consistente em todas as telas
 
 ### 🧭 Sistema de Navegação (4 Seções)
+
 1. **Dashboard** - Visão geral e estatísticas
 2. **Social** - Feed social e interações
 3. **Ranking** - Leaderboards públicos
@@ -54,6 +60,7 @@ Uma plataforma moderna e gamificada para acompanhar e compartilhar sua jornada d
 ## 📦 Instalação e Configuração
 
 ### Pré-requisitos
+
 - Node.js 18+
 - npm ou yarn
 - Conta no Supabase
@@ -61,17 +68,20 @@ Uma plataforma moderna e gamificada para acompanhar e compartilhar sua jornada d
 ### Configuração do Ambiente
 
 1. **Clone o repositório**
+
 ```bash
 git clone https://github.com/your-username/bibliogame-zone.git
 cd bibliogame-zone
 ```
 
 2. **Instale as dependências**
+
 ```bash
 npm install
 ```
 
 3. **Configure o Supabase**
+
 - Crie um projeto no [Supabase](https://supabase.com)
 - Execute as migrações do banco de dados:
   ```bash
@@ -92,6 +102,7 @@ npm install
   ```
 
 4. **Configure as variáveis de ambiente**
+
 ```bash
 # Crie o arquivo .env.local
 VITE_SUPABASE_URL=your_supabase_url
@@ -99,6 +110,7 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 5. **Execute o projeto**
+
 ```bash
 npm run dev
 ```
@@ -106,6 +118,7 @@ npm run dev
 ## 🧪 Testes
 
 ### Executar Testes E2E
+
 ```bash
 # Executar todos os testes
 npx playwright test
@@ -121,6 +134,7 @@ npx playwright show-report
 ```
 
 ### Cobertura de Testes
+
 - ✅ Autenticação de usuários
 - ✅ Navegação responsiva
 - ✅ Funcionalidades do dashboard
@@ -158,6 +172,7 @@ src/
 ## 🗄️ Estrutura do Banco de Dados
 
 ### Tabelas Principais
+
 - `profiles` - Dados dos usuários e estatísticas
 - `books` - Biblioteca de livros dos usuários
 - `reading_sessions` - Sessões de leitura detalhadas
@@ -165,11 +180,13 @@ src/
 - `user_achievements` - Conquistas desbloqueadas pelos usuários
 
 ### Sistema Social
+
 - `posts` - Posts do feed social
 - `post_likes` - Curtidas em posts
 - `post_comments` - Comentários em posts
 
 ### Recursos de Segurança
+
 - Row Level Security (RLS) em todas as tabelas
 - Políticas de acesso baseadas na autenticação
 - Triggers automáticos para atualizações de estatísticas
@@ -194,6 +211,7 @@ O sistema de sequência monitora automaticamente a atividade de leitura:
 ## 🚀 Deploy e Produção
 
 ### Preparação para Deploy
+
 ```bash
 # Build de produção
 npm run build
@@ -203,8 +221,9 @@ npm run preview
 ```
 
 ### Sugestões de Hosting
+
 - **Vercel** (Recomendado para React)
-- **Netlify** 
+- **Netlify**
 - **AWS Amplify**
 - **Firebase Hosting**
 

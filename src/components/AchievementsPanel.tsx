@@ -109,7 +109,7 @@ export const AchievementsPanel = () => {
   const userStats = {
     booksCompleted: safeProfile.books_completed || 0,
     totalPagesRead: safeProfile.total_pages_read || 0,
-    readingStreak: safeProfile.reading_streak || 0,
+    readingStreak: safeProfile.current_streak || 0,
   };
 
   if (isLoading) {
