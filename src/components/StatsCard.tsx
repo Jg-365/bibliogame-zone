@@ -1,5 +1,6 @@
 import { LucideIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { StatsCard as BaseStatsCard } from "@/shared/components/ConsolidatedComponents";
+import { cn } from "@/lib/utils";
 
 interface StatsCardProps {
   title: string;
@@ -18,56 +19,38 @@ export const StatsCard = ({
   gradient = false,
   onClick,
 }: StatsCardProps) => {
-  const getCardClasses = () => {
-    const baseClasses = `relative overflow-hidden transition-all duration-300 hover:scale-105 ${
-      onClick ? "cursor-pointer hover:shadow-lg" : ""
-    }`;
-
+  const getVariantClass = () => {
     if (gradient) {
       switch (color) {
         case "success":
-          return `${baseClasses} bg-gradient-success text-success-foreground shadow-glow`;
+          return "!bg-gradient-to-br !from-green-500 !to-emerald-600 !text-white";
         case "accent":
-          return `${baseClasses} bg-gradient-gold text-accent-foreground shadow-gold`;
+          return "!bg-gradient-to-br !from-yellow-500 !to-orange-600 !text-white";
         default:
-          return `${baseClasses} bg-gradient-primary text-primary-foreground shadow-glow`;
+          return "!bg-gradient-to-br !from-blue-500 !to-purple-600 !text-white";
       }
     }
-
-    return `${baseClasses} shadow-card hover:shadow-glow`;
+    return "";
   };
 
   return (
-    <Card className={getCardClasses()} onClick={onClick}>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p
-              className={`text-sm font-medium ${
-                gradient
-                  ? "opacity-90"
-                  : "text-muted-foreground"
-              }`}
-            >
-              {title}
-            </p>
-            <p className="text-3xl font-bold mt-2">
-              {value}
-            </p>
-          </div>
-          <div
-            className={`p-3 rounded-full ${
-              gradient ? "bg-white/20" : "bg-primary/10"
-            }`}
-          >
-            <Icon
-              className={`h-6 w-6 ${
-                gradient ? "text-white" : "text-primary"
-              }`}
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div
+      className={cn("transition-all duration-300 hover:scale-105", onClick && "cursor-pointer")}
+      onClick={onClick}
+    >
+      <BaseStatsCard
+        data={{
+          title,
+          value,
+          icon: (
+            <div className={cn("p-2 rounded-full", gradient ? "bg-white/20" : "bg-primary/10")}>
+              <Icon className={cn("h-5 w-5", gradient ? "text-white" : "text-primary")} />
+            </div>
+          ),
+        }}
+        variant={gradient ? "gradient" : "default"}
+        className={cn("shadow-card hover:shadow-glow", getVariantClass())}
+      />
+    </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy, memo } from "react";
+import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,67 +6,58 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useAccountGuard } from "./hooks/useAccountGuard";
 import { AuthPage } from "./components/auth/AuthPage";
-import { Navigation, NavigationPage } from "@/components/Navigation";
-import { motion, AnimatePresence, LazyMotion, domAnimation } from "framer-motion";
+import { motion } from "framer-motion";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
-import { PageLoader } from "@/shared/utils/lazyLoading";
 import {
-  usePerformanceMonitor,
   AppPerformanceProvider,
   PerformanceDebugger,
   BundleAnalysisDisplay,
 } from "@/shared/performance";
-import { SkipLink } from "@/shared/accessibility/components";
 import { AccessibilityDevPanel } from "@/shared/accessibility/testing";
 import { useAnnouncer } from "@/shared/accessibility";
-import { usePageLoadPerformance } from "@/shared/components/LazyPageWrapper";
+import { useResponsive } from "@/shared/utils/responsive";
+import {
+  NavigationProvider,
+  NavigationTabs,
+  PageTransition,
+  NavigationAnnouncer,
+  KeyboardNavigationHandler,
+  SkipNavigation,
+  type NavigationPage,
+  useNavigation,
+} from "@/shared/components/NavigationSystem";
+import { ResponsiveContainer } from "@/shared/components/ResponsiveComponents";
 
-// Import components directly for now (will be made lazy when components support it)
-import { SocialPage } from "@/pages/Social";
-import { RankingPage } from "@/pages/Ranking";
-import { ProfilePage } from "@/pages/Profile";
-import Dashboard from "./pages/Dashboard";
+// Lazy load pages for better performance
+const DashboardPage = lazy(() => import("./pages/Dashboard"));
+const SocialPage = lazy(() => import("./pages/Social").then(m => ({ default: m.SocialPage })));
+const RankingPage = lazy(() => import("./pages/Ranking").then(m => ({ default: m.RankingPage })));
+const ProfilePage = lazy(() => import("./pages/Profile").then(m => ({ default: m.ProfilePage })));
 
-const queryClient = new QueryClient();
-
-const pageVariants = {
-  initial: { opacity: 0, x: 20 },
-  in: { opacity: 1, x: 0 },
-  out: { opacity: 0, x: -20 },
-};
-
-const pageTransition = {
-  duration: 0.4,
-};
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const AppRouter = () => {
   const { user, isLoading } = useAuth();
-  const [currentPage, setCurrentPage] = useState<NavigationPage>("dashboard");
+  const { isMobile } = useResponsive();
 
   // Use account guard to check for deleted accounts
   useAccountGuard();
 
-  // Monitor page load performance
-  usePageLoadPerformance(currentPage);
-
   // Accessibility announcements
   const { announce, AnnouncerComponent } = useAnnouncer();
 
-  // Announce page changes for screen readers
-  React.useEffect(() => {
-    const pageNames = {
-      dashboard: "Dashboard",
-      social: "Social Feed",
-      ranking: "Rankings",
-      profile: "Profile",
-    };
-
-    announce(`Navigated to ${pageNames[currentPage] || currentPage} page`);
-  }, [currentPage, announce]);
-
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-reading flex items-center justify-center">
+      <ResponsiveContainer className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <motion.div
             animate={{ rotate: 360 }}
@@ -79,7 +70,7 @@ const AppRouter = () => {
           />
           <p className="text-muted-foreground">Carregando...</p>
         </div>
-      </div>
+      </ResponsiveContainer>
     );
   }
 
@@ -87,55 +78,95 @@ const AppRouter = () => {
     return <AuthPage />;
   }
 
-  const handleNavigate = (page: NavigationPage) => {
-    setCurrentPage(page);
-  };
+  return (
+    <NavigationProvider initialPage="dashboard">
+      <KeyboardNavigationHandler>
+        <div className="min-h-screen bg-background">
+          {/* Skip Navigation Links */}
+          <SkipNavigation />
 
-  const renderCurrentPage = () => {
+          {/* Accessibility Announcer */}
+          <NavigationAnnouncer />
+          {AnnouncerComponent && <AnnouncerComponent />}
+
+          {/* Navigation */}
+          <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <ResponsiveContainer>
+              <div className="flex h-16 items-center justify-between">
+                <h1 className="text-xl font-bold">BiblioGame Zone</h1>
+                <NavigationTabs variant={isMobile ? "buttons" : "pills"} />
+              </div>
+            </ResponsiveContainer>
+          </header>
+
+          {/* Main Content */}
+          <main id="main-content" className="flex-1" tabIndex={-1}>
+            <PageTransition>
+              <AppContent />
+            </PageTransition>
+          </main>
+        </div>
+      </KeyboardNavigationHandler>
+    </NavigationProvider>
+  );
+};
+
+// Content component to handle page rendering
+const AppContent = () => {
+  const { navigationState } = useNavigation();
+  const { currentPage } = navigationState;
+
+  const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
-        return <Dashboard />;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <DashboardPage />
+          </Suspense>
+        );
       case "social":
-        return <SocialPage />;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <SocialPage />
+          </Suspense>
+        );
       case "ranking":
-        return <RankingPage />;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <RankingPage />
+          </Suspense>
+        );
       case "profile":
-        return <ProfilePage />;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <ProfilePage />
+          </Suspense>
+        );
       default:
-        return <Dashboard />;
+        return (
+          <Suspense fallback={<PageLoader />}>
+            <DashboardPage />
+          </Suspense>
+        );
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Skip Navigation Links */}
-      <SkipLink href="#main-content">Skip to main content</SkipLink>
-      <SkipLink href="#navigation">Skip to navigation</SkipLink>
-
-      {/* Accessibility Announcer */}
-      {AnnouncerComponent && <AnnouncerComponent />}
-
-      <nav id="navigation" aria-label="Main navigation">
-        <Navigation currentPage={currentPage} onNavigate={handleNavigate} />
-      </nav>
-
-      <main id="main-content" tabIndex={-1}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentPage}
-            initial="initial"
-            animate="in"
-            exit="out"
-            variants={pageVariants}
-            transition={pageTransition}
-          >
-            {renderCurrentPage()}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-    </div>
-  );
+  return <ErrorBoundary>{renderPage()}</ErrorBoundary>;
 };
+
+// Simple page loader component
+const PageLoader = () => (
+  <ResponsiveContainer className="flex items-center justify-center py-20">
+    <div className="text-center">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"
+      />
+      <p className="text-sm text-muted-foreground">Carregando...</p>
+    </div>
+  </ResponsiveContainer>
+);
 
 const App = () => (
   <AccessibilityDevPanel>

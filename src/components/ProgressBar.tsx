@@ -1,3 +1,5 @@
+import { ProgressBar as BaseProgressBar } from "@/shared/components/ConsolidatedComponents";
+
 interface ProgressBarProps {
   progress: number;
   max: number;
@@ -6,46 +8,32 @@ interface ProgressBarProps {
   showPercentage?: boolean;
 }
 
-export const ProgressBar = ({ 
-  progress, 
-  max, 
-  label, 
-  color = "primary", 
-  showPercentage = false 
+export const ProgressBar = ({
+  progress,
+  max,
+  label,
+  color = "primary",
+  showPercentage = false,
 }: ProgressBarProps) => {
-  const percentage = Math.min((progress / max) * 100, 100);
-  
-  const getBarColor = () => {
+  const getVariant = () => {
     switch (color) {
       case "success":
-        return "bg-success";
+        return "gradient";
       case "accent":
-        return "bg-accent";
+        return "striped";
       default:
-        return "bg-primary";
+        return "default";
     }
   };
 
   return (
-    <div className="space-y-2">
-      {label && (
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-foreground">{label}</span>
-          {showPercentage && (
-            <span className="text-sm text-muted-foreground">{Math.round(percentage)}%</span>
-          )}
-        </div>
-      )}
-      <div className="h-3 bg-secondary rounded-full overflow-hidden">
-        <div 
-          className={`h-full ${getBarColor()} transition-all duration-500 ease-out rounded-full`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{progress}</span>
-        <span>{max}</span>
-      </div>
-    </div>
+    <BaseProgressBar
+      value={progress}
+      max={max}
+      label={label}
+      showPercentage={showPercentage}
+      variant={getVariant()}
+      size="md"
+    />
   );
 };
