@@ -77,7 +77,7 @@ export const LazyPages = {
   ),
   
   Index: createLazyComponent(
-    () => import("@/pages/Index"),
+    () => import("@/pages/Dashboard"),
     { minLoadingTime: 100 }
   ),
   

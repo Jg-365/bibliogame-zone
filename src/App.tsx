@@ -15,22 +15,11 @@ import {
 } from "@/shared/performance";
 import { useAnnouncer } from "@/shared/accessibility";
 import { useResponsive } from "@/shared/utils/responsive";
-import {
-  NavigationProvider,
-  PageTransition,
-  NavigationAnnouncer,
-  KeyboardNavigationHandler,
-  SkipNavigation,
-  type NavigationPage,
-  useNavigation,
-} from "@/shared/components/NavigationSystem";
+
 import { ResponsiveContainer } from "@/shared/components/ResponsiveComponents";
 
 // Lazy load pages for better performance
 const DashboardPage = lazy(() => import("./pages/Dashboard"));
-const SocialPage = lazy(() => import("./pages/Social").then(m => ({ default: m.SocialPage })));
-const RankingPage = lazy(() => import("./pages/Ranking").then(m => ({ default: m.RankingPage })));
-const ProfilePage = lazy(() => import("./pages/Profile").then(m => ({ default: m.ProfilePage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,69 +66,20 @@ const AppRouter = () => {
   }
 
   return (
-    <NavigationProvider initialPage="dashboard">
-      <KeyboardNavigationHandler>
-        <div className="min-h-screen bg-background">
-          {/* Skip Navigation Links */}
-          <SkipNavigation />
+    <div className="min-h-screen bg-background">
+      {/* Accessibility Announcer */}
+      {AnnouncerComponent && <AnnouncerComponent />}
 
-          {/* Accessibility Announcer */}
-          <NavigationAnnouncer />
-          {AnnouncerComponent && <AnnouncerComponent />}
-
-          {/* Main Content */}
-          <main id="main-content" className="flex-1" tabIndex={-1}>
-            <PageTransition>
-              <AppContent />
-            </PageTransition>
-          </main>
-        </div>
-      </KeyboardNavigationHandler>
-    </NavigationProvider>
+      {/* Main Content */}
+      <main id="main-content" className="flex-1" tabIndex={-1}>
+        <ErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <DashboardPage />
+          </Suspense>
+        </ErrorBoundary>
+      </main>
+    </div>
   );
-};
-
-// Content component to handle page rendering
-const AppContent = () => {
-  const { navigationState } = useNavigation();
-  const { currentPage } = navigationState;
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case "dashboard":
-        return (
-          <Suspense fallback={<PageLoader />}>
-            <DashboardPage />
-          </Suspense>
-        );
-      case "social":
-        return (
-          <Suspense fallback={<PageLoader />}>
-            <SocialPage />
-          </Suspense>
-        );
-      case "ranking":
-        return (
-          <Suspense fallback={<PageLoader />}>
-            <RankingPage />
-          </Suspense>
-        );
-      case "profile":
-        return (
-          <Suspense fallback={<PageLoader />}>
-            <ProfilePage />
-          </Suspense>
-        );
-      default:
-        return (
-          <Suspense fallback={<PageLoader />}>
-            <DashboardPage />
-          </Suspense>
-        );
-    }
-  };
-
-  return <ErrorBoundary>{renderPage()}</ErrorBoundary>;
 };
 
 // Simple page loader component

@@ -12,8 +12,6 @@ export const Routes = {
     retries: 3,
   }),
 
-  Index: createLazyComponent(() => import("@/pages/Index"), { name: "Index", retries: 3 }),
-
   NotFound: createLazyComponent(() => import("@/pages/NotFound"), { name: "NotFound", retries: 2 }),
 } as const;
 
