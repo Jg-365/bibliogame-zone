@@ -58,14 +58,48 @@ export const usePosts = (limit = 20, offset = 0) => {
   } = useQuery({
     queryKey: ["social-posts", limit, offset, user?.id],
     queryFn: async (): Promise<SocialPost[]> => {
-      const { data, error } = await supabase.rpc("get_social_posts_feed", {
-        p_limit: limit,
-        p_offset: offset,
-        p_user_id: user?.id || null,
-      });
+      try {
+        const { data, error } = await supabase.rpc("get_social_posts_feed", {
+          p_limit: limit,
+          p_offset: offset,
+          p_user_id: user?.id || null,
+        });
 
-      if (error) throw error;
-      return data || [];
+        if (error) {
+          console.error("RPC Error:", error);
+          // Fallback: tentar busca direta da tabela
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("social_posts")
+            .select(
+              `
+              *,
+              profiles:user_id(username, avatar_url),
+              books:book_id(title, author, cover_url),
+              post_likes!inner(user_id)
+            `
+            )
+            .order("created_at", { ascending: false })
+            .limit(limit);
+
+          if (fallbackError) throw fallbackError;
+
+          // Transformar dados para o formato esperado
+          return (fallbackData || []).map(post => ({
+            ...post,
+            user_username: post.profiles?.username,
+            user_avatar_url: post.profiles?.avatar_url,
+            book_title: post.books?.title,
+            book_author: post.books?.author,
+            book_cover_url: post.books?.cover_url,
+            is_liked: post.post_likes?.some((like: any) => like.user_id === user?.id) || false,
+          }));
+        }
+
+        return data || [];
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+        throw err;
+      }
     },
     enabled: !!user,
   });
@@ -195,12 +229,39 @@ export const usePostComments = (postId: string) => {
   } = useQuery({
     queryKey: ["post-comments", postId],
     queryFn: async (): Promise<PostComment[]> => {
-      const { data, error } = await supabase.rpc("get_post_comments", {
-        p_post_id: postId,
-      });
+      try {
+        const { data, error } = await supabase.rpc("get_post_comments", {
+          p_post_id: postId,
+        });
 
-      if (error) throw error;
-      return data || [];
+        if (error) {
+          console.error("RPC Error:", error);
+          // Fallback: busca direta
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("post_comments")
+            .select(
+              `
+              *,
+              profiles:user_id(username, avatar_url)
+            `
+            )
+            .eq("post_id", postId)
+            .order("created_at", { ascending: true });
+
+          if (fallbackError) throw fallbackError;
+
+          return (fallbackData || []).map(comment => ({
+            ...comment,
+            user_username: comment.profiles?.username,
+            user_avatar_url: comment.profiles?.avatar_url,
+          }));
+        }
+
+        return data || [];
+      } catch (err) {
+        console.error("Error fetching comments:", err);
+        throw err;
+      }
     },
     enabled: !!postId && !!user,
   });

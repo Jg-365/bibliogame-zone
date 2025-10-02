@@ -1,308 +1,225 @@
-import React from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+﻿import React, { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-  Trophy,
-  Medal,
-  Crown,
-  Star,
-  Zap,
-  BookOpen,
-  Flame,
-  Award,
-} from "lucide-react";
-import { useAchievements } from "@/hooks/useAchievements";
-import { useProfile } from "@/hooks/useProfile";
-import type { AchievementRarity } from "@/types/reading";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RefreshCw, Trophy, Target, CheckCircle, Clock } from "lucide-react";
+import { useEnhancedAchievements, EnhancedAchievement } from "@/hooks/useEnhancedSocial";
+import { cn } from "@/lib/utils";
 
-const getAchievementIcon = (iconName: string) => {
-  const icons = {
-    Trophy,
-    Medal,
-    Crown,
-    Star,
-    Zap,
-    BookOpen,
-    Flame,
-    Award,
-  };
-
-  const Icon =
-    icons[iconName as keyof typeof icons] || Trophy;
-  return <Icon className="h-5 w-5" />;
-};
-
-const getRarityColor = (rarity: AchievementRarity) => {
-  const colors = {
-    common: "bg-gray-100 text-gray-800 border-gray-200",
-    rare: "bg-blue-100 text-blue-800 border-blue-200",
-    epic: "bg-purple-100 text-purple-800 border-purple-200",
-    legendary:
-      "bg-yellow-100 text-yellow-800 border-yellow-200",
-  };
-
-  return colors[rarity] || colors.common;
-};
-
-const getRarityLabel = (rarity: AchievementRarity) => {
-  const labels = {
-    common: "Comum",
-    rare: "Rara",
-    epic: "Épica",
-    legendary: "Lendária",
-  };
-
-  return labels[rarity] || labels.common;
-};
-
-const calculateProgress = (
-  achievement: any,
-  userStats: any
-) => {
-  if (achievement.unlocked) return 100;
-
-  const { requirementType, requirementValue } = achievement;
-
-  switch (requirementType) {
-    case "books_read":
-      return Math.min(
-        100,
-        (userStats.booksCompleted / requirementValue) * 100
-      );
-    case "pages_read":
-      return Math.min(
-        100,
-        (userStats.totalPagesRead / requirementValue) * 100
-      );
-    case "streak_days":
-      return Math.min(
-        100,
-        (userStats.readingStreak / requirementValue) * 100
-      );
-    default:
-      return 0;
+const getAchievementIcon = (icon: string) => {
+  if (icon && /[\u{1F300}-\u{1F9FF}]/u.test(icon)) {
+    return icon;
   }
+
+  const iconMap: Record<string, string> = {
+    books_read: "📚",
+    pages_read: "📖",
+    streak_days: "🔥",
+    posts_created: "✍️",
+    likes_received: "❤️",
+    books_added: "➕",
+    reviews_written: "⭐",
+    default: "🏆",
+  };
+
+  return iconMap[icon] || iconMap.default;
 };
 
-export const AchievementsPanel = () => {
+const getRarityColors = (rarity: EnhancedAchievement["rarity"]) => {
+  const colors = {
+    common: "bg-gray-100 text-gray-800",
+    rare: "bg-blue-100 text-blue-800",
+    epic: "bg-purple-100 text-purple-800",
+    legendary: "bg-gradient-to-r from-yellow-400 to-orange-500 text-white",
+  };
+  return colors[rarity];
+};
+
+const AchievementCard: React.FC<{ achievement: EnhancedAchievement }> = ({ achievement }) => {
+  const icon = getAchievementIcon(achievement.icon);
+  const rarityColor = getRarityColors(achievement.rarity);
+
+  return (
+    <Card
+      className={cn(
+        "relative transition-all duration-200 hover:shadow-md",
+        achievement.unlocked ? "bg-gradient-to-br from-green-50 to-emerald-50" : "bg-white"
+      )}
+    >
+      {achievement.unlocked && (
+        <div className="absolute top-2 right-2">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+        </div>
+      )}
+
+      <CardHeader className="pb-3">
+        <div className="flex items-center space-x-3">
+          <div className="text-2xl">{icon}</div>
+          <div className="flex-1">
+            <CardTitle className="text-lg leading-tight">{achievement.title}</CardTitle>
+            <Badge variant="secondary" className={cn("mt-1 text-xs", rarityColor)}>
+              {achievement.rarity}
+            </Badge>
+          </div>
+        </div>
+        <CardDescription className="text-sm mt-2">{achievement.description}</CardDescription>
+      </CardHeader>
+
+      <CardContent className="pt-0">
+        {!achievement.unlocked && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Progresso</span>
+              <span className="font-medium">{achievement.progress_text}</span>
+            </div>
+            <Progress value={achievement.progress} className="h-2" />
+            <div className="text-xs text-muted-foreground">
+              {achievement.progress.toFixed(1)}% completo
+            </div>
+          </div>
+        )}
+
+        {achievement.unlocked && achievement.unlocked_at && (
+          <div className="flex items-center text-sm text-green-600">
+            <Trophy className="w-4 h-4 mr-1" />
+            Desbloqueada em {new Date(achievement.unlocked_at).toLocaleDateString("pt-BR")}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export const AchievementsPanel: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<"all" | "unlocked" | "locked">("all");
   const {
     achievements,
     isLoading,
     unlockedCount,
     totalCount,
-  } = useAchievements();
-  const { profile } = useProfile();
-
-  const safeProfile = profile || {
-    books_completed: 0,
-    total_pages_read: 0,
-    current_streak: 0,
-  };
-
-  const userStats = {
-    booksCompleted: safeProfile.books_completed || 0,
-    totalPagesRead: safeProfile.total_pages_read || 0,
-    readingStreak: safeProfile.current_streak || 0,
-  };
+    checkAchievements,
+    isCheckingAchievements,
+  } = useEnhancedAchievements();
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {[...Array(6)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-2 bg-gray-200 rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-48" />
+          ))}
+        </div>
       </div>
     );
   }
 
-  const unlockedAchievements = achievements.filter(
-    (a) => a.unlocked
-  );
-  const lockedAchievements = achievements.filter(
-    (a) => !a.unlocked
-  );
+  const filteredAchievements = achievements.filter(achievement => {
+    switch (activeTab) {
+      case "unlocked":
+        return achievement.unlocked;
+      case "locked":
+        return !achievement.unlocked;
+      default:
+        return true;
+    }
+  });
+
+  const completionPercentage = totalCount > 0 ? (unlockedCount / totalCount) * 100 : 0;
 
   return (
     <div className="space-y-6">
-      {/* Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-yellow-600" />
-            Suas Conquistas
-          </CardTitle>
-          <CardDescription>
-            Você desbloqueou {unlockedCount} de {totalCount}{" "}
-            conquistas disponíveis
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Progress
-            value={(unlockedCount / totalCount) * 100}
-            className="h-2"
-          />
-          <p className="text-sm text-gray-600 mt-2">
-            {Math.round((unlockedCount / totalCount) * 100)}
-            % completado
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Trophy className="w-6 h-6 text-yellow-500" />
+            Conquistas
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            {unlockedCount} de {totalCount} conquistas desbloqueadas (
+            {completionPercentage.toFixed(1)}%)
           </p>
+        </div>
+
+        <Button
+          onClick={() => checkAchievements()}
+          disabled={isCheckingAchievements}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={cn("w-4 h-4", isCheckingAchievements && "animate-spin")} />
+          Verificar Conquistas
+        </Button>
+      </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium">Progresso Geral</span>
+              <span>
+                {unlockedCount}/{totalCount}
+              </span>
+            </div>
+            <Progress value={completionPercentage} className="h-3" />
+          </div>
         </CardContent>
       </Card>
 
-      {/* Unlocked Achievements */}
-      {unlockedAchievements.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-green-700 flex items-center gap-2">
-            <Award className="h-5 w-5" />
-            Conquistas Desbloqueadas (
-            {unlockedAchievements.length})
-          </h3>
+      <Tabs value={activeTab} onValueChange={value => setActiveTab(value as typeof activeTab)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="all" className="flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            Todas ({totalCount})
+          </TabsTrigger>
+          <TabsTrigger value="unlocked" className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4" />
+            Desbloqueadas ({unlockedCount})
+          </TabsTrigger>
+          <TabsTrigger value="locked" className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            Bloqueadas ({totalCount - unlockedCount})
+          </TabsTrigger>
+        </TabsList>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {unlockedAchievements.map((achievement) => (
-              <Card
-                key={achievement.id}
-                className="border-green-200 bg-green-50"
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-green-100 rounded-lg text-green-700">
-                        {getAchievementIcon(
-                          achievement.icon
-                        )}
-                      </div>
-                      <div>
-                        <CardTitle className="text-sm font-medium text-green-900">
-                          {achievement.title}
-                        </CardTitle>
-                        <CardDescription className="text-xs text-green-700">
-                          {achievement.description}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <Badge
-                      className={`text-xs ${getRarityColor(
-                        achievement.rarity as AchievementRarity
-                      )}`}
-                    >
-                      {getRarityLabel(
-                        achievement.rarity as AchievementRarity
-                      )}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-green-600 font-medium">
-                      ✓ Concluído
-                    </span>
-                    {achievement.unlockedAt && (
-                      <span className="text-xs text-green-600">
-                        {new Date(
-                          achievement.unlockedAt
-                        ).toLocaleDateString("pt-BR")}
-                      </span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Locked Achievements */}
-      {lockedAchievements.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-            <Trophy className="h-5 w-5" />
-            Próximas Conquistas ({lockedAchievements.length}
-            )
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {lockedAchievements.map((achievement) => {
-              const progress = calculateProgress(
-                achievement,
-                userStats
-              );
-
-              return (
-                <Card
-                  key={achievement.id}
-                  className="border-gray-200"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-gray-100 rounded-lg text-gray-500">
-                          {getAchievementIcon(
-                            achievement.icon
-                          )}
-                        </div>
-                        <div>
-                          <CardTitle className="text-sm font-medium">
-                            {achievement.title}
-                          </CardTitle>
-                          <CardDescription className="text-xs">
-                            {achievement.description}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <Badge
-                        className={`text-xs ${getRarityColor(
-                          achievement.rarity as AchievementRarity
-                        )}`}
-                      >
-                        {getRarityLabel(
-                          achievement.rarity as AchievementRarity
-                        )}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0 space-y-2">
-                    <Progress
-                      value={progress}
-                      className="h-2"
-                    />
-                    <div className="flex justify-between items-center text-xs text-gray-600">
-                      <span>
-                        {Math.round(progress)}% concluído
-                      </span>
-                      <span>
-                        {achievement.requirementType ===
-                          "books_read" &&
-                          `${userStats.booksCompleted}/${achievement.requirementValue} livros`}
-                        {achievement.requirementType ===
-                          "pages_read" &&
-                          `${userStats.totalPagesRead}/${achievement.requirementValue} páginas`}
-                        {achievement.requirementType ===
-                          "streak_days" &&
-                          `${userStats.readingStreak}/${achievement.requirementValue} dias`}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
+        <TabsContent value={activeTab} className="mt-6">
+          {filteredAchievements.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-muted-foreground">
+                    Nenhuma conquista encontrada
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {activeTab === "unlocked"
+                      ? "Continue lendo para desbloquear suas primeiras conquistas!"
+                      : activeTab === "locked"
+                      ? "Parabéns! Você desbloqueou todas as conquistas!"
+                      : "Não há conquistas disponíveis no momento."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredAchievements.map(achievement => (
+                <AchievementCard key={achievement.id} achievement={achievement} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

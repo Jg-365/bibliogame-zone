@@ -77,7 +77,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
       createPost(
         {
           content: content.trim(),
-          book_id: selectedBookId || undefined,
+          book_id: selectedBookId && selectedBookId !== "none" ? selectedBookId : undefined,
           image_url: imageUrl || undefined,
         },
         {
@@ -97,7 +97,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
     }
   };
 
-  const selectedBook = books?.find(book => book.id === selectedBookId);
+  const selectedBook =
+    selectedBookId && selectedBookId !== "none"
+      ? books?.find(book => book.id === selectedBookId)
+      : null;
 
   const defaultTrigger = (
     <Card className="cursor-pointer hover:shadow-md transition-shadow">
@@ -172,12 +175,15 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
           {/* Seleção de livro */}
           <div className="space-y-2">
             <Label htmlFor="book">Livro relacionado (opcional)</Label>
-            <Select value={selectedBookId} onValueChange={setSelectedBookId}>
+            <Select
+              value={selectedBookId || undefined}
+              onValueChange={value => setSelectedBookId(value || "")}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um livro..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nenhum livro</SelectItem>
+                <SelectItem value="none">Nenhum livro</SelectItem>
                 {books?.map(book => (
                   <SelectItem key={book.id} value={book.id}>
                     <div className="flex items-center space-x-2">
