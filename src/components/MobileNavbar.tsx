@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { useResponsive } from "@/shared/utils/responsive";
-import { Home, BookOpen, Users, Trophy, User, Plus, Search } from "lucide-react";
+import { Home, BookOpen, Users, Trophy, User, MessageCircle, Search } from "lucide-react";
 
 interface MobileNavbarProps {
   activeTab: string;
@@ -30,10 +30,10 @@ export const MobileNavbar: React.FC<MobileNavbarProps> = ({
       icon: BookOpen,
     },
     {
-      id: "add",
-      label: "Adicionar",
-      icon: Plus,
-      isAction: true,
+      id: "social",
+      label: "Posts",
+      icon: MessageCircle,
+      isHighlighted: true,
     },
     {
       id: "achievements",
@@ -48,11 +48,7 @@ export const MobileNavbar: React.FC<MobileNavbarProps> = ({
   ];
 
   const handleItemClick = (item: (typeof navItems)[0]) => {
-    if (item.isAction) {
-      onAddBook?.();
-    } else {
-      onTabChange(item.id);
-    }
+    onTabChange(item.id);
   };
 
   return (
@@ -61,7 +57,7 @@ export const MobileNavbar: React.FC<MobileNavbarProps> = ({
         {navItems.map(item => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
-          const isAddButton = item.isAction;
+          const isHighlighted = item.isHighlighted;
 
           return (
             <button
@@ -69,7 +65,7 @@ export const MobileNavbar: React.FC<MobileNavbarProps> = ({
               onClick={() => handleItemClick(item)}
               className={cn(
                 "flex flex-col items-center justify-center min-h-[64px] px-3 py-2 rounded-lg transition-all duration-200 border",
-                isAddButton
+                isHighlighted
                   ? "bg-blue-600 text-white shadow-lg hover:bg-blue-700 scale-110 border-blue-700"
                   : isActive
                   ? "bg-blue-50 text-blue-700 border-blue-200 font-semibold"
@@ -80,14 +76,14 @@ export const MobileNavbar: React.FC<MobileNavbarProps> = ({
               <Icon
                 className={cn(
                   "transition-all duration-200",
-                  isAddButton ? "h-6 w-6" : "h-5 w-5",
-                  isActive && !isAddButton && "scale-110"
+                  isHighlighted ? "h-6 w-6" : "h-5 w-5",
+                  isActive && !isHighlighted && "scale-110"
                 )}
               />
               <span
                 className={cn(
                   "text-xs mt-1 font-medium transition-all duration-200",
-                  isAddButton && "text-[10px]"
+                  isHighlighted && "text-[10px]"
                 )}
               >
                 {item.label}

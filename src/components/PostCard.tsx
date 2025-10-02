@@ -95,16 +95,20 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
   });
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
+    <Card className="w-full shadow-sm border-0 sm:border sm:shadow-md">
+      <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
         <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
               <AvatarImage src={post.user_avatar_url || ""} />
-              <AvatarFallback>{post.user_username?.charAt(0).toUpperCase() || "U"}</AvatarFallback>
+              <AvatarFallback className="text-xs sm:text-sm">
+                {post.user_username?.charAt(0).toUpperCase() || "U"}
+              </AvatarFallback>
             </Avatar>
-            <div>
-              <p className="font-semibold text-sm">{post.user_username || "Usuario"}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-xs sm:text-sm truncate">
+                {post.user_username || "Usuario"}
+              </p>
               <p className="text-xs text-muted-foreground">{timeAgo}</p>
             </div>
           </div>
@@ -112,7 +116,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
           {isOwnPost && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 sm:h-auto sm:w-auto sm:p-2"
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -130,10 +138,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
         {/* Conteúdo do post */}
-        <div className="space-y-3">
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        <div className="space-y-2 sm:space-y-3">
+          <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap">{post.content}</p>
 
           {/* Livro relacionado */}
           {post.book_id && post.book_title && (
@@ -188,54 +196,67 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
             </div>
           </div>
 
-          {/* Botões de ação */}
-          <div className="flex items-center justify-between border-t pt-3">
-            <div className="flex items-center space-x-1">
+          {/* Botões de ação - otimizados para mobile */}
+          <div className="flex items-center justify-between border-t pt-2 sm:pt-3">
+            <div className="flex items-center space-x-0 sm:space-x-1 w-full">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleLike}
                 disabled={isTogglingLike}
-                className={cn("flex items-center space-x-2", post.is_liked && "text-red-500")}
+                className={cn(
+                  "flex items-center space-x-1 sm:space-x-2 flex-1 justify-center sm:justify-start sm:flex-none",
+                  post.is_liked && "text-red-500"
+                )}
               >
                 <Heart className={cn("h-4 w-4", post.is_liked && "fill-current")} />
-                <span>Curtir</span>
+                <span className="hidden sm:inline">Curtir</span>
+                {post.likes_count > 0 && (
+                  <span className="text-xs sm:hidden">({post.likes_count})</span>
+                )}
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowComments(!showComments)}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-1 sm:space-x-2 flex-1 justify-center sm:justify-start sm:flex-none"
               >
                 <MessageCircle className="h-4 w-4" />
-                <span>Comentar</span>
+                <span className="hidden sm:inline">Comentar</span>
+                {comments.length > 0 && (
+                  <span className="text-xs sm:hidden">({comments.length})</span>
+                )}
               </Button>
 
-              <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center space-x-1 sm:space-x-2 flex-1 justify-center sm:justify-start sm:flex-none"
+              >
                 <Share2 className="h-4 w-4" />
-                <span>Compartilhar</span>
+                <span className="hidden sm:inline">Compartilhar</span>
               </Button>
             </div>
           </div>
 
-          {/* Seção de comentários */}
+          {/* Seção de comentários - otimizada para mobile */}
           {showComments && (
-            <div className="space-y-3 border-t pt-3">
+            <div className="space-y-2 sm:space-y-3 border-t pt-2 sm:pt-3">
               {/* Lista de comentários */}
               {comments.length > 0 && (
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
                   {comments.map(comment => (
-                    <div key={comment.id} className="flex space-x-3">
-                      <Avatar className="h-6 w-6">
+                    <div key={comment.id} className="flex space-x-2 sm:space-x-3">
+                      <Avatar className="h-6 w-6 flex-shrink-0">
                         <AvatarImage src={comment.user_avatar_url || ""} />
                         <AvatarFallback className="text-xs">
                           {comment.user_username?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 bg-muted rounded-lg p-2">
+                      <div className="flex-1 bg-muted rounded-lg p-2 min-w-0">
                         <div className="flex items-center justify-between">
-                          <p className="font-medium text-xs">
+                          <p className="font-medium text-xs truncate pr-2">
                             {comment.user_username || "Usuario"}
                           </p>
                           {comment.user_id === user?.id && (
@@ -263,21 +284,21 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
                 </div>
               )}
 
-              {/* Campo para novo comentário */}
+              {/* Campo para novo comentário - otimizado para mobile */}
               <div className="flex space-x-2">
-                <Avatar className="h-6 w-6">
+                <Avatar className="h-6 w-6 flex-shrink-0">
                   <AvatarImage src={user?.user_metadata?.avatar_url} />
                   <AvatarFallback className="text-xs">
                     {user?.email?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1 flex space-x-2">
+                <div className="flex-1 flex space-x-1 sm:space-x-2">
                   <Textarea
-                    placeholder="Escreva um comentário..."
+                    placeholder={isMobile ? "Comentar..." : "Escreva um comentário..."}
                     value={newComment}
                     onChange={e => setNewComment(e.target.value)}
                     rows={1}
-                    className="resize-none text-sm"
+                    className="resize-none text-sm min-w-0 flex-1"
                     onKeyDown={e => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -289,6 +310,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
                     size="sm"
                     onClick={handleComment}
                     disabled={!newComment.trim() || isCreatingComment}
+                    className="px-2 sm:px-3"
                   >
                     <Send className="h-3 w-3" />
                   </Button>

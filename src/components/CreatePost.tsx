@@ -103,21 +103,23 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
       : null;
 
   const defaultTrigger = (
-    <Card className="cursor-pointer hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-center space-x-3">
-          <Avatar className="h-10 w-10">
+    <Card className="cursor-pointer hover:shadow-md transition-shadow shadow-sm border-0 sm:border sm:shadow-sm">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
             <AvatarImage src={user?.user_metadata?.avatar_url} />
-            <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="text-xs sm:text-sm">
+              {user?.email?.charAt(0).toUpperCase()}
+            </AvatarFallback>
           </Avatar>
-          <div className="flex-1 bg-muted rounded-full px-4 py-2 text-muted-foreground">
-            Compartilhe sua experiência de leitura...
+          <div className="flex-1 bg-muted rounded-full px-3 py-2 sm:px-4 text-muted-foreground text-sm sm:text-base">
+            {isMobile ? "Compartilhe sua leitura..." : "Compartilhe sua experiência de leitura..."}
           </div>
-          <div className="flex space-x-2">
-            <Button variant="ghost" size="sm">
+          <div className="flex space-x-1 sm:space-x-2">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 sm:h-auto sm:w-auto sm:p-2">
               <ImageIcon className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 sm:h-auto sm:w-auto sm:p-2">
               <BookOpen className="h-4 w-4" />
             </Button>
           </div>
@@ -129,26 +131,32 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
-      <DialogContent className={`${isMobile ? "w-full h-full" : "max-w-2xl"}`}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <PenTool className="h-5 w-5" />
+      <DialogContent
+        className={`${isMobile ? "w-full h-full max-h-screen overflow-y-auto" : "max-w-2xl"}`}
+      >
+        <DialogHeader className="pb-3 sm:pb-6">
+          <DialogTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+            <PenTool className="h-4 w-4 sm:h-5 sm:w-5" />
             <span>Criar Novo Post</span>
           </DialogTitle>
-          <DialogDescription>
-            Compartilhe sua experiência de leitura com a comunidade
+          <DialogDescription className="text-sm">
+            {isMobile
+              ? "Compartilhe sua leitura"
+              : "Compartilhe sua experiência de leitura com a comunidade"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4 pb-4">
           {/* Usuário */}
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
               <AvatarImage src={user?.user_metadata?.avatar_url} />
-              <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="text-xs sm:text-sm">
+                {user?.email?.charAt(0).toUpperCase()}
+              </AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-medium">
+              <p className="font-medium text-sm sm:text-base">
                 {user?.user_metadata?.username || user?.email?.split("@")[0] || "Você"}
               </p>
               <Badge variant="secondary" className="text-xs">
@@ -159,15 +167,21 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
 
           {/* Conteúdo do post */}
           <div className="space-y-2">
-            <Label htmlFor="content">O que você está pensando?</Label>
+            <Label htmlFor="content" className="text-sm">
+              O que você está pensando?
+            </Label>
             <Textarea
               id="content"
-              placeholder="Compartilhe suas impressões sobre o livro, uma citação favorita, ou qualquer coisa relacionada à sua jornada de leitura..."
+              placeholder={
+                isMobile
+                  ? "Compartilhe suas impressões..."
+                  : "Compartilhe suas impressões sobre o livro, uma citação favorita, ou qualquer coisa relacionada à sua jornada de leitura..."
+              }
               value={content}
               onChange={e => setContent(e.target.value)}
-              rows={4}
+              rows={isMobile ? 3 : 4}
               maxLength={500}
-              className="resize-none"
+              className="resize-none text-sm"
             />
             <div className="text-xs text-muted-foreground text-right">{content.length}/500</div>
           </div>
@@ -269,18 +283,24 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
             )}
           </div>
 
-          {/* Botões de ação */}
-          <div className="flex justify-end space-x-2 pt-4">
+          {/* Botões de ação - otimizados para mobile */}
+          <div
+            className={`flex ${
+              isMobile ? "flex-col space-y-2" : "justify-end space-x-2"
+            } pt-3 sm:pt-4`}
+          >
             <Button
               variant="outline"
               onClick={() => setIsOpen(false)}
               disabled={isCreatingPost || isUploading}
+              className={isMobile ? "w-full" : ""}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={!content.trim() || isCreatingPost || isUploading}
+              className={isMobile ? "w-full" : ""}
             >
               {isCreatingPost || isUploading ? (
                 <>
