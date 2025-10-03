@@ -1,15 +1,10 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 
-export type Profile =
-  Database["public"]["Tables"]["profiles"]["Row"];
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 // Define allowed update fields (excluding system fields)
 interface ProfileUpdateFields {
@@ -22,8 +17,8 @@ interface ProfileUpdateFields {
   level?: string;
   books_completed?: number;
   total_pages_read?: number;
-  reading_streak?: number;
-  best_streak?: number;
+  current_streak?: number;
+  longest_streak?: number;
   is_private?: boolean;
   theme?: "light" | "dark";
   notifications_enabled?: boolean;
@@ -54,8 +49,7 @@ export const useProfile = () => {
 
   const updateProfile = useMutation({
     mutationFn: async (updates: ProfileUpdateFields) => {
-      if (!user?.id)
-        throw new Error("User not authenticated");
+      if (!user?.id) throw new Error("User not authenticated");
 
       const { data, error } = await (supabase as any)
         .from("profiles")
@@ -73,8 +67,7 @@ export const useProfile = () => {
       });
       toast({
         title: "Perfil atualizado!",
-        description:
-          "Suas informações foram salvas com sucesso.",
+        description: "Suas informações foram salvas com sucesso.",
       });
     },
     onError: (error: any) => {

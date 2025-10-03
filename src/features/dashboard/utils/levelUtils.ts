@@ -53,28 +53,24 @@ export interface LevelRequirement {
 export interface UserProgress {
   points: number;
   books_completed: number;
-  best_streak: number;
+  longest_streak: number;
   total_pages_read: number;
 }
 
 /**
  * Verifica se o usuário pode subir de nível
  */
-export const canLevelUp = (
-  userStats: UserProgress,
-  currentLevel: string
-): boolean => {
+export const canLevelUp = (userStats: UserProgress, currentLevel: string): boolean => {
   const nextLevel = getNextLevel(currentLevel);
   if (nextLevel === currentLevel) return false;
 
-  const requirements =
-    levelThresholds[nextLevel as LevelName];
+  const requirements = levelThresholds[nextLevel as LevelName];
   if (!requirements) return false;
 
   return (
     userStats.points >= requirements.points &&
     userStats.books_completed >= requirements.books &&
-    userStats.best_streak >= requirements.streak &&
+    userStats.longest_streak >= requirements.streak &&
     userStats.total_pages_read >= requirements.pages
   );
 };
@@ -82,12 +78,8 @@ export const canLevelUp = (
 /**
  * Determina o nível atual baseado nas estatísticas
  */
-export const determineCurrentLevel = (
-  userStats: UserProgress
-): LevelName => {
-  const levels = Object.keys(
-    levelThresholds
-  ) as LevelName[];
+export const determineCurrentLevel = (userStats: UserProgress): LevelName => {
+  const levels = Object.keys(levelThresholds) as LevelName[];
   let currentLevel: LevelName = "Iniciante";
 
   for (let i = levels.length - 1; i >= 0; i--) {
@@ -97,7 +89,7 @@ export const determineCurrentLevel = (
     if (
       userStats.points >= requirements.points &&
       userStats.books_completed >= requirements.books &&
-      userStats.best_streak >= requirements.streak &&
+      userStats.longest_streak >= requirements.streak &&
       userStats.total_pages_read >= requirements.pages
     ) {
       currentLevel = level;
@@ -111,20 +103,11 @@ export const determineCurrentLevel = (
 /**
  * Obtém o próximo nível
  */
-export const getNextLevel = (
-  currentLevel: string
-): LevelName => {
-  const levels = Object.keys(
-    levelThresholds
-  ) as LevelName[];
-  const currentIndex = levels.indexOf(
-    currentLevel as LevelName
-  );
+export const getNextLevel = (currentLevel: string): LevelName => {
+  const levels = Object.keys(levelThresholds) as LevelName[];
+  const currentIndex = levels.indexOf(currentLevel as LevelName);
 
-  if (
-    currentIndex === -1 ||
-    currentIndex >= levels.length - 1
-  ) {
+  if (currentIndex === -1 || currentIndex >= levels.length - 1) {
     return currentLevel as LevelName;
   }
 
@@ -134,36 +117,24 @@ export const getNextLevel = (
 /**
  * Obtém os requisitos para o próximo nível
  */
-export const getNextLevelThreshold = (
-  currentLevel: string
-): LevelRequirement | null => {
+export const getNextLevelThreshold = (currentLevel: string): LevelRequirement | null => {
   const nextLevel = getNextLevel(currentLevel);
-  return nextLevel !== currentLevel
-    ? levelThresholds[nextLevel]
-    : null;
+  return nextLevel !== currentLevel ? levelThresholds[nextLevel] : null;
 };
 
 /**
  * Obtém os requisitos para um nível específico
  */
-export const getLevelRequirements = (
-  level: string
-): LevelRequirement | null => {
+export const getLevelRequirements = (level: string): LevelRequirement | null => {
   return levelThresholds[level as LevelName] || null;
 };
 
 /**
  * Obtém os requisitos do nível anterior
  */
-export const getPreviousLevelThreshold = (
-  currentLevel: string
-): LevelRequirement => {
-  const levels = Object.keys(
-    levelThresholds
-  ) as LevelName[];
-  const currentIndex = levels.indexOf(
-    currentLevel as LevelName
-  );
+export const getPreviousLevelThreshold = (currentLevel: string): LevelRequirement => {
+  const levels = Object.keys(levelThresholds) as LevelName[];
+  const currentIndex = levels.indexOf(currentLevel as LevelName);
 
   if (currentIndex <= 0) {
     return levelThresholds.Iniciante;
@@ -175,13 +146,9 @@ export const getPreviousLevelThreshold = (
 /**
  * Calcula o progresso até o próximo nível (0-100)
  */
-export const calculateLevelProgress = (
-  userStats: UserProgress,
-  currentLevel: string
-): number => {
+export const calculateLevelProgress = (userStats: UserProgress, currentLevel: string): number => {
   const nextLevelReqs = getNextLevelThreshold(currentLevel);
-  const currentLevelReqs =
-    getPreviousLevelThreshold(currentLevel);
+  const currentLevelReqs = getPreviousLevelThreshold(currentLevel);
 
   if (!nextLevelReqs) return 100; // Já no nível máximo
 
@@ -198,13 +165,12 @@ export const calculateLevelProgress = (
       1
     ),
     Math.min(
-      (userStats.best_streak - currentLevelReqs.streak) /
+      (userStats.longest_streak - currentLevelReqs.streak) /
         (nextLevelReqs.streak - currentLevelReqs.streak),
       1
     ),
     Math.min(
-      (userStats.total_pages_read -
-        currentLevelReqs.pages) /
+      (userStats.total_pages_read - currentLevelReqs.pages) /
         (nextLevelReqs.pages - currentLevelReqs.pages),
       1
     ),
@@ -212,10 +178,7 @@ export const calculateLevelProgress = (
 
   // Retorna a média do progresso
   const averageProgress =
-    progressMetrics.reduce(
-      (sum, progress) => sum + progress,
-      0
-    ) / progressMetrics.length;
+    progressMetrics.reduce((sum, progress) => sum + progress, 0) / progressMetrics.length;
   return Math.round(averageProgress * 100);
 };
 
@@ -226,13 +189,9 @@ export const getLevelInfo = (userStats: UserProgress) => {
   const currentLevel = determineCurrentLevel(userStats);
   const nextLevel = getNextLevel(currentLevel);
   const canUpgrade = canLevelUp(userStats, currentLevel);
-  const progress = calculateLevelProgress(
-    userStats,
-    currentLevel
-  );
+  const progress = calculateLevelProgress(userStats, currentLevel);
   const requirements = getLevelRequirements(currentLevel);
-  const nextRequirements =
-    getNextLevelThreshold(currentLevel);
+  const nextRequirements = getNextLevelThreshold(currentLevel);
 
   return {
     currentLevel,

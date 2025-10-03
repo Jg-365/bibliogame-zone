@@ -17,7 +17,7 @@ export interface Book {
   description?: string;
   published_date?: string;
   genres?: string[];
-  rating?: number;
+  rating?: number | null;
   review?: string;
   is_favorite?: boolean;
   reading_started_at?: string;
@@ -169,16 +169,9 @@ export type ReadingStatus =
   | "want-to-read" // Legacy compatibility
   | "reading" // Legacy compatibility
   | "completed"; // Legacy compatibility
-export type AchievementRarity =
-  | "common"
-  | "rare"
-  | "epic"
-  | "legendary";
+export type AchievementRarity = "common" | "rare" | "epic" | "legendary";
 export type Theme = "light" | "dark";
-export type ChallengeType =
-  | "individual"
-  | "community"
-  | "club";
+export type ChallengeType = "individual" | "community" | "club";
 export type TargetType = "books" | "pages" | "streak";
 export type ActivityType =
   | "book_completed"
@@ -243,10 +236,7 @@ export interface ProfileFormData {
 // Query Keys
 export const QUERY_KEYS = {
   books: (userId: string) => ["books", userId],
-  achievements: (userId: string) => [
-    "achievements",
-    userId,
-  ],
+  achievements: (userId: string) => ["achievements", userId],
   profile: (userId: string) => ["profile", userId],
   activity: (userId: string) => ["activity-feed", userId],
   stats: (userId: string) => ["reading-stats", userId],

@@ -8,15 +8,11 @@ interface StreakBadgeProps {
   size?: "sm" | "md" | "lg";
 }
 
-export const StreakBadge = ({
-  className,
-  size = "md",
-}: StreakBadgeProps) => {
+export const StreakBadge = ({ className, size = "md" }: StreakBadgeProps) => {
   const { profile } = useProfile();
 
-  const currentStreak =
-    (profile as any)?.reading_streak || 0;
-  const bestStreak = (profile as any)?.best_streak || 0;
+  const currentStreak = (profile as any)?.current_streak || 0;
+  const bestStreak = (profile as any)?.longest_streak || 0;
 
   const sizeClasses = {
     sm: "text-xs px-2 py-1",
@@ -39,26 +35,20 @@ export const StreakBadge = ({
           className
         )}
       >
-        <Flame
-          className={cn(iconSizes[size], "opacity-50")}
-        />
+        <Flame className={cn(iconSizes[size], "opacity-50")} />
         <span>0 dias</span>
       </div>
     );
   }
 
   const getStreakTheme = () => {
-    if (currentStreak < 3)
-      return "bg-orange-100 text-orange-700 border-orange-200";
-    if (currentStreak < 7)
-      return "bg-red-100 text-red-700 border-red-200";
-    if (currentStreak < 30)
-      return "bg-purple-100 text-purple-700 border-purple-200";
+    if (currentStreak < 3) return "bg-orange-100 text-orange-700 border-orange-200";
+    if (currentStreak < 7) return "bg-red-100 text-red-700 border-red-200";
+    if (currentStreak < 30) return "bg-purple-100 text-purple-700 border-purple-200";
     return "bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-yellow-300";
   };
 
-  const isRecord =
-    currentStreak === bestStreak && currentStreak > 0;
+  const isRecord = currentStreak === bestStreak && currentStreak > 0;
 
   return (
     <motion.div
@@ -97,21 +87,14 @@ export const StreakBadge = ({
       >
         <Flame className={iconSizes[size]} />
       </motion.div>
-      <span className="font-medium">
-        {currentStreak} dias
-      </span>
+      <span className="font-medium">{currentStreak} dias</span>
       {isRecord && (
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <TrendingUp
-            className={cn(
-              iconSizes[size],
-              "text-yellow-600"
-            )}
-          />
+          <TrendingUp className={cn(iconSizes[size], "text-yellow-600")} />
         </motion.div>
       )}
     </motion.div>

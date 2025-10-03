@@ -3,12 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Flame,
-  Calendar,
-  Target,
-  Trophy,
-} from "lucide-react";
+import { Flame, Calendar, Target, Trophy } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useReadingSessions } from "@/hooks/useReadingSessions";
 import { cn } from "@/lib/utils";
@@ -17,38 +12,29 @@ interface StreakDisplayProps {
   className?: string;
 }
 
-export const StreakDisplay = ({
-  className,
-}: StreakDisplayProps) => {
+export const StreakDisplay = ({ className }: StreakDisplayProps) => {
   const { profile } = useProfile();
   const { sessions } = useReadingSessions();
-  const [showStreakAnimation, setShowStreakAnimation] =
-    useState(false);
+  const [showStreakAnimation, setShowStreakAnimation] = useState(false);
   const [lastStreak, setLastStreak] = useState(0);
 
-  const currentStreak =
-    (profile as any)?.reading_streak || 0;
-  const longestStreak = (profile as any)?.best_streak || 0;
+  const currentStreak = (profile as any)?.current_streak || 0;
+  const longestStreak = (profile as any)?.longest_streak || 0;
 
   // Detect streak increase for animation
   useEffect(() => {
     if (currentStreak > lastStreak && lastStreak > 0) {
       setShowStreakAnimation(true);
-      const timer = setTimeout(
-        () => setShowStreakAnimation(false),
-        3000
-      );
+      const timer = setTimeout(() => setShowStreakAnimation(false), 3000);
       return () => clearTimeout(timer);
     }
     setLastStreak(currentStreak);
   }, [currentStreak, lastStreak]);
 
   // Check if user read today
-  const hasReadToday = sessions?.some((session) => {
+  const hasReadToday = sessions?.some(session => {
     const today = new Date().toDateString();
-    const sessionDate = new Date(
-      session.session_date
-    ).toDateString();
+    const sessionDate = new Date(session.session_date).toDateString();
     return sessionDate === today && session.pages_read > 0;
   });
 
@@ -61,14 +47,9 @@ export const StreakDisplay = ({
       const date = new Date(today);
       date.setDate(date.getDate() - i);
 
-      const hasSession = sessions?.some((session) => {
-        const sessionDate = new Date(
-          session.session_date
-        ).toDateString();
-        return (
-          sessionDate === date.toDateString() &&
-          session.pages_read > 0
-        );
+      const hasSession = sessions?.some(session => {
+        const sessionDate = new Date(session.session_date).toDateString();
+        return sessionDate === date.toDateString() && session.pages_read > 0;
       });
 
       days.push({
@@ -112,9 +93,7 @@ export const StreakDisplay = ({
   };
 
   return (
-    <Card
-      className={cn("relative overflow-hidden", className)}
-    >
+    <Card className={cn("relative overflow-hidden", className)}>
       <CardContent className="p-4">
         <div className="space-y-4">
           {/* Header */}
@@ -135,21 +114,11 @@ export const StreakDisplay = ({
                   ease: "easeInOut",
                 }}
               >
-                <Flame
-                  className={cn(
-                    "w-5 h-5",
-                    getStreakColor()
-                  )}
-                />
+                <Flame className={cn("w-5 h-5", getStreakColor())} />
               </motion.div>
-              <h3 className="font-semibold">
-                Sequência de Leitura
-              </h3>
+              <h3 className="font-semibold">Sequência de Leitura</h3>
             </div>
-            <Badge
-              variant={getStreakBadgeVariant()}
-              className="px-3"
-            >
+            <Badge variant={getStreakBadgeVariant()} className="px-3">
               {currentStreak} dias
             </Badge>
           </div>
@@ -165,28 +134,19 @@ export const StreakDisplay = ({
                 stiffness: 300,
                 damping: 20,
               }}
-              className={cn(
-                "text-4xl font-bold",
-                getStreakColor()
-              )}
+              className={cn("text-4xl font-bold", getStreakColor())}
             >
               {currentStreak}
             </motion.div>
-            <p className="text-sm text-muted-foreground">
-              {getStreakMessage()}
-            </p>
+            <p className="text-sm text-muted-foreground">{getStreakMessage()}</p>
           </div>
 
           {/* Week View */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                Últimos 7 dias
-              </span>
+              <span className="text-muted-foreground">Últimos 7 dias</span>
               {longestStreak > 0 && (
-                <span className="text-muted-foreground">
-                  Recorde: {longestStreak} dias
-                </span>
+                <span className="text-muted-foreground">Recorde: {longestStreak} dias</span>
               )}
             </div>
 
@@ -210,8 +170,7 @@ export const StreakDisplay = ({
                       day.hasSession
                         ? "bg-primary border-primary text-primary-foreground"
                         : "border-muted bg-muted/30",
-                      day.isToday &&
-                        "ring-2 ring-primary ring-offset-2"
+                      day.isToday && "ring-2 ring-primary ring-offset-2"
                     )}
                     whileHover={{ scale: 1.1 }}
                     animate={
@@ -250,15 +209,9 @@ export const StreakDisplay = ({
               className="text-center p-3 bg-primary/5 rounded-lg border border-primary/20"
             >
               <p className="text-sm text-primary font-medium mb-2">
-                {currentStreak > 0
-                  ? "Continue sua sequência!"
-                  : "Comece sua sequência hoje!"}
+                {currentStreak > 0 ? "Continue sua sequência!" : "Comece sua sequência hoje!"}
               </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs"
-              >
+              <Button size="sm" variant="outline" className="text-xs">
                 <Target className="w-3 h-3 mr-1" />
                 Registrar Leitura
               </Button>
@@ -289,9 +242,7 @@ export const StreakDisplay = ({
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <p className="text-lg font-bold text-primary">
-                      Sequência Aumentada!
-                    </p>
+                    <p className="text-lg font-bold text-primary">Sequência Aumentada!</p>
                     <p className="text-sm text-muted-foreground">
                       {currentStreak} dias seguidos! 🎉
                     </p>

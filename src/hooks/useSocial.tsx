@@ -364,7 +364,7 @@ export const useLeaderboard = () => {
   return useQuery({
     queryKey: ["leaderboard"],
     queryFn: async () => {
-      // Get user profiles with their basic info
+      // Get user profiles with their basic info including current_streak
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select(
@@ -372,7 +372,8 @@ export const useLeaderboard = () => {
           user_id,
           username,
           full_name,
-          avatar_url
+          avatar_url,
+          current_streak
         `
         )
         .limit(50);
@@ -422,7 +423,7 @@ export const useLeaderboard = () => {
             level,
             booksCompleted: booksCompleted || 0,
             totalPagesRead,
-            readingStreak: 0, // We can implement this later
+            readingStreak: profile.current_streak || 0, // Use real current_streak value
             rank: 0, // Will be set after sorting
           };
         })
@@ -453,7 +454,8 @@ export const useSearchUsers = () => {
           user_id,
           username,
           full_name,
-          avatar_url
+          avatar_url,
+          current_streak
         `
         )
         .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
@@ -504,7 +506,7 @@ export const useSearchUsers = () => {
             level,
             booksCompleted: booksCompleted || 0,
             totalPagesRead,
-            readingStreak: 0, // Can implement later
+            readingStreak: profile.current_streak || 0, // Use real current_streak value
           };
         })
       );

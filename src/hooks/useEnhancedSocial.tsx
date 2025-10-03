@@ -29,7 +29,7 @@ export interface EnhancedAchievement {
   title: string;
   description: string;
   icon: string;
-  rarity: "common" | "rare" | "epic" | "legendary";
+  rarity: string;
   requirement_type: string;
   requirement_value: number;
   unlocked: boolean;
@@ -38,7 +38,7 @@ export interface EnhancedAchievement {
   progress_text: string;
 }
 
-// Hook para atividades recentes
+// Hook para atividades recentes - baseado em posts sociais como proxy
 export const useActivities = (userId?: string, limit = 20) => {
   const { user } = useAuth();
 
@@ -46,40 +46,75 @@ export const useActivities = (userId?: string, limit = 20) => {
     queryKey: ["activities", userId || "all", limit],
     queryFn: async (): Promise<Activity[]> => {
       try {
-        const { data, error } = await supabase.rpc("get_recent_activities", {
-          p_user_id: userId || null,
-          p_limit: limit,
-          p_offset: 0,
-        });
-
-        if (error) {
-          console.error("RPC Error:", error);
-          // Fallback: buscar atividades diretamente da tabela
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from("user_activities")
-            .select(
-              `
-              *,
-              profiles:user_id(username, avatar_url, full_name)
+        // Buscar posts sociais
+        const { data: posts, error: postsError } = await supabase
+          .from("social_posts")
+          .select(
             `
-            )
-            .order("created_at", { ascending: false })
-            .limit(limit);
+            id,
+            content,
+            created_at,
+            user_id,
+            book_id
+          `
+          )
+          .order("created_at", { ascending: false })
+          .limit(limit);
 
-          if (fallbackError) throw fallbackError;
+        if (postsError) throw postsError;
 
-          return (fallbackData || []).map(activity => ({
-            ...activity,
-            user_username: activity.profiles?.username,
-            user_avatar_url: activity.profiles?.avatar_url,
-            user_full_name: activity.profiles?.full_name,
-          }));
+        if (!posts || posts.length === 0) return [];
+
+        // Buscar perfis dos usuários dos posts
+        const userIds = [...new Set(posts.map(post => post.user_id))];
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("user_id, username, avatar_url, full_name")
+          .in("user_id", userIds);
+
+        if (profilesError) {
+          console.warn("Error fetching profiles:", profilesError);
         }
 
-        return data || [];
+        // Buscar informações dos livros (se houver)
+        const bookIds = posts.filter(post => post.book_id).map(post => post.book_id!);
+        let books: any[] = [];
+        if (bookIds.length > 0) {
+          const { data: booksData, error: booksError } = await supabase
+            .from("books")
+            .select("id, title, author")
+            .in("id", bookIds);
+
+          if (booksError) {
+            console.warn("Error fetching books:", booksError);
+          } else {
+            books = booksData || [];
+          }
+        }
+
+        // Combinar dados
+        return posts.map(post => {
+          const profile = profiles?.find(p => p.user_id === post.user_id);
+          const book = books.find(b => b.id === post.book_id);
+
+          return {
+            id: post.id,
+            user_id: post.user_id,
+            activity_type: post.book_id ? "book_post" : ("general_post" as any),
+            description: post.content,
+            metadata: {
+              book_title: book?.title,
+              book_author: book?.author,
+            },
+            created_at: post.created_at || new Date().toISOString(),
+            user_username: profile?.username,
+            user_avatar_url: profile?.avatar_url,
+            user_full_name: profile?.full_name,
+          };
+        });
       } catch (err) {
         console.error("Error fetching activities:", err);
-        throw err;
+        return [];
       }
     },
     enabled: !!user,
@@ -228,7 +263,8 @@ export const useEnhancedAchievements = () => {
     mutationFn: async () => {
       if (!user?.id) throw new Error("User not authenticated");
 
-      const { data, error } = await supabase.rpc("check_and_grant_achievements_enhanced", {
+      // Usar a função RPC existente
+      const { data, error } = await supabase.rpc("check_and_grant_achievements", {
         p_user_id: user.id,
       });
 
@@ -284,18 +320,23 @@ export const useCreateActivity = () => {
     }) => {
       if (!user?.id) throw new Error("User not authenticated");
 
-      const { data, error } = await supabase.rpc("create_user_activity", {
-        p_user_id: user.id,
-        p_activity_type: activityType,
-        p_description: description,
-        p_metadata: metadata,
-      });
+      // Como não temos tabela user_activities, criamos um post social para registrar a atividade
+      const { data, error } = await supabase
+        .from("social_posts")
+        .insert({
+          user_id: user.id,
+          content: description,
+          book_id: metadata.book_id || null,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activities"] });
+      queryClient.invalidateQueries({ queryKey: ["social-posts"] });
     },
   });
 };

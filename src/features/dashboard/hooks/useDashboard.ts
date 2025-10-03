@@ -19,7 +19,7 @@ export const useDashboard = () => {
         return {
           points: 0,
           books_completed: 0,
-          best_streak: 0,
+          longest_streak: 0,
           total_pages_read: 0,
         };
       }
@@ -27,11 +27,7 @@ export const useDashboard = () => {
       return {
         points: (profile as any).points || (profile as any).experience_points || 0,
         books_completed: (profile as any).books_completed || 0,
-        best_streak:
-          (profile as any).longest_streak ||
-          (profile as any).best_streak ||
-          (profile as any).current_streak ||
-          0,
+        longest_streak: (profile as any).longest_streak || 0,
         total_pages_read: (profile as any).total_pages_read || (profile as any).total_pages || 0,
       };
     }, [profile]);
@@ -142,7 +138,7 @@ export const useDashboard = () => {
       userStats: {
         points: 0,
         books_completed: 0,
-        best_streak: 0,
+        longest_streak: 0,
         total_pages_read: 0,
       },
       levelInfo: {

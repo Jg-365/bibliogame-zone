@@ -17,6 +17,8 @@ import { SocialSection } from "@/components/SocialSection";
 import { MobileNavbar } from "@/components/MobileNavbar";
 import { BookActionButtons } from "@/components/BookActionButtons";
 import { BookLibrary } from "@/components/BookLibrary";
+import { DebugStatsButton } from "@/components/DebugStatsButton";
+import { AutoStreakRecalculator } from "@/components/AutoStreakRecalculator";
 
 // Level calculation function
 const calculateUserLevel = (pagesRead: number) => {
@@ -205,7 +207,7 @@ export const Dashboard: React.FC = () => {
               }
               currentPoints={userStats?.total_pages_read || 0}
               currentBooks={userStats?.books_completed || 0}
-              currentStreak={userStats?.best_streak || 0}
+              currentStreak={profile.current_streak || 0}
               currentPages={userStats?.total_pages_read || 0}
             />
           </div>
@@ -224,6 +226,12 @@ export const Dashboard: React.FC = () => {
           )}
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Auto-recalculator - runs automatically */}
+            <AutoStreakRecalculator />
+
+            {/* Debug buttons - remove in production */}
+            <DebugStatsButton />
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               <div className="w-full">
                 <ActivityFeed />
@@ -288,7 +296,7 @@ export const Dashboard: React.FC = () => {
                   }
                   currentPoints={userStats?.total_pages_read || 0}
                   currentBooks={userStats?.books_completed || 0}
-                  currentStreak={userStats?.best_streak || 0}
+                  currentStreak={profile.current_streak || 0}
                   currentPages={userStats?.total_pages_read || 0}
                 />
               </div>
