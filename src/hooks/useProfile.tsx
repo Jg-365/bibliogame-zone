@@ -1,10 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 
-export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+export type Profile =
+  Database["public"]["Tables"]["profiles"]["Row"];
 
 // Define allowed update fields (excluding system fields)
 interface ProfileUpdateFields {
@@ -30,6 +35,16 @@ export const useProfile = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const forceRefresh = () => {
+    console.log("🔄 Forçando refresh do perfil");
+    queryClient.invalidateQueries({
+      queryKey: ["profile", user?.id],
+    });
+    queryClient.refetchQueries({
+      queryKey: ["profile", user?.id],
+    });
+  };
+
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
@@ -49,31 +64,67 @@ export const useProfile = () => {
 
   const updateProfile = useMutation({
     mutationFn: async (updates: ProfileUpdateFields) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("Usuário não autenticado");
 
-      const { data, error } = await (supabase as any)
+      console.log("🔄 Atualizando perfil:", {
+        userId: user.id,
+        updates,
+      });
+
+      const { data, error } = await supabase
         .from("profiles")
         .update(updates)
         .eq("user_id", user.id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error(
+          "❌ Erro ao atualizar perfil:",
+          error
+        );
+        throw new Error(
+          `Erro no banco de dados: ${error.message}`
+        );
+      }
+
+      console.log(
+        "✅ Perfil atualizado com sucesso:",
+        data
+      );
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log(
+        "🎉 Sucesso na mutação, invalidando cache"
+      );
+
+      // Invalidar múltiplas queries relacionadas
       queryClient.invalidateQueries({
+        queryKey: ["profile"],
+      });
+
+      // Forçar refetch imediato
+      queryClient.refetchQueries({
         queryKey: ["profile", user?.id],
       });
+
+      // Limpar cache antigo e definir novo
+      queryClient.setQueryData(["profile", user?.id], data);
+
       toast({
         title: "Perfil atualizado!",
-        description: "Suas informações foram salvas com sucesso.",
+        description:
+          "Suas informações foram salvas com sucesso.",
       });
     },
     onError: (error: any) => {
+      console.error("💥 Erro na mutação:", error);
       toast({
         title: "Erro ao atualizar perfil",
-        description: error.message,
+        description:
+          error.message || "Ocorreu um erro inesperado",
         variant: "destructive",
       });
     },
@@ -84,5 +135,6 @@ export const useProfile = () => {
     isLoading,
     updateProfile: updateProfile.mutate,
     isUpdating: updateProfile.isPending,
+    forceRefresh,
   };
 };

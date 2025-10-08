@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,37 +15,68 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
-import { Camera, Save, X } from "lucide-react";
+import { Camera, Save, X, RefreshCw } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
 export const ProfileManager = () => {
   const { user } = useAuth();
-  const { profile, updateProfile, isUpdating } =
-    useProfile();
+  const {
+    profile,
+    updateProfile,
+    isUpdating,
+    forceRefresh,
+  } = useProfile();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    username: profile?.username || "",
-    full_name: profile?.full_name || "",
-    bio: profile?.bio || "",
-    avatar_url: profile?.avatar_url || "",
+    username: "",
+    full_name: "",
+    bio: "",
+    avatar_url: "",
   });
+
+  // Sincronizar formData com profile quando carregado
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        username: profile.username || "",
+        full_name: profile.full_name || "",
+        bio: profile.bio || "",
+        avatar_url: profile.avatar_url || "",
+      });
+    }
+  }, [profile]);
 
   const handleSave = async () => {
     try {
+      console.log(
+        "💾 Iniciando salvamento do perfil:",
+        formData
+      );
+
+      // Validação básica
+      if (!formData.username?.trim()) {
+        toast({
+          title: "Nome de usuário obrigatório",
+          description:
+            "Por favor, preencha o nome de usuário.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await updateProfile(formData);
       setIsEditing(false);
-      toast({
-        title: "Perfil atualizado!",
-        description:
-          "Suas informações foram salvas com sucesso.",
-      });
-    } catch (error) {
+
+      console.log("🎊 Perfil salvo com sucesso!");
+    } catch (error: any) {
+      console.error("💥 Erro ao salvar perfil:", error);
       toast({
         title: "Erro ao atualizar perfil",
         description:
+          error.message ||
           "Não foi possível salvar as alterações.",
         variant: "destructive",
       });
@@ -97,11 +128,25 @@ export const ProfileManager = () => {
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Gerenciar Perfil</CardTitle>
-        <CardDescription>
-          Atualize suas informações pessoais e foto de
-          perfil
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Gerenciar Perfil</CardTitle>
+            <CardDescription>
+              Atualize suas informações pessoais e foto de
+              perfil
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={forceRefresh}
+            disabled={isUpdating}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Atualizar
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Avatar Section */}
