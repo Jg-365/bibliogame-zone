@@ -1,0 +1,19 @@
+{
+  "name": "ReadQuest - Gamifique sua Leitura",
+  "short_name": "ReadQuest",
+  "description": "Transforme sua leitura em uma aventura gamificada",
+  "theme_color": "#3B82F6",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
