@@ -1,8 +1,13 @@
-// Supabase Edge Function for sending email notifications
+// Supabase Edge Function for sending email notifications via Gmail
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+// @ts-ignore
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const GMAIL_USER = Deno.env.get("GMAIL_USER"); // seu email Gmail
+const GMAIL_APP_PASSWORD = Deno.env.get("GMAIL_APP_PASSWORD"); // senha de app gerada
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SITE_URL = Deno.env.get("SITE_URL") || "https://bibliogame-zone.vercel.app";
@@ -29,32 +34,43 @@ const corsHeaders = {
 };
 
 async function sendEmail(to: string, subject: string, html: string) {
-  if (!RESEND_API_KEY) {
-    console.error("RESEND_API_KEY não configurada");
+  if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
+    console.error("GMAIL_USER ou GMAIL_APP_PASSWORD não configurados");
     return false;
   }
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: "ReadQuest <noreply@readquest.app>",
-      to: [to],
+  try {
+    const client = new SMTPClient({
+      connection: {
+        hostname: "smtp.gmail.com",
+        port: 465,
+        tls: true,
+        auth: {
+          username: GMAIL_USER,
+          password: GMAIL_APP_PASSWORD,
+        },
+      },
+    });
+
+    await client.send({
+      from: `ReadQuest <${GMAIL_USER}>`,
+      to,
       subject,
+      content: html,
       html,
-    }),
-  });
+    });
 
-  if (!res.ok) {
-    const error = await res.text();
-    console.error("Erro ao enviar email:", error);
+    await client.close();
+
+    // Delay de 1 segundo entre emails (evitar rate limit do Gmail)
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    console.log(`✅ Email enviado para: ${to}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Erro ao enviar email para ${to}:`, error);
     return false;
   }
-
-  return true;
 }
 
 function getEmailTemplate(type: string, data: any): { subject: string; html: string } {
@@ -191,38 +207,96 @@ function getEmailTemplate(type: string, data: any): { subject: string; html: str
         html: `
           ${baseStyle}
           <div class="container">
-            <div class="header">
-              <h1>📚 Lembrete de leitura</h1>
+            <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px;">
+              <h1 style="color: white; margin: 0; font-size: 32px; display: flex; align-items: center; justify-content: center; gap: 12px;">
+                📚 <span>Hora de Ler!</span>
+              </h1>
             </div>
-            <div class="content">
-              <h2>Olá, ${data.user_name}!</h2>
-              <p>Que tal dedicar alguns minutos à leitura hoje?</p>
+            <div class="content" style="padding: 40px 30px; text-align: center;">
+              <h2 style="color: #1f2937; margin-bottom: 20px; font-size: 24px;">Olá, ${
+                data.user_name
+              }! 👋</h2>
+              
+              <p style="color: #4b5563; font-size: 18px; line-height: 1.6; margin-bottom: 30px;">
+                Que tal dedicar alguns minutos à leitura hoje?
+              </p>
+              
               ${
                 data.current_streak > 0
                   ? `
-                <p>🔥 Você está em uma sequência de <strong>${data.current_streak} dias</strong>! Não deixe ela acabar!</p>
+                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #f59e0b;">
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+                    <span style="font-size: 32px;">🔥</span>
+                    <h3 style="margin: 0; color: #92400e; font-size: 20px;">Sequência Ativa!</h3>
+                  </div>
+                  <p style="margin: 0; color: #92400e; font-size: 18px; font-weight: 600;">
+                    Você está em uma sequência de ${data.current_streak} dias consecutivos!
+                  </p>
+                  <p style="margin: 5px 0 0 0; color: #b45309; font-size: 14px;">
+                    Não deixe ela acabar! Continue hoje mesmo.
+                  </p>
+                </div>
               `
                   : `
-                <p>Comece uma nova sequência de leitura hoje mesmo!</p>
+                <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 25px; border-radius: 12px; margin: 30px 0; border-left: 5px solid #3b82f6;">
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+                    <span style="font-size: 32px;">✨</span>
+                    <h3 style="margin: 0; color: #1e40af; font-size: 20px;">Comece Hoje!</h3>
+                  </div>
+                  <p style="margin: 0; color: #1e40af; font-size: 16px;">
+                    Inicie uma nova sequência de leitura hoje mesmo!
+                  </p>
+                </div>
               `
               }
+              
               ${
                 data.currently_reading
                   ? `
-                <div style="background: #f9fafb; padding: 20px; margin: 20px 0; border-radius: 8px; border: 1px solid #e5e7eb;">
-                  <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">CONTINUANDO A LER:</p>
-                  <p style="margin: 0; color: #1f2937; font-weight: 600;">${data.currently_reading}</p>
+                <div style="background: #f8fafc; padding: 25px; margin: 30px 0; border-radius: 12px; border: 2px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 15px;">
+                    <span style="font-size: 24px;">📖</span>
+                    <p style="margin: 0; color: #64748b; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                      CONTINUANDO A LER
+                    </p>
+                  </div>
+                  <h4 style="margin: 0; color: #1e293b; font-size: 18px; font-weight: 700; line-height: 1.4;">
+                    "${data.currently_reading}"
+                  </h4>
                 </div>
               `
-                  : ""
+                  : `
+                <div style="background: #f1f5f9; padding: 25px; margin: 30px 0; border-radius: 12px; border: 2px dashed #cbd5e1;">
+                  <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px;">
+                    <span style="font-size: 24px;">📚</span>
+                    <p style="margin: 0; color: #64748b; font-size: 16px;">
+                      Escolha um livro para começar
+                    </p>
+                  </div>
+                </div>
+              `
               }
-              <a href="${SITE_URL}/library" class="button">Acessar biblioteca</a>
+              
+              <div style="margin-top: 40px;">
+                <a href="${SITE_URL}/library" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;">
+                  📚 Acessar Biblioteca
+                </a>
+              </div>
+              
+              <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid #e5e7eb;">
+                <p style="color: #6b7280; font-size: 14px; margin: 0;">
+                  💡 <strong>Dica:</strong> Apenas 15-20 minutos por dia já fazem diferença!
+                </p>
+              </div>
             </div>
             <div class="footer">
-              <p>ReadQuest - Sua jornada de leitura gamificada</p>
-              <p><a href="${SITE_URL}">Visitar site</a> • <a href="${SITE_URL}/profile">Meu perfil</a></p>
+              <p>📚 ReadQuest - Sua jornada de leitura gamificada</p>
+              <p>
+                <a href="${SITE_URL}" style="color: #10b981; text-decoration: none;">🏠 Visitar site</a> • 
+                <a href="${SITE_URL}/profile" style="color: #10b981; text-decoration: none;">👤 Meu perfil</a>
+              </p>
               <div class="unsubscribe">
-                <p><a href="${SITE_URL}/profile#notifications">Gerenciar preferências de notificação</a></p>
+                <p><a href="${SITE_URL}/profile#notifications" style="color: #6b7280; text-decoration: none; font-size: 12px;">⚙️ Gerenciar preferências de notificação</a></p>
               </div>
             </div>
           </div>
@@ -251,7 +325,7 @@ function getEmailTemplate(type: string, data: any): { subject: string; html: str
   }
 }
 
-serve(async req => {
+serve(async (req: Request) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -368,9 +442,12 @@ serve(async req => {
     );
   } catch (error) {
     console.error("Erro geral:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
-    });
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      }
+    );
   }
 });

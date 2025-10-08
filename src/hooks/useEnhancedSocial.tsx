@@ -445,16 +445,6 @@ export const usePublicUserBooks = (userId: string) => {
     queryFn: async () => {
       if (!userId) return [];
 
-      // First check if the user's profile is private
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("is_private")
-        .eq("user_id", userId)
-        .single();
-
-      if (profileError) throw profileError;
-      if (profile.is_private) return [];
-
       const { data, error } = await supabase
         .from("books")
         .select(
@@ -469,7 +459,6 @@ export const usePublicUserBooks = (userId: string) => {
           status,
           rating,
           review,
-          completed_at,
           created_at,
           updated_at
         `
@@ -491,7 +480,7 @@ export const useEnhancedLeaderboard = (
 ) => {
   return useQuery({
     queryKey: ["enhanced-leaderboard", type],
-    queryFn: async () => {
+    queryFn: async (): Promise<LeaderboardUser[]> => {
       let orderBy: string;
       switch (type) {
         case "books":
@@ -510,30 +499,27 @@ export const useEnhancedLeaderboard = (
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          `
-          user_id,
-          username,
-          full_name,
-          avatar_url,
-          points,
-          level,
-          books_completed,
-          total_pages_read,
-          current_streak,
-          longest_streak
-        `
+          "user_id, username, full_name, avatar_url, points, level, books_completed, total_pages_read, current_streak, longest_streak"
         )
-        .eq("is_private", false)
         .order(orderBy, { ascending: false })
         .limit(100);
 
       if (error) throw error;
 
       // Add rank to each user
-      const rankedData = data.map((user, index) => ({
-        ...user,
+      const rankedData: LeaderboardUser[] = (data || []).map((user, index) => ({
+        user_id: user.user_id,
+        username: user.username,
+        full_name: user.full_name,
+        avatar_url: user.avatar_url,
+        points: user.points || 0,
+        level: user.level || "",
+        books_completed: user.books_completed || 0,
+        total_pages_read: user.total_pages_read || 0,
+        current_streak: user.current_streak || 0,
+        longest_streak: user.longest_streak || 0,
         rank: index + 1,
-      })) as LeaderboardUser[];
+      }));
 
       return rankedData;
     },

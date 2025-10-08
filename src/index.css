@@ -1,5 +1,8 @@
+/* stylelint-disable-next-line at-rule-no-unknown */
 @tailwind base;
+/* stylelint-disable-next-line at-rule-no-unknown */
 @tailwind components;
+/* stylelint-disable-next-line at-rule-no-unknown */
 @tailwind utilities;
 
 /* ReadQuest Design System - Gamified Reading Experience */
@@ -115,13 +118,15 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-}
-
-@layer base {
   * {
+    /* stylelint-disable-next-line at-rule-no-unknown */
     @apply border-border;
   }
 
+  body {
+    /* stylelint-disable-next-line at-rule-no-unknown */
+    @apply bg-background text-foreground;
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -133,16 +138,12 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .safe-area-pt {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  /* Text truncation utilities */
   .line-clamp-1 {
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
+    line-clamp: 1;
   }
 
   .line-clamp-2 {
@@ -150,6 +151,7 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .line-clamp-3 {
@@ -157,15 +159,23 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
   }
-
-  /* Responsive touch target sizes */
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   /* Smooth transitions for interactive elements */
+  .transition-interactive {
+    /* stylelint-disable-next-line at-rule-no-unknown */
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  /* Mobile-first responsive padding */
+  .responsive-padding {
+    /* stylelint-disable-next-line at-rule-no-unknown */
+    @apply px-3 py-2 xs:px-4 xs:py-2.5 sm:px-6 sm:py-3;
+  }
   .transition-interactive {
     @apply transition-all duration-200 ease-in-out;
   }
