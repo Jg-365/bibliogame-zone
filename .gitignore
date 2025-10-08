@@ -20,6 +20,13 @@ dist-ssr
 .env.production.local
 .env.*.local
 
+# Supabase
+.supabase/
+supabase/.temp/
+supabase/.branches/
+supabase/config.toml
+**/supabase/functions/**/.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
