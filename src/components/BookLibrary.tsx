@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { useResponsive } from "@/shared/utils/responsive";
 import { useBooks } from "@/hooks/useBooks";
+import { useResponsive } from "@/shared/utils/responsive";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookCard } from "@/components/BookCard";
@@ -19,7 +19,9 @@ interface BookLibraryProps {
   className?: string;
 }
 
-export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
+export const BookLibrary: React.FC<BookLibraryProps> = ({
+  className = "",
+}) => {
   const { isMobile } = useResponsive();
   const { books = [], isLoading } = useBooks();
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,10 +38,20 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
       };
     }
     return {
-      reading: books.filter(book => book.status === "reading" || book.status === "lendo"),
-      completed: books.filter(book => book.status === "completed" || book.status === "lido"),
+      reading: books.filter(
+        (book) =>
+          book.status === "reading" ||
+          book.status === "lendo"
+      ),
+      completed: books.filter(
+        (book) =>
+          book.status === "completed" ||
+          book.status === "lido"
+      ),
       wantToRead: books.filter(
-        book => book.status === "want-to-read" || book.status === "não lido"
+        (book) =>
+          book.status === "want-to-read" ||
+          book.status === "não lido"
       ),
     };
   }, [books]);
@@ -53,10 +65,12 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        book =>
+        (book) =>
           book.title.toLowerCase().includes(query) ||
           book.author.toLowerCase().includes(query) ||
-          book.genres?.some(genre => genre.toLowerCase().includes(query))
+          book.genres?.some((genre) =>
+            genre.toLowerCase().includes(query)
+          )
       );
     }
 
@@ -64,18 +78,30 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
     if (filterBy !== "all") {
       switch (filterBy) {
         case "reading":
-          filtered = filtered.filter(book => book.status === "reading" || book.status === "lendo");
+          filtered = filtered.filter(
+            (book) =>
+              book.status === "reading" ||
+              book.status === "lendo"
+          );
           break;
         case "completed":
-          filtered = filtered.filter(book => book.status === "completed" || book.status === "lido");
+          filtered = filtered.filter(
+            (book) =>
+              book.status === "completed" ||
+              book.status === "lido"
+          );
           break;
         case "want-to-read":
           filtered = filtered.filter(
-            book => book.status === "want-to-read" || book.status === "não lido"
+            (book) =>
+              book.status === "want-to-read" ||
+              book.status === "não lido"
           );
           break;
         case "favorites":
-          filtered = filtered.filter(book => book.is_favorite);
+          filtered = filtered.filter(
+            (book) => book.is_favorite
+          );
           break;
       }
     }
@@ -84,18 +110,32 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
     switch (sortBy) {
       case "recent":
         return filtered.sort(
-          (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          (a, b) =>
+            new Date(b.updated_at).getTime() -
+            new Date(a.updated_at).getTime()
         );
       case "title":
-        return filtered.sort((a, b) => a.title.localeCompare(b.title));
+        return filtered.sort((a, b) =>
+          a.title.localeCompare(b.title)
+        );
       case "author":
-        return filtered.sort((a, b) => a.author.localeCompare(b.author));
+        return filtered.sort((a, b) =>
+          a.author.localeCompare(b.author)
+        );
       case "rating":
-        return filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        return filtered.sort(
+          (a, b) => (b.rating || 0) - (a.rating || 0)
+        );
       case "progress":
         return filtered.sort((a, b) => {
-          const progressA = a.total_pages > 0 ? (a.pages_read || 0) / a.total_pages : 0;
-          const progressB = b.total_pages > 0 ? (b.pages_read || 0) / b.total_pages : 0;
+          const progressA =
+            a.total_pages > 0
+              ? (a.pages_read || 0) / a.total_pages
+              : 0;
+          const progressB =
+            b.total_pages > 0
+              ? (b.pages_read || 0) / b.total_pages
+              : 0;
           return progressB - progressA;
         });
       default:
@@ -151,12 +191,15 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
           <Input
             placeholder="Buscar por título, autor ou gênero..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10"
           />
         </div>
         <div className="flex gap-2">
-          <Select value={filterBy} onValueChange={setFilterBy}>
+          <Select
+            value={filterBy}
+            onValueChange={setFilterBy}
+          >
             <SelectTrigger className="w-40">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Filtrar" />
@@ -164,9 +207,15 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="reading">Lendo</SelectItem>
-              <SelectItem value="completed">Concluídos</SelectItem>
-              <SelectItem value="want-to-read">Quero Ler</SelectItem>
-              <SelectItem value="favorites">Favoritos</SelectItem>
+              <SelectItem value="completed">
+                Concluídos
+              </SelectItem>
+              <SelectItem value="want-to-read">
+                Quero Ler
+              </SelectItem>
+              <SelectItem value="favorites">
+                Favoritos
+              </SelectItem>
             </SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
@@ -174,11 +223,17 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
               <SelectValue placeholder="Ordenar" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="recent">Mais Recente</SelectItem>
+              <SelectItem value="recent">
+                Mais Recente
+              </SelectItem>
               <SelectItem value="title">Título</SelectItem>
               <SelectItem value="author">Autor</SelectItem>
-              <SelectItem value="rating">Avaliação</SelectItem>
-              <SelectItem value="progress">Progresso</SelectItem>
+              <SelectItem value="rating">
+                Avaliação
+              </SelectItem>
+              <SelectItem value="progress">
+                Progresso
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -187,17 +242,30 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
       {/* Books List */}
       {filteredAndSortedBooks.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
-          {filteredAndSortedBooks.map(book => (
-            <BookCard key={book.id} book={book} onUpdate={handleBookUpdate} />
+          {filteredAndSortedBooks.map((book) => (
+            <BookCard
+              key={book.id}
+              book={book}
+              onUpdate={handleBookUpdate}
+            />
           ))}
         </div>
       ) : !books || books.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
             <BookOpen className="h-16 w-16 mx-auto mb-4 text-slate-300" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">Sua biblioteca está vazia</h3>
-            <p className="text-slate-500 mb-6">Comece adicionando alguns livros à sua coleção!</p>
-            <Button onClick={() => (window.location.href = "#books")}>
+            <h3 className="text-lg font-semibold text-slate-700 mb-2">
+              Sua biblioteca está vazia
+            </h3>
+            <p className="text-slate-500 mb-6">
+              Comece adicionando alguns livros à sua
+              coleção!
+            </p>
+            <Button
+              onClick={() =>
+                (window.location.href = "#books")
+              }
+            >
               <BookOpen className="h-4 w-4 mr-2" />
               Adicionar Primeiro Livro
             </Button>
@@ -207,8 +275,12 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
         <Card className="text-center py-8">
           <CardContent>
             <Search className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">Nenhum livro encontrado</h3>
-            <p className="text-slate-500">Tente ajustar seus filtros de busca.</p>
+            <h3 className="text-lg font-semibold text-slate-700 mb-2">
+              Nenhum livro encontrado
+            </h3>
+            <p className="text-slate-500">
+              Tente ajustar seus filtros de busca.
+            </p>
           </CardContent>
         </Card>
       )}

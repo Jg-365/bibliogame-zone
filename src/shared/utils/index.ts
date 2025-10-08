@@ -6,6 +6,11 @@ import type {
   ActivityType,
 } from "@/shared/types";
 
+// Export responsive utilities
+export * from "./responsive";
+export * from "./errorHandling";
+export * from "./performance";
+
 // Tailwind utility function
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
