@@ -103,26 +103,29 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
       : null;
 
   const defaultTrigger = (
-    <Card className="cursor-pointer hover:shadow-md transition-shadow shadow-sm border-0 sm:border sm:shadow-sm">
+    <Card className="cursor-pointer hover:shadow-lg transition-all shadow-md border rounded-lg overflow-hidden w-full max-w-3xl mx-auto">
       <CardContent className="p-3 sm:p-4">
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Avatar className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
             <AvatarImage src={user?.user_metadata?.avatar_url} />
-            <AvatarFallback className="text-xs sm:text-sm">
+            <AvatarFallback className="text-sm">
               {user?.email?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 bg-muted rounded-full px-3 py-2 sm:px-4 text-muted-foreground text-sm sm:text-base">
-            {isMobile ? "Compartilhe sua leitura..." : "Compartilhe sua experiência de leitura..."}
+          <div className="flex-1 bg-muted hover:bg-muted/80 transition-colors rounded-full px-3 sm:px-4 py-2.5 sm:py-3 text-muted-foreground text-sm cursor-text min-w-0">
+            <span className="block truncate">
+              {isMobile
+                ? "Compartilhe sua leitura..."
+                : "Compartilhe sua experiência de leitura..."}
+            </span>
           </div>
-          <div className="flex space-x-1 sm:space-x-2">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 sm:h-auto sm:w-auto sm:p-2">
-              <ImageIcon className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 sm:h-auto sm:w-auto sm:p-2">
-              <BookOpen className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 sm:h-10 sm:w-10 p-0 hover:bg-muted flex-shrink-0"
+          >
+            <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
         </div>
       </CardContent>
     </Card>

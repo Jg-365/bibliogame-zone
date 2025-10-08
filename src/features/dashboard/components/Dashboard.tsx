@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DashboardHeader } from "./DashboardHeader";
 import { LevelProgressCard } from "./LevelProgressCard";
 import { ReadingStatsCards } from "./ReadingStatsCards";
 import { useDashboard } from "../hooks/useDashboard";
@@ -13,11 +12,8 @@ import { BookSearch } from "@/components/BookSearch";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
 import { Leaderboard } from "@/components/Leaderboard";
 import { ActivityFeed } from "@/components/ActivityFeed";
-import { SocialSection } from "@/components/SocialSection";
-import { MobileNavbar } from "@/components/MobileNavbar";
 import { BookActionButtons } from "@/components/BookActionButtons";
 import { BookLibrary } from "@/components/BookLibrary";
-import { DebugStatsButton } from "@/components/DebugStatsButton";
 import { AutoStreakRecalculator } from "@/components/AutoStreakRecalculator";
 
 // Level calculation function
@@ -113,10 +109,6 @@ export const Dashboard: React.FC = () => {
     setShowBookActions(false);
   };
 
-  const handleProfileClick = () => {
-    handleTabChange("profile");
-  };
-
   if (isLoading) {
     return (
       <div className="container mx-auto p-6 space-y-6">
@@ -154,19 +146,9 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header fixo no topo */}
-      <DashboardHeader
-        userFullName={profile.full_name}
-        userAvatarUrl={profile.avatar_url}
-        currentLevel={correctLevelInfo.currentLevel as any}
-        points={userStats?.total_pages_read || 0}
-        onSignOut={handleSignOut}
-        onProfileClick={handleProfileClick}
-      />
-
+    <div>
       {/* Conteúdo principal */}
-      <div className={`container mx-auto p-4 space-y-6 ${isMobile ? "pb-20" : "pb-6"}`}>
+      <div className={`container mx-auto p-4 space-y-6`}>
         {/* Stats Overview - apenas no desktop */}
         {!isMobile && (
           <div className="grid lg:grid-cols-3 gap-6">
@@ -217,20 +199,16 @@ export const Dashboard: React.FC = () => {
         <Tabs value={selectedTab} onValueChange={handleTabChange} className="space-y-6">
           {/* Desktop Tabs */}
           {!isMobile && (
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="books">Biblioteca</TabsTrigger>
               <TabsTrigger value="achievements">Conquistas</TabsTrigger>
-              <TabsTrigger value="social">Social</TabsTrigger>
             </TabsList>
           )}
 
           <TabsContent value="overview" className="space-y-6">
             {/* Auto-recalculator - runs automatically */}
             <AutoStreakRecalculator />
-
-            {/* Debug buttons - remove in production */}
-            <DebugStatsButton />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
               <div className="w-full">
@@ -249,10 +227,6 @@ export const Dashboard: React.FC = () => {
 
           <TabsContent value="achievements" className="space-y-6">
             <AchievementsPanel />
-          </TabsContent>
-
-          <TabsContent value="social" className="space-y-6">
-            <SocialSection />
           </TabsContent>
 
           {/* Mobile Profile Tab - Statistics */}
@@ -305,16 +279,7 @@ export const Dashboard: React.FC = () => {
         </Tabs>
       </div>
 
-      {/* Mobile Navigation */}
-      {isMobile && (
-        <MobileNavbar
-          activeTab={selectedTab}
-          onTabChange={handleTabChange}
-          onAddBook={handleAddBook}
-        />
-      )}
-
-      {/* Book Action Buttons (FAB for desktop, integrated in mobile navbar) */}
+      {/* Book Action Buttons (FAB for desktop) */}
       {!isMobile && <BookActionButtons onAddBook={handleAddBook} />}
     </div>
   );

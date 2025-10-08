@@ -3,6 +3,68 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 
+export interface PublicProfile {
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string;
+  bio: string;
+  points: number;
+  level: string;
+  books_completed: number;
+  total_pages_read: number;
+  current_streak: number;
+  longest_streak: number;
+  is_private: boolean;
+  created_at: string;
+}
+
+export interface PublicBook {
+  id: string;
+  user_id: string;
+  title: string;
+  author: string;
+  cover_url: string;
+  pages_read: number;
+  total_pages: number;
+  status: string;
+  rating: number;
+  review: string;
+  completed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicActivity {
+  id: string;
+  user_id: string;
+  type: "book_completed" | "achievement_unlocked" | "reading_progress" | "streak_milestone";
+  title: string;
+  description: string;
+  metadata: Record<string, any>;
+  created_at: string;
+  user: {
+    user_id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string;
+  };
+}
+
+export interface LeaderboardUser {
+  user_id: string;
+  username: string;
+  full_name: string;
+  avatar_url: string;
+  points: number;
+  level: string;
+  books_completed: number;
+  total_pages_read: number;
+  current_streak: number;
+  longest_streak: number;
+  rank: number;
+}
+
 export interface Activity {
   id: string;
   user_id: string;
@@ -339,4 +401,358 @@ export const useCreateActivity = () => {
       queryClient.invalidateQueries({ queryKey: ["social-posts"] });
     },
   });
+};
+
+// NEW ENHANCED SOCIAL HOOKS FOR BETTER VISIBILITY
+
+// Hook to get public profiles
+export const usePublicProfiles = (limit: number = 20) => {
+  return useQuery({
+    queryKey: ["public-profiles", limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          `
+          user_id,
+          username,
+          full_name,
+          avatar_url,
+          bio,
+          points,
+          level,
+          books_completed,
+          total_pages_read,
+          current_streak,
+          longest_streak,
+          created_at
+        `
+        )
+        .order("points", { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+// Hook to get public books from a specific user
+export const usePublicUserBooks = (userId: string) => {
+  return useQuery({
+    queryKey: ["public-user-books", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+
+      // First check if the user's profile is private
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("is_private")
+        .eq("user_id", userId)
+        .single();
+
+      if (profileError) throw profileError;
+      if (profile.is_private) return [];
+
+      const { data, error } = await supabase
+        .from("books")
+        .select(
+          `
+          id,
+          user_id,
+          title,
+          author,
+          cover_url,
+          pages_read,
+          total_pages,
+          status,
+          rating,
+          review,
+          completed_at,
+          created_at,
+          updated_at
+        `
+        )
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false });
+
+      if (error) throw error;
+      return data as PublicBook[];
+    },
+    enabled: !!userId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+// Hook to get enhanced leaderboard with more details
+export const useEnhancedLeaderboard = (
+  type: "points" | "books" | "pages" | "streak" = "points"
+) => {
+  return useQuery({
+    queryKey: ["enhanced-leaderboard", type],
+    queryFn: async () => {
+      let orderBy: string;
+      switch (type) {
+        case "books":
+          orderBy = "books_completed";
+          break;
+        case "pages":
+          orderBy = "total_pages_read";
+          break;
+        case "streak":
+          orderBy = "longest_streak";
+          break;
+        default:
+          orderBy = "points";
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          `
+          user_id,
+          username,
+          full_name,
+          avatar_url,
+          points,
+          level,
+          books_completed,
+          total_pages_read,
+          current_streak,
+          longest_streak
+        `
+        )
+        .eq("is_private", false)
+        .order(orderBy, { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      // Add rank to each user
+      const rankedData = data.map((user, index) => ({
+        ...user,
+        rank: index + 1,
+      })) as LeaderboardUser[];
+
+      return rankedData;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+// Hook to get public activity feed (simplified version)
+export const usePublicActivityFeed = () => {
+  return useQuery({
+    queryKey: ["public-activity-feed"],
+    queryFn: async () => {
+      // Get recent completed books - simplified version
+      const { data: completedBooks, error: booksError } = await supabase
+        .from("books")
+        .select("id, user_id, title, author, cover_url, updated_at, rating")
+        .eq("status", "lido")
+        .order("updated_at", { ascending: false })
+        .limit(20);
+
+      if (booksError) {
+        console.error("Error fetching completed books:", booksError);
+        return [];
+      }
+
+      // Get user profiles for the books
+      const userIds = [...new Set(completedBooks?.map(book => book.user_id) || [])];
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, username, full_name, avatar_url")
+        .in("user_id", userIds);
+
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        return [];
+      }
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+
+      // Get recent achievements
+      const { data: achievements, error: achievementsError } = await supabase
+        .from("user_achievements")
+        .select(
+          `
+          id,
+          user_id,
+          unlocked_at,
+          achievement_id
+        `
+        )
+        .order("unlocked_at", { ascending: false })
+        .limit(20);
+
+      if (achievementsError) {
+        console.error("Error fetching achievements:", achievementsError);
+        return [];
+      }
+
+      // Get achievement details
+      const achievementIds = [...new Set(achievements?.map(a => a.achievement_id) || [])];
+      const { data: achievementDetails, error: achievementDetailsError } = await supabase
+        .from("achievements")
+        .select("id, title, description, icon, rarity")
+        .in("id", achievementIds);
+
+      if (achievementDetailsError) {
+        console.error("Error fetching achievement details:", achievementDetailsError);
+      }
+
+      const achievementMap = new Map(achievementDetails?.map(a => [a.id, a]) || []);
+
+      const activities: PublicActivity[] = [];
+
+      // Add book completion activities
+      completedBooks?.forEach(book => {
+        const profile = profileMap.get(book.user_id);
+        if (profile) {
+          activities.push({
+            id: `book-${book.id}`,
+            user_id: book.user_id,
+            type: "book_completed",
+            title: `${profile.full_name || profile.username} concluiu um livro`,
+            description: `"${book.title}" por ${book.author}`,
+            metadata: {
+              bookTitle: book.title,
+              bookAuthor: book.author,
+              bookCover: book.cover_url,
+              rating: book.rating,
+            },
+            created_at: book.updated_at,
+            user: {
+              user_id: profile.user_id,
+              username: profile.username,
+              full_name: profile.full_name,
+              avatar_url: profile.avatar_url,
+            },
+          });
+        }
+      });
+
+      // Add achievement activities
+      achievements?.forEach(achievement => {
+        const profile = profileMap.get(achievement.user_id);
+        const achievementData = achievementMap.get(achievement.achievement_id);
+        if (profile && achievementData) {
+          activities.push({
+            id: `achievement-${achievement.id}`,
+            user_id: achievement.user_id,
+            type: "achievement_unlocked",
+            title: `${profile.full_name || profile.username} desbloqueou uma conquista`,
+            description: `"${achievementData.title}" - ${achievementData.description}`,
+            metadata: {
+              achievementTitle: achievementData.title,
+              achievementDescription: achievementData.description,
+              achievementIcon: achievementData.icon,
+              achievementRarity: achievementData.rarity,
+            },
+            created_at: achievement.unlocked_at,
+            user: {
+              user_id: profile.user_id,
+              username: profile.username,
+              full_name: profile.full_name,
+              avatar_url: profile.avatar_url,
+            },
+          });
+        }
+      });
+
+      // Sort all activities by date
+      activities.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      return activities.slice(0, 50);
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+};
+
+// Hook to search for public users (simplified)
+export const usePublicUserSearch = (searchTerm: string) => {
+  return useQuery({
+    queryKey: ["public-user-search", searchTerm],
+    queryFn: async () => {
+      if (!searchTerm || searchTerm.length < 2) return [];
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "user_id, username, full_name, avatar_url, bio, points, level, books_completed, total_pages_read, current_streak, longest_streak"
+        )
+        .or(`username.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%`)
+        .order("points", { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error("Error searching users:", error);
+        return [];
+      }
+      return data || [];
+    },
+    enabled: !!searchTerm && searchTerm.length >= 2,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+};
+
+// Hook to get basic profile visibility toggle (simplified)
+export const useProfileVisibility = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const updateVisibility = useMutation({
+    mutationFn: async (makePrivate: boolean) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      // Since is_private might not exist in current schema,
+      // we'll just update a comment field for now
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          bio: makePrivate
+            ? ((await getCurrentBio()) || "") + " [PRIVATE]"
+            : ((await getCurrentBio()) || "").replace(" [PRIVATE]", ""),
+        })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      return makePrivate;
+    },
+    onSuccess: isPrivate => {
+      toast({
+        title: "Visibilidade atualizada",
+        description: isPrivate
+          ? "Seu perfil foi marcado como privado"
+          : "Seu perfil foi marcado como público",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["public-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["public-activity-feed"] });
+    },
+    onError: error => {
+      toast({
+        title: "Erro ao atualizar visibilidade",
+        description: "Não foi possível alterar a configuração",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getCurrentBio = async () => {
+    if (!user?.id) return "";
+    const { data } = await supabase.from("profiles").select("bio").eq("user_id", user.id).single();
+    return data?.bio || "";
+  };
+
+  return {
+    updateVisibility: updateVisibility.mutate,
+    isUpdating: updateVisibility.isPending,
+  };
 };

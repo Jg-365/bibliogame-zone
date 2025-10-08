@@ -131,25 +131,17 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
 
   return (
     <div className={cn("space-y-6", className)}>
-      {/* Header with Stats */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Minha Biblioteca</h2>
-          <p className="text-slate-600">
-            {books?.length || 0} {(books?.length || 0) === 1 ? "livro" : "livros"} na sua coleção
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
-            {booksByStatus?.reading?.length || 0} lendo
-          </span>
-          <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
-            {booksByStatus?.completed?.length || 0} concluídos
-          </span>
-          <span className="bg-slate-100 text-slate-800 px-2 py-1 rounded font-medium">
-            {booksByStatus?.wantToRead?.length || 0} quero ler
-          </span>
-        </div>
+      {/* Stats */}
+      <div className="flex items-center gap-2 text-sm text-slate-600 flex-wrap">
+        <span className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded font-medium">
+          {booksByStatus?.reading?.length || 0} lendo
+        </span>
+        <span className="bg-green-100 text-green-800 px-3 py-1.5 rounded font-medium">
+          {booksByStatus?.completed?.length || 0} concluídos
+        </span>
+        <span className="bg-slate-100 text-slate-800 px-3 py-1.5 rounded font-medium">
+          {booksByStatus?.wantToRead?.length || 0} quero ler
+        </span>
       </div>
 
       {/* Filters and Search */}

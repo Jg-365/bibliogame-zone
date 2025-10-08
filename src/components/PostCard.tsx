@@ -95,10 +95,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
   });
 
   return (
-    <Card className="w-full shadow-sm border-0 sm:border sm:shadow-md">
-      <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+    <Card className="w-full max-w-3xl mx-auto shadow-md hover:shadow-lg transition-shadow border rounded-lg overflow-hidden">
+      <CardHeader className="pb-3 px-4 sm:px-6 pt-4 sm:pt-6">
         <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center space-x-3 min-w-0 flex-1">
             <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
               <AvatarImage src={post.user_avatar_url || ""} />
               <AvatarFallback className="text-xs sm:text-sm">
@@ -138,10 +138,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
+      <CardContent className="space-y-4 px-4 sm:px-6 pb-4 sm:pb-6">
         {/* Conteúdo do post */}
-        <div className="space-y-2 sm:space-y-3">
-          <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        <div className="space-y-3">
+          <p className="text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
+            {post.content}
+          </p>
 
           {/* Livro relacionado */}
           {post.book_id && post.book_title && (

@@ -1,0 +1,376 @@
+// Supabase Edge Function for sending email notifications
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SITE_URL = Deno.env.get("SITE_URL") || "https://bibliogame-zone.vercel.app";
+
+interface NotificationData {
+  id: string;
+  user_id: string;
+  notification_type: string;
+  trigger_user_id?: string;
+  related_entity_id?: string;
+  related_entity_type?: string;
+  data: any;
+}
+
+interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+}
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+async function sendEmail(to: string, subject: string, html: string) {
+  if (!RESEND_API_KEY) {
+    console.error("RESEND_API_KEY não configurada");
+    return false;
+  }
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: "ReadQuest <noreply@readquest.app>",
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.text();
+    console.error("Erro ao enviar email:", error);
+    return false;
+  }
+
+  return true;
+}
+
+function getEmailTemplate(type: string, data: any): { subject: string; html: string } {
+  const baseStyle = `
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; margin: 0; padding: 20px; }
+      .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }
+      .header h1 { color: white; margin: 0; font-size: 28px; }
+      .content { padding: 40px 30px; }
+      .content h2 { color: #1f2937; margin-top: 0; font-size: 22px; }
+      .content p { color: #4b5563; line-height: 1.6; font-size: 16px; }
+      .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; padding: 14px 32px; border-radius: 8px; margin: 20px 0; font-weight: 600; }
+      .button:hover { opacity: 0.9; }
+      .footer { background: #f3f4f6; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; }
+      .footer p { color: #6b7280; font-size: 14px; margin: 5px 0; }
+      .footer a { color: #667eea; text-decoration: none; }
+      .unsubscribe { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+      .badge { display: inline-block; background: #f3f4f6; padding: 4px 12px; border-radius: 20px; font-size: 14px; color: #4b5563; margin: 5px 0; }
+    </style>
+  `;
+
+  switch (type) {
+    case "follow":
+      return {
+        subject: `${data.follower_name} começou a seguir você! 📚`,
+        html: `
+          ${baseStyle}
+          <div class="container">
+            <div class="header">
+              <h1>🎉 Novo seguidor!</h1>
+            </div>
+            <div class="content">
+              <h2>Olá, ${data.user_name}!</h2>
+              <p><strong>${data.follower_name}</strong> agora está seguindo você no ReadQuest!</p>
+              <p>Que tal dar uma olhada no perfil e seguir de volta?</p>
+              <a href="${SITE_URL}/user/${data.follower_id}" class="button">Ver perfil de ${data.follower_name}</a>
+            </div>
+            <div class="footer">
+              <p>ReadQuest - Sua jornada de leitura gamificada</p>
+              <p><a href="${SITE_URL}">Visitar site</a> • <a href="${SITE_URL}/profile">Meu perfil</a></p>
+              <div class="unsubscribe">
+                <p><a href="${SITE_URL}/profile#notifications">Gerenciar preferências de notificação</a></p>
+              </div>
+            </div>
+          </div>
+        `,
+      };
+
+    case "post":
+      return {
+        subject: `${data.author_name} publicou algo novo! ✍️`,
+        html: `
+          ${baseStyle}
+          <div class="container">
+            <div class="header">
+              <h1>📝 Nova publicação</h1>
+            </div>
+            <div class="content">
+              <h2>Olá, ${data.user_name}!</h2>
+              <p><strong>${data.author_name}</strong>, que você segue, acabou de publicar:</p>
+              <div style="background: #f9fafb; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #1f2937;">${data.post_content}</p>
+              </div>
+              <a href="${SITE_URL}/social-feed?post=${data.post_id}" class="button">Ver publicação completa</a>
+            </div>
+            <div class="footer">
+              <p>ReadQuest - Sua jornada de leitura gamificada</p>
+              <p><a href="${SITE_URL}">Visitar site</a> • <a href="${SITE_URL}/social-feed">Feed social</a></p>
+              <div class="unsubscribe">
+                <p><a href="${SITE_URL}/profile#notifications">Gerenciar preferências de notificação</a></p>
+              </div>
+            </div>
+          </div>
+        `,
+      };
+
+    case "comment":
+      return {
+        subject: `${data.commenter_name} comentou em sua publicação 💬`,
+        html: `
+          ${baseStyle}
+          <div class="container">
+            <div class="header">
+              <h1>💬 Novo comentário</h1>
+            </div>
+            <div class="content">
+              <h2>Olá, ${data.user_name}!</h2>
+              <p><strong>${data.commenter_name}</strong> comentou na sua publicação:</p>
+              <div style="background: #f9fafb; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #1f2937;">${data.comment_content}</p>
+              </div>
+              <a href="${SITE_URL}/social-feed?post=${data.post_id}#comment-${data.comment_id}" class="button">Ver comentário</a>
+            </div>
+            <div class="footer">
+              <p>ReadQuest - Sua jornada de leitura gamificada</p>
+              <p><a href="${SITE_URL}">Visitar site</a> • <a href="${SITE_URL}/social-feed">Feed social</a></p>
+              <div class="unsubscribe">
+                <p><a href="${SITE_URL}/profile#notifications">Gerenciar preferências de notificação</a></p>
+              </div>
+            </div>
+          </div>
+        `,
+      };
+
+    case "like":
+      return {
+        subject: `${data.liker_name} curtiu sua publicação! ❤️`,
+        html: `
+          ${baseStyle}
+          <div class="container">
+            <div class="header">
+              <h1>❤️ Nova curtida</h1>
+            </div>
+            <div class="content">
+              <h2>Olá, ${data.user_name}!</h2>
+              <p><strong>${data.liker_name}</strong> curtiu a sua publicação!</p>
+              <a href="${SITE_URL}/social-feed?post=${data.post_id}" class="button">Ver publicação</a>
+            </div>
+            <div class="footer">
+              <p>ReadQuest - Sua jornada de leitura gamificada</p>
+              <p><a href="${SITE_URL}">Visitar site</a> • <a href="${SITE_URL}/social-feed">Feed social</a></p>
+              <div class="unsubscribe">
+                <p><a href="${SITE_URL}/profile#notifications">Gerenciar preferências de notificação</a></p>
+              </div>
+            </div>
+          </div>
+        `,
+      };
+
+    case "reading_reminder":
+      return {
+        subject: `📚 Hora de ler! Mantenha sua sequência ativa`,
+        html: `
+          ${baseStyle}
+          <div class="container">
+            <div class="header">
+              <h1>📚 Lembrete de leitura</h1>
+            </div>
+            <div class="content">
+              <h2>Olá, ${data.user_name}!</h2>
+              <p>Que tal dedicar alguns minutos à leitura hoje?</p>
+              ${
+                data.current_streak > 0
+                  ? `
+                <p>🔥 Você está em uma sequência de <strong>${data.current_streak} dias</strong>! Não deixe ela acabar!</p>
+              `
+                  : `
+                <p>Comece uma nova sequência de leitura hoje mesmo!</p>
+              `
+              }
+              ${
+                data.currently_reading
+                  ? `
+                <div style="background: #f9fafb; padding: 20px; margin: 20px 0; border-radius: 8px; border: 1px solid #e5e7eb;">
+                  <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">CONTINUANDO A LER:</p>
+                  <p style="margin: 0; color: #1f2937; font-weight: 600;">${data.currently_reading}</p>
+                </div>
+              `
+                  : ""
+              }
+              <a href="${SITE_URL}/library" class="button">Acessar biblioteca</a>
+            </div>
+            <div class="footer">
+              <p>ReadQuest - Sua jornada de leitura gamificada</p>
+              <p><a href="${SITE_URL}">Visitar site</a> • <a href="${SITE_URL}/profile">Meu perfil</a></p>
+              <div class="unsubscribe">
+                <p><a href="${SITE_URL}/profile#notifications">Gerenciar preferências de notificação</a></p>
+              </div>
+            </div>
+          </div>
+        `,
+      };
+
+    default:
+      return {
+        subject: "Notificação do ReadQuest",
+        html: `
+          ${baseStyle}
+          <div class="container">
+            <div class="header">
+              <h1>📬 ReadQuest</h1>
+            </div>
+            <div class="content">
+              <p>Você tem uma nova notificação no ReadQuest!</p>
+              <a href="${SITE_URL}" class="button">Acessar ReadQuest</a>
+            </div>
+            <div class="footer">
+              <p>ReadQuest - Sua jornada de leitura gamificada</p>
+            </div>
+          </div>
+        `,
+      };
+  }
+}
+
+serve(async req => {
+  // Handle CORS
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Get pending notifications
+    const { data: notifications, error: notifError } = await supabase
+      .from("notification_queue")
+      .select("*")
+      .eq("sent", false)
+      .order("created_at", { ascending: true })
+      .limit(50); // Process 50 at a time
+
+    if (notifError) throw notifError;
+
+    if (!notifications || notifications.length === 0) {
+      return new Response(JSON.stringify({ message: "Nenhuma notificação pendente" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const notification of notifications as NotificationData[]) {
+      try {
+        // Get user email
+        const { data: userData } = await supabase.auth.admin.getUserById(notification.user_id);
+
+        if (!userData?.user?.email) {
+          failed++;
+          continue;
+        }
+
+        // Get user profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", notification.user_id)
+          .single();
+
+        // Get trigger user profile if applicable
+        let triggerProfile = null;
+        if (notification.trigger_user_id) {
+          const { data: tp } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("id", notification.trigger_user_id)
+            .single();
+          triggerProfile = tp;
+        }
+
+        // Build email data
+        const emailData = {
+          user_name: profile?.username || "Leitor",
+          ...notification.data,
+        };
+
+        // Add trigger user name based on notification type
+        if (triggerProfile) {
+          switch (notification.notification_type) {
+            case "follow":
+              emailData.follower_name = triggerProfile.username;
+              emailData.follower_id = notification.trigger_user_id;
+              break;
+            case "post":
+              emailData.author_name = triggerProfile.username;
+              break;
+            case "comment":
+              emailData.commenter_name = triggerProfile.username;
+              break;
+            case "like":
+              emailData.liker_name = triggerProfile.username;
+              break;
+          }
+        }
+
+        // Get email template
+        const { subject, html } = getEmailTemplate(notification.notification_type, emailData);
+
+        // Send email
+        const success = await sendEmail(userData.user.email, subject, html);
+
+        if (success) {
+          // Mark as sent
+          await supabase
+            .from("notification_queue")
+            .update({ sent: true, sent_at: new Date().toISOString() })
+            .eq("id", notification.id);
+          sent++;
+        } else {
+          failed++;
+        }
+      } catch (err) {
+        console.error("Erro ao processar notificação:", err);
+        failed++;
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        message: "Processamento concluído",
+        sent,
+        failed,
+        total: notifications.length,
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
+  } catch (error) {
+    console.error("Erro geral:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
+    });
+  }
+});
