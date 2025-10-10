@@ -10,12 +10,15 @@ import {
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useAccountGuard } from "./hooks/useAccountGuard";
 import { AuthPage } from "./components/auth/AuthPage";
 import { motion } from "framer-motion";
-import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   AppPerformanceProvider,
   PerformanceDebugger,
@@ -41,10 +44,34 @@ import NotificationSystemSimple from "./components/NotificationSystemSimple";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-      retry: 1,
+      staleTime: 2 * 60 * 1000, // 2 minutos - dados frescos por mais tempo
+      gcTime: 15 * 60 * 1000, // 15 minutos - cache mais longo
+      retry: (failureCount, error: any) => {
+        // Não retry para erros 4xx (cliente)
+        if (error?.status >= 400 && error?.status < 500)
+          return false;
+        // Retry até 3 vezes para erros de rede/servidor
+        return failureCount < 3;
+      },
+      retryDelay: (attemptIndex) =>
+        Math.min(1000 * 2 ** attemptIndex, 10000),
       refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+    },
+    mutations: {
+      retry: (failureCount, error: any) => {
+        // Retry mutations apenas para erros de rede
+        if (
+          error?.message?.includes("fetch") ||
+          error?.status >= 500
+        ) {
+          return failureCount < 2;
+        }
+        return false;
+      },
+      retryDelay: (attemptIndex) =>
+        Math.min(1000 * 2 ** attemptIndex, 5000),
     },
   },
 });
@@ -55,7 +82,8 @@ const AppContent = () => {
   const { isMobile } = useResponsive();
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentPage, setCurrentPage] = useState<NavigationPage>("dashboard");
+  const [currentPage, setCurrentPage] =
+    useState<NavigationPage>("dashboard");
 
   // Use account guard to check for deleted accounts
   useAccountGuard();
@@ -112,7 +140,9 @@ const AppContent = () => {
             }}
             className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"
           />
-          <p className="text-muted-foreground">Carregando...</p>
+          <p className="text-muted-foreground">
+            Carregando...
+          </p>
         </div>
       </ResponsiveContainer>
     );
@@ -129,7 +159,10 @@ const AppContent = () => {
         {AnnouncerComponent && <AnnouncerComponent />}
 
         {/* Navigation */}
-        <ResponsiveNavigation currentPage={currentPage} onNavigate={handleNavigate} />
+        <ResponsiveNavigation
+          currentPage={currentPage}
+          onNavigate={handleNavigate}
+        />
 
         {/* Main Content */}
         <main
@@ -144,22 +177,62 @@ const AppContent = () => {
           <ErrorBoundary>
             <Routes>
               {/* Main Routes */}
-              <Route path="/" element={<Navigate to="/social-feed" replace />} />
-              <Route path="/social-feed" element={<SocialFeed />} />
-              <Route path="/search" element={<SearchPage />} />
-              <Route path="/library" element={<LibraryPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route
+                path="/"
+                element={
+                  <Navigate to="/social-feed" replace />
+                }
+              />
+              <Route
+                path="/social-feed"
+                element={<SocialFeed />}
+              />
+              <Route
+                path="/search"
+                element={<SearchPage />}
+              />
+              <Route
+                path="/library"
+                element={<LibraryPage />}
+              />
+              <Route
+                path="/profile"
+                element={<ProfilePage />}
+              />
 
               {/* User Profile Route */}
-              <Route path="/user/:userId" element={<UserProfilePage />} />
+              <Route
+                path="/user/:userId"
+                element={<UserProfilePage />}
+              />
 
               {/* Redirect old routes to new structure */}
-              <Route path="/dashboard" element={<Navigate to="/social-feed" replace />} />
-              <Route path="/social" element={<Navigate to="/social-feed" replace />} />
-              <Route path="/ranking" element={<Navigate to="/social-feed" replace />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <Navigate to="/social-feed" replace />
+                }
+              />
+              <Route
+                path="/social"
+                element={
+                  <Navigate to="/social-feed" replace />
+                }
+              />
+              <Route
+                path="/ranking"
+                element={
+                  <Navigate to="/social-feed" replace />
+                }
+              />
 
               {/* Catch all - redirect to social feed */}
-              <Route path="*" element={<Navigate to="/social-feed" replace />} />
+              <Route
+                path="*"
+                element={
+                  <Navigate to="/social-feed" replace />
+                }
+              />
             </Routes>
           </ErrorBoundary>
         </main>
@@ -185,7 +258,9 @@ const AppRouter = () => {
             }}
             className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"
           />
-          <p className="text-muted-foreground">Carregando...</p>
+          <p className="text-muted-foreground">
+            Carregando...
+          </p>
         </div>
       </ResponsiveContainer>
     );
@@ -196,7 +271,12 @@ const AppRouter = () => {
   }
 
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <AppContent />
     </Router>
   );
@@ -208,10 +288,16 @@ const PageLoader = () => (
     <div className="text-center">
       <motion.div
         animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        transition={{
+          duration: 1,
+          repeat: Infinity,
+          ease: "linear",
+        }}
         className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"
       />
-      <p className="text-sm text-muted-foreground">Carregando...</p>
+      <p className="text-sm text-muted-foreground">
+        Carregando...
+      </p>
     </div>
   </ResponsiveContainer>
 );

@@ -1,8 +1,17 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -21,10 +30,21 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Camera, BookOpen, PenTool, X, Upload, Plus, Image as ImageIcon } from "lucide-react";
+import {
+  Camera,
+  BookOpen,
+  PenTool,
+  X,
+  Upload,
+  Plus,
+  Image as ImageIcon,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBooks } from "@/hooks/useBooks";
-import { usePosts, useImageUpload } from "@/hooks/usePosts";
+import {
+  usePosts,
+  useImageUpload,
+} from "@/hooks/usePostsOptimized";
 import { useResponsive } from "@/shared/utils/responsive";
 
 interface CreatePostProps {
@@ -32,7 +52,10 @@ interface CreatePostProps {
   onPostCreated?: () => void;
 }
 
-export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }) => {
+export const CreatePost: React.FC<CreatePostProps> = ({
+  trigger,
+  onPostCreated,
+}) => {
   const { user } = useAuth();
   const { books } = useBooks();
   const { createPost, isCreatingPost } = usePosts();
@@ -41,16 +64,22 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
 
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState("");
-  const [selectedBookId, setSelectedBookId] = useState<string>("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [selectedBookId, setSelectedBookId] =
+    useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(
+    null
+  );
+  const [imagePreview, setImagePreview] =
+    useState<string>("");
 
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (file) {
       setImageFile(file);
       const reader = new FileReader();
-      reader.onload = e => {
+      reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
@@ -77,7 +106,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
       createPost(
         {
           content: content.trim(),
-          book_id: selectedBookId && selectedBookId !== "none" ? selectedBookId : undefined,
+          book_id:
+            selectedBookId && selectedBookId !== "none"
+              ? selectedBookId
+              : undefined,
           image_url: imageUrl || undefined,
         },
         {
@@ -99,7 +131,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
 
   const selectedBook =
     selectedBookId && selectedBookId !== "none"
-      ? books?.find(book => book.id === selectedBookId)
+      ? books?.find((book) => book.id === selectedBookId)
       : null;
 
   const defaultTrigger = (
@@ -107,7 +139,9 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
       <CardContent className="p-3 sm:p-4">
         <div className="flex items-center gap-2 sm:gap-3">
           <Avatar className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
-            <AvatarImage src={user?.user_metadata?.avatar_url} />
+            <AvatarImage
+              src={user?.user_metadata?.avatar_url}
+            />
             <AvatarFallback className="text-sm">
               {user?.email?.charAt(0).toUpperCase()}
             </AvatarFallback>
@@ -133,9 +167,15 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
+      <DialogTrigger asChild>
+        {trigger || defaultTrigger}
+      </DialogTrigger>
       <DialogContent
-        className={`${isMobile ? "w-full h-full max-h-screen overflow-y-auto" : "max-w-2xl"}`}
+        className={`${
+          isMobile
+            ? "w-full h-full max-h-screen overflow-y-auto"
+            : "max-w-2xl"
+        }`}
       >
         <DialogHeader className="pb-3 sm:pb-6">
           <DialogTitle className="flex items-center space-x-2 text-lg sm:text-xl">
@@ -153,16 +193,23 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
           {/* Usuário */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-              <AvatarImage src={user?.user_metadata?.avatar_url} />
+              <AvatarImage
+                src={user?.user_metadata?.avatar_url}
+              />
               <AvatarFallback className="text-xs sm:text-sm">
                 {user?.email?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
               <p className="font-medium text-sm sm:text-base">
-                {user?.user_metadata?.username || user?.email?.split("@")[0] || "Você"}
+                {user?.user_metadata?.username ||
+                  user?.email?.split("@")[0] ||
+                  "Você"}
               </p>
-              <Badge variant="secondary" className="text-xs">
+              <Badge
+                variant="secondary"
+                className="text-xs"
+              >
                 Público
               </Badge>
             </div>
@@ -181,32 +228,42 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
                   : "Compartilhe suas impressões sobre o livro, uma citação favorita, ou qualquer coisa relacionada à sua jornada de leitura..."
               }
               value={content}
-              onChange={e => setContent(e.target.value)}
+              onChange={(e) => setContent(e.target.value)}
               rows={isMobile ? 3 : 4}
               maxLength={500}
               className="resize-none text-sm"
             />
-            <div className="text-xs text-muted-foreground text-right">{content.length}/500</div>
+            <div className="text-xs text-muted-foreground text-right">
+              {content.length}/500
+            </div>
           </div>
 
           {/* Seleção de livro */}
           <div className="space-y-2">
-            <Label htmlFor="book">Livro relacionado (opcional)</Label>
+            <Label htmlFor="book">
+              Livro relacionado (opcional)
+            </Label>
             <Select
               value={selectedBookId || undefined}
-              onValueChange={value => setSelectedBookId(value || "")}
+              onValueChange={(value) =>
+                setSelectedBookId(value || "")
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um livro..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Nenhum livro</SelectItem>
-                {books?.map(book => (
+                <SelectItem value="none">
+                  Nenhum livro
+                </SelectItem>
+                {books?.map((book) => (
                   <SelectItem key={book.id} value={book.id}>
                     <div className="flex items-center space-x-2">
                       <BookOpen className="h-4 w-4" />
                       <span>{book.title}</span>
-                      <span className="text-muted-foreground">- {book.author}</span>
+                      <span className="text-muted-foreground">
+                        - {book.author}
+                      </span>
                     </div>
                   </SelectItem>
                 ))}
@@ -231,10 +288,17 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
                     </div>
                   )}
                   <div>
-                    <h4 className="font-medium text-sm">{selectedBook.title}</h4>
-                    <p className="text-sm text-muted-foreground">{selectedBook.author}</p>
+                    <h4 className="font-medium text-sm">
+                      {selectedBook.title}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedBook.author}
+                    </p>
                     {selectedBook.status === "reading" && (
-                      <Badge variant="outline" className="text-xs mt-1">
+                      <Badge
+                        variant="outline"
+                        className="text-xs mt-1"
+                      >
                         Lendo atualmente
                       </Badge>
                     )}
@@ -289,7 +353,9 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
           {/* Botões de ação - otimizados para mobile */}
           <div
             className={`flex ${
-              isMobile ? "flex-col space-y-2" : "justify-end space-x-2"
+              isMobile
+                ? "flex-col space-y-2"
+                : "justify-end space-x-2"
             } pt-3 sm:pt-4`}
           >
             <Button
@@ -302,13 +368,19 @@ export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!content.trim() || isCreatingPost || isUploading}
+              disabled={
+                !content.trim() ||
+                isCreatingPost ||
+                isUploading
+              }
               className={isMobile ? "w-full" : ""}
             >
               {isCreatingPost || isUploading ? (
                 <>
                   <Upload className="h-4 w-4 mr-2 animate-spin" />
-                  {isUploading ? "Enviando..." : "Publicando..."}
+                  {isUploading
+                    ? "Enviando..."
+                    : "Publicando..."}
                 </>
               ) : (
                 <>

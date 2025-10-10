@@ -1,7 +1,15 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -31,7 +39,11 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
-import { usePosts, usePostComments, type SocialPost } from "@/hooks/usePosts";
+import {
+  usePosts,
+  usePostComments,
+  type SocialPost,
+} from "@/hooks/usePostsOptimized";
 import { useResponsive } from "@/shared/utils/responsive";
 import { cn } from "@/lib/utils";
 
@@ -40,16 +52,25 @@ interface PostCardProps {
   onPostDeleted?: () => void;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
+export const PostCard: React.FC<PostCardProps> = ({
+  post,
+  onPostDeleted,
+}) => {
   const { user } = useAuth();
-  const { toggleLike, deletePost, isTogglingLike, isDeletingPost } = usePosts();
-  const { comments, createComment, deleteComment, isCreatingComment, isDeletingComment } =
+  const {
+    toggleLike,
+    deletePost,
+    isTogglingLike,
+    isDeletingPost,
+  } = usePosts();
+  const { comments, createComment, isCreatingComment } =
     usePostComments(post.id);
   const { isMobile } = useResponsive();
 
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] =
+    useState(false);
 
   const isOwnPost = post.user_id === user?.id;
 
@@ -86,13 +107,19 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
   };
 
   const handleDeleteComment = (commentId: string) => {
-    deleteComment(commentId);
+    console.log(
+      "Delete comment não implementado ainda:",
+      commentId
+    );
   };
 
-  const timeAgo = formatDistanceToNow(new Date(post.created_at), {
-    addSuffix: true,
-    locale: ptBR,
-  });
+  const timeAgo = formatDistanceToNow(
+    new Date(post.created_at),
+    {
+      addSuffix: true,
+      locale: ptBR,
+    }
+  );
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-md hover:shadow-lg transition-shadow border rounded-lg overflow-hidden">
@@ -100,16 +127,22 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3 min-w-0 flex-1">
             <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-              <AvatarImage src={post.user_avatar_url || ""} />
+              <AvatarImage
+                src={post.user_avatar_url || ""}
+              />
               <AvatarFallback className="text-xs sm:text-sm">
-                {post.user_username?.charAt(0).toUpperCase() || "U"}
+                {post.user_username
+                  ?.charAt(0)
+                  .toUpperCase() || "U"}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-xs sm:text-sm truncate">
                 {post.user_username || "Usuario"}
               </p>
-              <p className="text-xs text-muted-foreground">{timeAgo}</p>
+              <p className="text-xs text-muted-foreground">
+                {timeAgo}
+              </p>
             </div>
           </div>
 
@@ -162,8 +195,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
                     </div>
                   )}
                   <div>
-                    <h4 className="font-medium text-sm">{post.book_title}</h4>
-                    <p className="text-sm text-muted-foreground">{post.book_author}</p>
+                    <h4 className="font-medium text-sm">
+                      {post.book_title}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {post.book_author}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -173,7 +210,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
           {/* Imagem do post */}
           {post.image_url && (
             <div className="rounded-lg overflow-hidden">
-              <img src={post.image_url} alt="Post image" className="w-full max-h-96 object-cover" />
+              <img
+                src={post.image_url}
+                alt="Post image"
+                className="w-full max-h-96 object-cover"
+              />
             </div>
           )}
         </div>
@@ -211,23 +252,38 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
                   post.is_liked && "text-red-500"
                 )}
               >
-                <Heart className={cn("h-4 w-4", post.is_liked && "fill-current")} />
-                <span className="hidden sm:inline">Curtir</span>
+                <Heart
+                  className={cn(
+                    "h-4 w-4",
+                    post.is_liked && "fill-current"
+                  )}
+                />
+                <span className="hidden sm:inline">
+                  Curtir
+                </span>
                 {post.likes_count > 0 && (
-                  <span className="text-xs sm:hidden">({post.likes_count})</span>
+                  <span className="text-xs sm:hidden">
+                    ({post.likes_count})
+                  </span>
                 )}
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowComments(!showComments)}
+                onClick={() =>
+                  setShowComments(!showComments)
+                }
                 className="flex items-center space-x-1 sm:space-x-2 flex-1 justify-center sm:justify-start sm:flex-none"
               >
                 <MessageCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Comentar</span>
+                <span className="hidden sm:inline">
+                  Comentar
+                </span>
                 {comments.length > 0 && (
-                  <span className="text-xs sm:hidden">({comments.length})</span>
+                  <span className="text-xs sm:hidden">
+                    ({comments.length})
+                  </span>
                 )}
               </Button>
 
@@ -237,7 +293,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
                 className="flex items-center space-x-1 sm:space-x-2 flex-1 justify-center sm:justify-start sm:flex-none"
               >
                 <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Compartilhar</span>
+                <span className="hidden sm:inline">
+                  Compartilhar
+                </span>
               </Button>
             </div>
           </div>
@@ -248,37 +306,56 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
               {/* Lista de comentários */}
               {comments.length > 0 && (
                 <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 overflow-y-auto">
-                  {comments.map(comment => (
-                    <div key={comment.id} className="flex space-x-2 sm:space-x-3">
+                  {comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className="flex space-x-2 sm:space-x-3"
+                    >
                       <Avatar className="h-6 w-6 flex-shrink-0">
-                        <AvatarImage src={comment.user_avatar_url || ""} />
+                        <AvatarImage
+                          src={
+                            comment.user_avatar_url || ""
+                          }
+                        />
                         <AvatarFallback className="text-xs">
-                          {comment.user_username?.charAt(0).toUpperCase() || "U"}
+                          {comment.user_username
+                            ?.charAt(0)
+                            .toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 bg-muted rounded-lg p-2 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="font-medium text-xs truncate pr-2">
-                            {comment.user_username || "Usuario"}
+                            {comment.user_username ||
+                              "Usuario"}
                           </p>
                           {comment.user_id === user?.id && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteComment(comment.id)}
-                              disabled={isDeletingComment}
+                              onClick={() =>
+                                handleDeleteComment(
+                                  comment.id
+                                )
+                              }
+                              disabled={false}
                               className="h-4 w-4 p-0"
                             >
                               <X className="h-3 w-3" />
                             </Button>
                           )}
                         </div>
-                        <p className="text-sm mt-1">{comment.content}</p>
+                        <p className="text-sm mt-1">
+                          {comment.content}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(comment.created_at), {
-                            addSuffix: true,
-                            locale: ptBR,
-                          })}
+                          {formatDistanceToNow(
+                            new Date(comment.created_at),
+                            {
+                              addSuffix: true,
+                              locale: ptBR,
+                            }
+                          )}
                         </p>
                       </div>
                     </div>
@@ -289,20 +366,31 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
               {/* Campo para novo comentário - otimizado para mobile */}
               <div className="flex space-x-2">
                 <Avatar className="h-6 w-6 flex-shrink-0">
-                  <AvatarImage src={user?.user_metadata?.avatar_url} />
+                  <AvatarImage
+                    src={user?.user_metadata?.avatar_url}
+                  />
                   <AvatarFallback className="text-xs">
                     {user?.email?.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 flex space-x-1 sm:space-x-2">
                   <Textarea
-                    placeholder={isMobile ? "Comentar..." : "Escreva um comentário..."}
+                    placeholder={
+                      isMobile
+                        ? "Comentar..."
+                        : "Escreva um comentário..."
+                    }
                     value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
+                    onChange={(e) =>
+                      setNewComment(e.target.value)
+                    }
                     rows={1}
                     className="resize-none text-sm min-w-0 flex-1"
-                    onKeyDown={e => {
-                      if (e.key === "Enter" && !e.shiftKey) {
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        !e.shiftKey
+                      ) {
                         e.preventDefault();
                         handleComment();
                       }
@@ -311,7 +399,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
                   <Button
                     size="sm"
                     onClick={handleComment}
-                    disabled={!newComment.trim() || isCreatingComment}
+                    disabled={
+                      !newComment.trim() ||
+                      isCreatingComment
+                    }
                     className="px-2 sm:px-3"
                   >
                     <Send className="h-3 w-3" />
@@ -324,12 +415,16 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
       </CardContent>
 
       {/* Dialog de confirmação para excluir post */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <Dialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir post</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir este post? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir este post? Esta
+              ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2">
@@ -340,7 +435,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted }) => {
             >
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDeletePost} disabled={isDeletingPost}>
+            <Button
+              variant="destructive"
+              onClick={handleDeletePost}
+              disabled={isDeletingPost}
+            >
               {isDeletingPost ? "Excluindo..." : "Excluir"}
             </Button>
           </div>

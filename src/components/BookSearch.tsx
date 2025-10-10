@@ -15,7 +15,7 @@ import {
   searchGoogleBooks,
 } from "@/hooks/useBooks";
 import { useToast } from "@/hooks/use-toast";
-import type { GoogleBook } from "@/types/reading";
+import type { GoogleBook } from "@/shared/types";
 
 export const BookSearch = () => {
   const [query, setQuery] = useState("");

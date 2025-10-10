@@ -1,7 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import type { Achievement } from "@/types/reading";
+import type { Achievement } from "@/shared/types";
 
 export const useAchievements = () => {
   const { user } = useAuth();
@@ -17,7 +21,7 @@ export const useAchievements = () => {
       if (error) throw error;
 
       return (
-        data?.map(achievement => ({
+        data?.map((achievement) => ({
           ...achievement,
           requirementType: achievement.requirement_type,
           requirementValue: achievement.requirement_value,
@@ -55,11 +59,12 @@ export const useAchievements = () => {
     queryKey: ["achievements-progress", user?.id],
     queryFn: async () => {
       const achievements = allAchievements.data || [];
-      const userAchievementsList = userAchievements.data || [];
+      const userAchievementsList =
+        userAchievements.data || [];
 
-      return achievements.map(achievement => {
+      return achievements.map((achievement) => {
         const userAchievement = userAchievementsList.find(
-          ua => ua.achievementId === achievement.id
+          (ua) => ua.achievementId === achievement.id
         );
 
         return {
@@ -69,14 +74,20 @@ export const useAchievements = () => {
         };
       });
     },
-    enabled: !!allAchievements.data && !!userAchievements.data,
+    enabled:
+      !!allAchievements.data && !!userAchievements.data,
   });
 
   return {
     achievements: achievementsWithProgress.data || [],
     isLoading:
-      allAchievements.isLoading || userAchievements.isLoading || achievementsWithProgress.isLoading,
-    unlockedCount: achievementsWithProgress.data?.filter(a => a.unlocked).length || 0,
+      allAchievements.isLoading ||
+      userAchievements.isLoading ||
+      achievementsWithProgress.isLoading,
+    unlockedCount:
+      achievementsWithProgress.data?.filter(
+        (a) => a.unlocked
+      ).length || 0,
     totalCount: allAchievements.data?.length || 0,
   };
 };
@@ -91,12 +102,16 @@ export const useCheckAchievements = () => {
       totalPagesRead: number;
       readingStreak: number;
     }) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       // Call the Supabase function to check and grant achievements
-      const { data, error } = await supabase.rpc("check_and_grant_achievements", {
-        p_user_id: user.id,
-      });
+      const { data, error } = await supabase.rpc(
+        "check_and_grant_achievements",
+        {
+          p_user_id: user.id,
+        }
+      );
 
       if (error) throw error;
       return data;

@@ -1,8 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import type { Activity, Follow, LeaderboardEntry } from "@/types/reading";
+import type {
+  Activity,
+  Follow,
+  LeaderboardEntry,
+} from "@/shared/types";
 
 export const useActivity = () => {
   const { user } = useAuth();
@@ -13,35 +21,52 @@ export const useActivity = () => {
       if (!user?.id) return [];
 
       try {
-        const { data: followingData, error: followsError } = await supabase
-          .from("follows")
-          .select("following_id")
-          .eq("follower_id", user.id);
+        const { data: followingData, error: followsError } =
+          await supabase
+            .from("follows")
+            .select("following_id")
+            .eq("follower_id", user.id);
 
         if (followsError) {
-          console.log("No follows found or error:", followsError);
+          console.log(
+            "No follows found or error:",
+            followsError
+          );
         }
 
-        const followingIds = followingData?.map(f => f.following_id) || [];
+        const followingIds =
+          followingData?.map((f) => f.following_id) || [];
         const userIds = [user.id, ...followingIds];
 
         // Get user profiles for the activity feed
-        const { data: profilesData, error: profilesError } = await supabase
-          .from("profiles")
-          .select("user_id, username, full_name, avatar_url")
-          .in("user_id", userIds);
+        const { data: profilesData, error: profilesError } =
+          await supabase
+            .from("profiles")
+            .select(
+              "user_id, username, full_name, avatar_url"
+            )
+            .in("user_id", userIds);
 
         if (profilesError) {
-          console.error("Error fetching profiles:", profilesError);
+          console.error(
+            "Error fetching profiles:",
+            profilesError
+          );
         }
 
-        const profileMap = new Map(profilesData?.map(profile => [profile.user_id, profile]) || []);
+        const profileMap = new Map(
+          profilesData?.map((profile) => [
+            profile.user_id,
+            profile,
+          ]) || []
+        );
 
         // Get recent reading progress from current user only (for now)
-        const { data: progressData, error: booksError } = await supabase
-          .from("books")
-          .select(
-            `
+        const { data: progressData, error: booksError } =
+          await supabase
+            .from("books")
+            .select(
+              `
             id,
             user_id,
             title,
@@ -52,17 +77,23 @@ export const useActivity = () => {
             updated_at,
             status
           `
-          )
-          .eq("user_id", user.id) // Start with just current user
-          .order("updated_at", { ascending: false })
-          .limit(10);
+            )
+            .eq("user_id", user.id) // Start with just current user
+            .order("updated_at", { ascending: false })
+            .limit(10);
 
         if (booksError) {
-          console.error("Error fetching books:", booksError);
+          console.error(
+            "Error fetching books:",
+            booksError
+          );
         }
 
         // Get recent achievements from current user only (for now)
-        const { data: achievementData, error: achievementsError } = await supabase
+        const {
+          data: achievementData,
+          error: achievementsError,
+        } = await supabase
           .from("user_achievements")
           .select(
             `
@@ -77,23 +108,31 @@ export const useActivity = () => {
           .limit(10);
 
         if (achievementsError) {
-          console.error("Error fetching achievements:", achievementsError);
+          console.error(
+            "Error fetching achievements:",
+            achievementsError
+          );
         }
 
         // Filter out any achievements that shouldn't be there
         const validAchievements =
           achievementData?.filter(
-            achievement =>
-              achievement.achievements && achievement.unlocked_at && achievement.user_id === user.id
+            (achievement) =>
+              achievement.achievements &&
+              achievement.unlocked_at &&
+              achievement.user_id === user.id
           ) || [];
 
         const activities: Activity[] = [];
 
         // Add reading progress activities
-        progressData?.forEach(book => {
+        progressData?.forEach((book) => {
           const profile = profileMap.get(book.user_id);
 
-          if (book.pages_read === book.total_pages && book.status === "completed") {
+          if (
+            book.pages_read === book.total_pages &&
+            book.status === "completed"
+          ) {
             activities.push({
               id: `book-completed-${book.id}`,
               userId: book.user_id,
@@ -114,7 +153,10 @@ export const useActivity = () => {
                 : undefined,
               createdAt: book.updated_at,
             });
-          } else if (book.status === "reading" && book.pages_read > 0) {
+          } else if (
+            book.status === "reading" &&
+            book.pages_read > 0
+          ) {
             activities.push({
               id: `book-progress-${book.id}`,
               userId: book.user_id,
@@ -140,8 +182,10 @@ export const useActivity = () => {
         });
 
         // Add achievement activities (only valid ones)
-        validAchievements.forEach(achievement => {
-          const profile = profileMap.get(achievement.user_id);
+        validAchievements.forEach((achievement) => {
+          const profile = profileMap.get(
+            achievement.user_id
+          );
 
           activities.push({
             id: `achievement-${achievement.id}`,
@@ -149,9 +193,12 @@ export const useActivity = () => {
             type: "achievement_unlocked",
             description: `desbloqueou a conquista "${achievement.achievements.title}"`,
             metadata: {
-              achievement_title: achievement.achievements.title,
-              achievement_description: achievement.achievements.description,
-              achievement_icon: achievement.achievements.icon,
+              achievement_title:
+                achievement.achievements.title,
+              achievement_description:
+                achievement.achievements.description,
+              achievement_icon:
+                achievement.achievements.icon,
             },
             user: profile
               ? {
@@ -167,12 +214,17 @@ export const useActivity = () => {
 
         // Sort by creation date
         activities.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          (a, b) =>
+            new Date(b.createdAt).getTime() -
+            new Date(a.createdAt).getTime()
         );
 
         return activities;
       } catch (error) {
-        console.error("Activity Feed - General error:", error);
+        console.error(
+          "Activity Feed - General error:",
+          error
+        );
         return [];
       }
     },
@@ -251,18 +303,20 @@ export const useFollowUser = () => {
 
   return useMutation({
     mutationFn: async (targetUserId: string) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       if (user.id === targetUserId) {
         throw new Error("Você não pode seguir a si mesmo");
       }
 
       // Check if target user exists in profiles
-      const { data: targetProfile, error: profileError } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("user_id", targetUserId)
-        .single();
+      const { data: targetProfile, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("user_id", targetUserId)
+          .single();
 
       if (profileError || !targetProfile) {
         throw new Error("Usuário não encontrado");
@@ -324,7 +378,8 @@ export const useUnfollowUser = () => {
 
   return useMutation({
     mutationFn: async (targetUserId: string) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       const { error } = await supabase
         .from("follows")
@@ -365,18 +420,19 @@ export const useLeaderboard = () => {
     queryKey: ["leaderboard"],
     queryFn: async () => {
       // Get user profiles with their basic info including current_streak
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select(
-          `
+      const { data: profiles, error: profilesError } =
+        await supabase
+          .from("profiles")
+          .select(
+            `
           user_id,
           username,
           full_name,
           avatar_url,
           current_streak
         `
-        )
-        .limit(50);
+          )
+          .limit(50);
 
       if (profilesError) throw profilesError;
 
@@ -386,7 +442,7 @@ export const useLeaderboard = () => {
 
       // Calculate stats for each user
       const leaderboardEntries = await Promise.all(
-        profiles.map(async profile => {
+        profiles.map(async (profile) => {
           // Get completed books count
           const { count: booksCompleted } = await supabase
             .from("books")
@@ -401,7 +457,10 @@ export const useLeaderboard = () => {
             .eq("user_id", profile.user_id);
 
           const totalPagesRead =
-            booksData?.reduce((sum, book) => sum + (book.pages_read || 0), 0) || 0;
+            booksData?.reduce(
+              (sum, book) => sum + (book.pages_read || 0),
+              0
+            ) || 0;
 
           // Points are now just total pages read (1 point per page)
           const points = totalPagesRead;
@@ -409,15 +468,18 @@ export const useLeaderboard = () => {
           // Determine level based on pages read
           let level = "Iniciante";
           if (points >= 10000) level = "Mestre dos Livros";
-          else if (points >= 7500) level = "Bibliófilo Experiente";
+          else if (points >= 7500)
+            level = "Bibliófilo Experiente";
           else if (points >= 5000) level = "Bibliófilo";
-          else if (points >= 2500) level = "Leitor Dedicado";
+          else if (points >= 2500)
+            level = "Leitor Dedicado";
           else if (points >= 1000) level = "Leitor Ativo";
 
           return {
             userId: profile.user_id,
             username: profile.username || "Usuário",
-            fullName: profile.full_name || "Nome não informado",
+            fullName:
+              profile.full_name || "Nome não informado",
             avatarUrl: profile.avatar_url,
             points,
             level,
@@ -458,7 +520,9 @@ export const useSearchUsers = () => {
           current_streak
         `
         )
-        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+        .or(
+          `username.ilike.%${query}%,full_name.ilike.%${query}%`
+        )
         .limit(10);
 
       if (error) throw error;
@@ -469,7 +533,7 @@ export const useSearchUsers = () => {
 
       // Calculate basic stats for each found user
       const usersWithStats = await Promise.all(
-        profiles.map(async profile => {
+        profiles.map(async (profile) => {
           // Get completed books count
           const { count: booksCompleted } = await supabase
             .from("books")
@@ -484,7 +548,10 @@ export const useSearchUsers = () => {
             .eq("user_id", profile.user_id);
 
           const totalPagesRead =
-            booksData?.reduce((sum, book) => sum + (book.pages_read || 0), 0) || 0;
+            booksData?.reduce(
+              (sum, book) => sum + (book.pages_read || 0),
+              0
+            ) || 0;
 
           // Points are now just total pages read (1 point per page)
           const points = totalPagesRead;
@@ -492,15 +559,18 @@ export const useSearchUsers = () => {
           // Determine level based on pages read
           let level = "Iniciante";
           if (points >= 10000) level = "Mestre dos Livros";
-          else if (points >= 7500) level = "Bibliófilo Experiente";
+          else if (points >= 7500)
+            level = "Bibliófilo Experiente";
           else if (points >= 5000) level = "Bibliófilo";
-          else if (points >= 2500) level = "Leitor Dedicado";
+          else if (points >= 2500)
+            level = "Leitor Dedicado";
           else if (points >= 1000) level = "Leitor Ativo";
 
           return {
             userId: profile.user_id,
             username: profile.username || "Usuário",
-            fullName: profile.full_name || "Nome não informado",
+            fullName:
+              profile.full_name || "Nome não informado",
             avatarUrl: profile.avatar_url,
             points,
             level,

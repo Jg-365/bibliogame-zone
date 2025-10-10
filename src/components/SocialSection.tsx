@@ -1,13 +1,30 @@
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CreatePost } from "@/components/CreatePost";
 import { PostCard } from "@/components/PostCard";
-import { usePosts } from "@/hooks/usePosts";
+import { usePosts } from "@/hooks/usePostsOptimized";
+import {
+  PostListSkeleton,
+  ErrorState,
+  EmptyState,
+} from "@/components/ui/LoadingStates";
 import { Plus, MessageCircle } from "lucide-react";
 
 export const SocialSection: React.FC = () => {
-  const { posts, isLoading, refetch } = usePosts();
+  const {
+    posts: rawPosts,
+    isLoading,
+    error,
+    refetch,
+  } = usePosts();
+  const posts = Array.isArray(rawPosts) ? rawPosts : [];
 
   const handlePostCreated = () => {
     refetch();
@@ -27,28 +44,13 @@ export const SocialSection: React.FC = () => {
       {/* Posts Feed */}
       <div className="space-y-4 sm:space-y-6">
         {isLoading ? (
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i} className="animate-pulse shadow-sm">
-                <CardHeader className="pb-3 sm:pb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-gray-300 rounded w-24"></div>
-                      <div className="h-3 bg-gray-300 rounded w-16"></div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-3">
-                    <div className="h-4 bg-gray-300 rounded w-full"></div>
-                    <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                    <div className="h-32 bg-gray-300 rounded"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <PostListSkeleton count={3} />
+        ) : error ? (
+          <ErrorState
+            error={error}
+            onRetry={refetch}
+            message="Erro ao carregar o feed social"
+          />
         ) : posts.length === 0 ? (
           <Card className="text-center py-12 mx-auto max-w-md shadow-sm">
             <CardContent className="px-6">
@@ -57,9 +59,12 @@ export const SocialSection: React.FC = () => {
                   <MessageCircle className="h-8 w-8 text-primary" />
                 </div>
               </div>
-              <CardTitle className="mb-2 text-xl">Nenhum post ainda</CardTitle>
+              <CardTitle className="mb-2 text-xl">
+                Nenhum post ainda
+              </CardTitle>
               <CardDescription className="mb-6 leading-relaxed">
-                Seja o primeiro a compartilhar sua experiência de leitura!
+                Seja o primeiro a compartilhar sua
+                experiência de leitura!
               </CardDescription>
               <CreatePost
                 trigger={
@@ -74,8 +79,12 @@ export const SocialSection: React.FC = () => {
           </Card>
         ) : (
           <div className="space-y-4 sm:space-y-6">
-            {posts.map(post => (
-              <PostCard key={post.id} post={post} onPostDeleted={handlePostDeleted} />
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onPostDeleted={handlePostDeleted}
+              />
             ))}
           </div>
         )}

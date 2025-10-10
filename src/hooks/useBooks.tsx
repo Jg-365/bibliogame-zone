@@ -1,15 +1,27 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 import { useCheckAchievements } from "./useAchievements";
-import type { Book, GoogleBook, ReadingSession } from "@/types/reading";
+import type {
+  Book,
+  GoogleBook,
+  ReadingSession,
+} from "@/shared/types";
 
 // Google Books API integration
-export const searchGoogleBooks = async (query: string): Promise<GoogleBook[]> => {
+export const searchGoogleBooks = async (
+  query: string
+): Promise<GoogleBook[]> => {
   try {
     const response = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`
+      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
+        query
+      )}&maxResults=10`
     );
     const data = await response.json();
     return data.items || [];
@@ -59,7 +71,8 @@ export const useBooks = () => {
       published_date?: string;
       genres?: string[];
     }) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       const { data, error } = await supabase
         .from("books")
@@ -92,7 +105,8 @@ export const useBooks = () => {
       });
       toast({
         title: "Livro adicionado!",
-        description: "O livro foi adicionado à sua biblioteca.",
+        description:
+          "O livro foi adicionado à sua biblioteca.",
       });
     },
     onError: (error: any) => {
@@ -105,8 +119,15 @@ export const useBooks = () => {
   });
 
   const updateBook = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
-      if (!user?.id) throw new Error("User not authenticated");
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: any;
+    }) => {
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       const { data, error } = await (supabase as any)
         .from("books")
@@ -119,7 +140,7 @@ export const useBooks = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: async updatedBook => {
+    onSuccess: async (updatedBook) => {
       queryClient.invalidateQueries({
         queryKey: ["books", user?.id],
       });
@@ -137,7 +158,10 @@ export const useBooks = () => {
             readingStreak: 0,
           });
         } catch (error) {
-          console.error("Error checking achievements:", error);
+          console.error(
+            "Error checking achievements:",
+            error
+          );
         }
       }
 
@@ -157,9 +181,14 @@ export const useBooks = () => {
 
   const deleteBook = useMutation({
     mutationFn: async (id: string) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
-      const { error } = await supabase.from("books").delete().eq("id", id).eq("user_id", user.id);
+      const { error } = await supabase
+        .from("books")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
       return { success: true };
@@ -173,7 +202,8 @@ export const useBooks = () => {
       });
       toast({
         title: "Livro removido!",
-        description: "O livro foi removido da sua biblioteca.",
+        description:
+          "O livro foi removido da sua biblioteca.",
       });
     },
     onError: (error: any) => {
@@ -192,15 +222,17 @@ export const useBooks = () => {
       notes?: string;
       session_date?: string;
     }) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       // First, get the current book data
-      const { data: book, error: bookError } = await supabase
-        .from("books")
-        .select("pages_read, total_pages")
-        .eq("id", sessionData.book_id)
-        .eq("user_id", user.id)
-        .single();
+      const { data: book, error: bookError } =
+        await supabase
+          .from("books")
+          .select("pages_read, total_pages")
+          .eq("id", sessionData.book_id)
+          .eq("user_id", user.id)
+          .single();
 
       if (bookError) throw bookError;
 
@@ -212,7 +244,9 @@ export const useBooks = () => {
           book_id: sessionData.book_id,
           pages_read: sessionData.pages_read,
           notes: sessionData.notes,
-          session_date: sessionData.session_date || new Date().toISOString(),
+          session_date:
+            sessionData.session_date ||
+            new Date().toISOString(),
         })
         .select()
         .single();
@@ -220,7 +254,8 @@ export const useBooks = () => {
       if (error) throw error;
 
       // Update the book's total pages read
-      const newPagesRead = (book.pages_read || 0) + sessionData.pages_read;
+      const newPagesRead =
+        (book.pages_read || 0) + sessionData.pages_read;
       const status =
         newPagesRead >= book.total_pages
           ? "completed"
