@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Users, Trophy, User, Menu, X, MessageCircle, Search, Library } from "lucide-react";
+import {
+  Home,
+  Users,
+  Trophy,
+  User,
+  Menu,
+  X,
+  MessageCircle,
+  Search,
+  Library,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useResponsive } from "@/shared/utils/responsive";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export type NavigationPage =
   | "dashboard"
@@ -80,16 +93,26 @@ const ResponsiveNavigation = ({
   onNavigate,
   className,
 }: ResponsiveNavigationProps) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] =
+    useState(false);
   const { isMobile, isTablet, isDesktop } = useResponsive();
-  const [previousLayout, setPreviousLayout] = useState<"mobile" | "tablet" | "desktop">("desktop");
+  const [previousLayout, setPreviousLayout] = useState<
+    "mobile" | "tablet" | "desktop"
+  >("desktop");
 
   // Track layout changes for smooth transitions
   useEffect(() => {
-    const currentLayout = isMobile ? "mobile" : isTablet ? "tablet" : "desktop";
+    const currentLayout = isMobile
+      ? "mobile"
+      : isTablet
+      ? "tablet"
+      : "desktop";
     if (currentLayout !== previousLayout) {
       // Close mobile menu when transitioning away from mobile
-      if (previousLayout === "mobile" && currentLayout !== "mobile") {
+      if (
+        previousLayout === "mobile" &&
+        currentLayout !== "mobile"
+      ) {
         setIsMobileMenuOpen(false);
       }
       setPreviousLayout(currentLayout);
@@ -103,6 +126,20 @@ const ResponsiveNavigation = ({
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate("/");
+    } catch (error) {
+      // swallow - auth provider handles errors; optionally show toast elsewhere
+      console.error("Error signing out:", error);
+      navigate("/");
+    }
   };
 
   // Desktop Navigation (lg and above)
@@ -127,9 +164,13 @@ const ResponsiveNavigation = ({
               transition={{ duration: 0.5 }}
             >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">RQ</span>
+                <span className="text-primary-foreground font-bold text-sm">
+                  RQ
+                </span>
               </div>
-              <span className="font-bold text-xl">ReadQuest</span>
+              <span className="font-bold text-xl">
+                ReadQuest
+              </span>
             </motion.div>
 
             {/* Navigation Items */}
@@ -158,7 +199,9 @@ const ResponsiveNavigation = ({
                     whileTap={{ scale: 0.95 }}
                   >
                     <Icon className="w-4 h-4" />
-                    <span className="font-medium">{item.label}</span>
+                    <span className="font-medium">
+                      {item.label}
+                    </span>
 
                     {isActive && (
                       <motion.div
@@ -174,6 +217,16 @@ const ResponsiveNavigation = ({
                   </motion.button>
                 );
               })}
+            </div>
+            {/* Logout button on desktop */}
+            <div className="ml-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSignOut}
+              >
+                Sair
+              </Button>
             </div>
           </div>
         </div>
@@ -198,9 +251,13 @@ const ResponsiveNavigation = ({
               animate={{ opacity: 1, x: 0 }}
             >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">RQ</span>
+                <span className="text-primary-foreground font-bold text-sm">
+                  RQ
+                </span>
               </div>
-              <span className="font-bold text-xl">ReadQuest</span>
+              <span className="font-bold text-xl">
+                ReadQuest
+              </span>
             </motion.div>
 
             <motion.button
@@ -208,7 +265,11 @@ const ResponsiveNavigation = ({
               className="p-2 hover:bg-accent rounded-lg transition-colors"
               whileTap={{ scale: 0.95 }}
             >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isMobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </motion.button>
           </div>
         </motion.header>
@@ -230,44 +291,62 @@ const ResponsiveNavigation = ({
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {mobileNavigationItems.map((item, index) => {
-                  const Icon = item.icon;
-                  const isActive = currentPage === item.id;
+                {mobileNavigationItems.map(
+                  (item, index) => {
+                    const Icon = item.icon;
+                    const isActive =
+                      currentPage === item.id;
 
-                  return (
-                    <motion.button
-                      key={item.id}
-                      onClick={() => handleNavigate(item.id)}
-                      className={cn(
-                        "flex flex-col items-center space-y-3 p-6 rounded-xl transition-all duration-200",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-accent hover:text-accent-foreground hover:scale-105 bg-card"
-                      )}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        duration: 0.3,
-                        delay: index * 0.1,
-                      }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Icon className="w-8 h-8" />
-                      <div className="text-center">
-                        <div className="font-semibold text-lg">{item.label}</div>
-                        <div
-                          className={cn(
-                            "text-sm mt-1",
-                            isActive ? "text-primary-foreground/80" : "text-muted-foreground"
-                          )}
-                        >
-                          {item.description}
+                    return (
+                      <motion.button
+                        key={item.id}
+                        onClick={() =>
+                          handleNavigate(item.id)
+                        }
+                        className={cn(
+                          "flex flex-col items-center space-y-3 p-6 rounded-xl transition-all duration-200",
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-accent hover:text-accent-foreground hover:scale-105 bg-card"
+                        )}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          duration: 0.3,
+                          delay: index * 0.1,
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Icon className="w-8 h-8" />
+                        <div className="text-center">
+                          <div className="font-semibold text-lg">
+                            {item.label}
+                          </div>
+                          <div
+                            className={cn(
+                              "text-sm mt-1",
+                              isActive
+                                ? "text-primary-foreground/80"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {item.description}
+                          </div>
                         </div>
-                      </div>
-                    </motion.button>
-                  );
-                })}
+                      </motion.button>
+                    );
+                  }
+                )}
               </motion.div>
+              {/* Logout action */}
+              <div className="max-w-2xl mx-auto px-6 mt-4 flex justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={handleSignOut}
+                >
+                  Sair
+                </Button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -291,9 +370,13 @@ const ResponsiveNavigation = ({
             animate={{ opacity: 1, x: 0 }}
           >
             <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xs">RQ</span>
+              <span className="text-primary-foreground font-bold text-xs">
+                RQ
+              </span>
             </div>
-            <span className="font-bold text-lg">ReadQuest</span>
+            <span className="font-bold text-lg">
+              ReadQuest
+            </span>
           </motion.div>
 
           <motion.button
@@ -301,7 +384,11 @@ const ResponsiveNavigation = ({
             className="p-2 hover:bg-accent rounded-lg transition-colors"
             whileTap={{ scale: 0.95 }}
           >
-            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
           </motion.button>
         </div>
       </motion.header>
@@ -347,11 +434,15 @@ const ResponsiveNavigation = ({
                   >
                     <Icon className="w-5 h-5" />
                     <div>
-                      <div className="font-medium">{item.label}</div>
+                      <div className="font-medium">
+                        {item.label}
+                      </div>
                       <div
                         className={cn(
                           "text-sm",
-                          isActive ? "text-primary-foreground/80" : "text-muted-foreground"
+                          isActive
+                            ? "text-primary-foreground/80"
+                            : "text-muted-foreground"
                         )}
                       >
                         {item.description}
@@ -396,7 +487,9 @@ const ResponsiveNavigation = ({
                 whileTap={{ scale: 0.9 }}
               >
                 <motion.div
-                  animate={isActive ? { scale: 1.1 } : { scale: 1 }}
+                  animate={
+                    isActive ? { scale: 1.1 } : { scale: 1 }
+                  }
                   transition={{
                     type: "spring",
                     stiffness: 300,
@@ -405,7 +498,9 @@ const ResponsiveNavigation = ({
                 >
                   <Icon className="w-5 h-5" />
                 </motion.div>
-                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-xs font-medium">
+                  {item.label}
+                </span>
               </motion.button>
             );
           })}

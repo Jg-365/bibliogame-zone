@@ -129,8 +129,8 @@ export const usePosts = (limit = 20, offset = 0) => {
           userIds.length > 0
             ? supabase
                 .from("profiles")
-                .select("id, username, avatar_url")
-                .in("id", userIds)
+                .select("user_id, username, avatar_url")
+                .in("user_id", userIds)
             : Promise.resolve({ data: [] }),
 
           // Books
@@ -178,7 +178,10 @@ export const usePosts = (limit = 20, offset = 0) => {
 
         // Criar mapas para lookup eficiente
         const profileMap = profiles.reduce(
-          (acc: any, p: any) => ({ ...acc, [p.id]: p }),
+          (acc: any, p: any) => ({
+            ...acc,
+            [p.user_id]: p,
+          }),
           {}
         );
         const bookMap = books.reduce(
@@ -591,3 +594,5 @@ export const useImageUpload = () => {
     isUploading,
   };
 };
+
+export default usePosts;

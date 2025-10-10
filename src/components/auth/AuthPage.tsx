@@ -61,7 +61,8 @@ export const AuthPage = () => {
 
   const handleSignIn = async (
     email: string,
-    password: string
+    password: string,
+    remember = true
   ) => {
     setIsLoading(true);
     try {
@@ -83,6 +84,16 @@ export const AuthPage = () => {
           );
         }
         throw authError;
+      }
+
+      // Persist remember preference
+      try {
+        localStorage.setItem(
+          "rq_remember",
+          remember ? "true" : "false"
+        );
+      } catch (e) {
+        // ignore storage errors
       }
 
       // Check if user has a profile (account not deleted)
@@ -220,10 +231,11 @@ export const AuthPage = () => {
   const SignInForm = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [remember, setRemember] = useState(true);
 
     const onSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      handleSignIn(email, password);
+      handleSignIn(email, password, remember);
     };
 
     return (
@@ -249,6 +261,18 @@ export const AuthPage = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+        </div>
+        <div className="flex items-center space-x-2">
+          <input
+            id="remember"
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <label htmlFor="remember" className="text-sm">
+            Lembrar de mim
+          </label>
         </div>
         <Button
           type="submit"
