@@ -450,17 +450,37 @@ export const useLeaderboard = () => {
             .eq("user_id", profile.user_id)
             .eq("status", "completed");
 
-          // Get total pages read from all books
-          const { data: booksData } = await supabase
-            .from("books")
-            .select("pages_read")
-            .eq("user_id", profile.user_id);
+          // Get total pages read from reading sessions (authoritative and matches Profile view)
+          let totalPagesRead = 0;
+          try {
+            const {
+              data: sessionsData,
+              error: sessionsError,
+            } = await supabase
+              .from("reading_sessions")
+              .select("pages_read")
+              .eq("user_id", profile.user_id);
 
-          const totalPagesRead =
-            booksData?.reduce(
-              (sum, book) => sum + (book.pages_read || 0),
-              0
-            ) || 0;
+            if (sessionsError) throw sessionsError;
+
+            totalPagesRead =
+              sessionsData?.reduce(
+                (sum, s) => sum + (s.pages_read || 0),
+                0
+              ) || 0;
+          } catch (e) {
+            // Fallback to summing book.pages_read if sessions query fails for any reason
+            const { data: booksData } = await supabase
+              .from("books")
+              .select("pages_read")
+              .eq("user_id", profile.user_id);
+
+            totalPagesRead =
+              booksData?.reduce(
+                (sum, book) => sum + (book.pages_read || 0),
+                0
+              ) || 0;
+          }
 
           // Points are now just total pages read (1 point per page)
           const points = totalPagesRead;

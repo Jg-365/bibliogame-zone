@@ -30,6 +30,9 @@ export const ProfileManager = () => {
   } = useProfile();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [avatarFit, setAvatarFit] = useState<
+    "cover" | "contain"
+  >("cover");
   const [formData, setFormData] = useState({
     username: "",
     full_name: "",
@@ -46,6 +49,14 @@ export const ProfileManager = () => {
         bio: profile.bio || "",
         avatar_url: profile.avatar_url || "",
       });
+    }
+    // load avatar fit preference from localStorage
+    try {
+      const stored = localStorage.getItem("rq_avatar_fit");
+      if (stored === "contain" || stored === "cover")
+        setAvatarFit(stored);
+    } catch (e) {
+      // ignore
     }
   }, [profile]);
 
@@ -158,6 +169,11 @@ export const ProfileManager = () => {
                   ? formData.avatar_url
                   : profile.avatar_url
               }
+              className={
+                avatarFit === "contain"
+                  ? "object-contain"
+                  : "object-cover"
+              }
             />
             <AvatarFallback className="text-lg">
               {(formData.full_name || user?.email)
@@ -185,6 +201,41 @@ export const ProfileManager = () => {
                 onChange={handleImageUpload}
                 className="hidden"
               />
+              {/* Avatar fit selector */}
+              <div className="mt-2">
+                <Label
+                  htmlFor="avatar-fit"
+                  className="text-xs"
+                >
+                  Modo de Ajuste
+                </Label>
+                <select
+                  id="avatar-fit"
+                  value={avatarFit}
+                  onChange={(e) => {
+                    const v = e.target.value as
+                      | "cover"
+                      | "contain";
+                    setAvatarFit(v);
+                    try {
+                      localStorage.setItem(
+                        "rq_avatar_fit",
+                        v
+                      );
+                    } catch (err) {
+                      // ignore
+                    }
+                  }}
+                  className="mt-1 block rounded-md border px-2 py-1 text-sm"
+                >
+                  <option value="cover">
+                    Cortar (padrão)
+                  </option>
+                  <option value="contain">
+                    Ajustar (manter proporção)
+                  </option>
+                </select>
+              </div>
             </div>
           )}
         </div>
