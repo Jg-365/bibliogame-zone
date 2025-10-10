@@ -1,4 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
@@ -55,7 +59,10 @@ export const useReadingSessions = () => {
         .order("session_date", { ascending: false });
 
       if (error) {
-        console.error("Error fetching reading sessions:", error);
+        console.error(
+          "Error fetching reading sessions:",
+          error
+        );
         return [];
       }
 
@@ -96,7 +103,10 @@ export const useReadingSessions = () => {
         .order("session_date", { ascending: false });
 
       if (error) {
-        console.error("Error fetching today's sessions:", error);
+        console.error(
+          "Error fetching today's sessions:",
+          error
+        );
         return [];
       }
 
@@ -113,47 +123,57 @@ export const useReadingSessions = () => {
       notes?: string;
       session_date?: string;
     }) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       // Prevent negative or zero pages
       if (sessionData.pages_read <= 0) {
-        throw new Error("Número de páginas deve ser maior que zero");
+        throw new Error(
+          "Número de páginas deve ser maior que zero"
+        );
       }
 
       // First, get the current book data
-      const { data: book, error: bookError } = await supabase
-        .from("books")
-        .select("pages_read, total_pages, status")
-        .eq("id", sessionData.book_id)
-        .eq("user_id", user.id)
-        .single();
+      const { data: book, error: bookError } =
+        await supabase
+          .from("books")
+          .select("pages_read, total_pages, status")
+          .eq("id", sessionData.book_id)
+          .eq("user_id", user.id)
+          .single();
 
       if (bookError) throw bookError;
 
       // Calculate new total pages read
-      const newPagesRead = (book.pages_read || 0) + sessionData.pages_read;
+      const newPagesRead =
+        (book.pages_read || 0) + sessionData.pages_read;
 
       // Prevent reading more pages than the book has
       if (newPagesRead > book.total_pages) {
         throw new Error(
-          `Não é possível ler ${sessionData.pages_read} páginas. Restam apenas ${
+          `Não é possível ler ${
+            sessionData.pages_read
+          } páginas. Restam apenas ${
             book.total_pages - (book.pages_read || 0)
           } páginas para terminar o livro.`
         );
       }
 
       // Add the reading session first
-      const { data: session, error: sessionError } = await supabase
-        .from("reading_sessions")
-        .insert({
-          user_id: user.id,
-          book_id: sessionData.book_id,
-          pages_read: sessionData.pages_read,
-          notes: sessionData.notes,
-          session_date: sessionData.session_date || new Date().toISOString(),
-        })
-        .select()
-        .single();
+      const { data: session, error: sessionError } =
+        await supabase
+          .from("reading_sessions")
+          .insert({
+            user_id: user.id,
+            book_id: sessionData.book_id,
+            pages_read: sessionData.pages_read,
+            notes: sessionData.notes,
+            session_date:
+              sessionData.session_date ||
+              new Date().toISOString(),
+          })
+          .select()
+          .single();
 
       if (sessionError) throw sessionError;
 
@@ -205,14 +225,18 @@ export const useReadingSessions = () => {
           await checkAchievements.mutateAsync({
             booksCompleted: profile.books_completed || 0,
             totalPagesRead: profile.total_pages_read || 0,
-            readingStreak: (profile as any).current_streak || 0,
+            readingStreak:
+              (profile as any).current_streak || 0,
           });
 
           // Update streak after reading session
           checkStreakUpdate(true);
         }
       } catch (error) {
-        console.error("Error checking achievements:", error);
+        console.error(
+          "Error checking achievements:",
+          error
+        );
       }
 
       toast({
@@ -238,19 +262,24 @@ export const useReadingSessions = () => {
       sessionId: string;
       pagesToRemove: number;
     }) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       // Get the session data
-      const { data: session, error: sessionError } = await supabase
-        .from("reading_sessions")
-        .select("pages_read, book_id")
-        .eq("id", sessionId)
-        .eq("user_id", user.id)
-        .single();
+      const { data: session, error: sessionError } =
+        await supabase
+          .from("reading_sessions")
+          .select("pages_read, book_id")
+          .eq("id", sessionId)
+          .eq("user_id", user.id)
+          .single();
 
       if (sessionError) throw sessionError;
 
-      const newPagesRead = Math.max(0, session.pages_read - pagesToRemove);
+      const newPagesRead = Math.max(
+        0,
+        session.pages_read - pagesToRemove
+      );
 
       // If newPagesRead is 0, delete the session instead of updating
       if (newPagesRead === 0) {
@@ -273,16 +302,20 @@ export const useReadingSessions = () => {
       }
 
       // Update the book's total pages read
-      const { data: book, error: bookError } = await supabase
-        .from("books")
-        .select("pages_read, total_pages")
-        .eq("id", session.book_id)
-        .eq("user_id", user.id)
-        .single();
+      const { data: book, error: bookError } =
+        await supabase
+          .from("books")
+          .select("pages_read, total_pages")
+          .eq("id", session.book_id)
+          .eq("user_id", user.id)
+          .single();
 
       if (bookError) throw bookError;
 
-      const updatedBookPages = Math.max(0, (book.pages_read || 0) - pagesToRemove);
+      const updatedBookPages = Math.max(
+        0,
+        (book.pages_read || 0) - pagesToRemove
+      );
       const status =
         updatedBookPages >= book.total_pages
           ? "completed"
@@ -317,23 +350,35 @@ export const useReadingSessions = () => {
       });
 
       // Snapshot the previous values
-      const previousSessions = queryClient.getQueryData(["reading-sessions", user?.id]);
-      const previousTodaySessions = queryClient.getQueryData(["today-sessions", user?.id]);
+      const previousSessions = queryClient.getQueryData([
+        "reading-sessions",
+        user?.id,
+      ]);
+      const previousTodaySessions =
+        queryClient.getQueryData([
+          "today-sessions",
+          user?.id,
+        ]);
 
       // Optimistically update to remove or update the session
       queryClient.setQueryData(
         ["reading-sessions", user?.id],
         (old: ReadingSession[] | undefined) => {
           if (!old) return old;
-          const sessionIndex = old.findIndex(s => s.id === sessionId);
+          const sessionIndex = old.findIndex(
+            (s) => s.id === sessionId
+          );
           if (sessionIndex === -1) return old;
 
           const session = old[sessionIndex];
-          const newPagesRead = Math.max(0, session.pages_read - pagesToRemove);
+          const newPagesRead = Math.max(
+            0,
+            session.pages_read - pagesToRemove
+          );
 
           if (newPagesRead === 0) {
             // Remove the session completely
-            return old.filter(s => s.id !== sessionId);
+            return old.filter((s) => s.id !== sessionId);
           } else {
             // Update the session
             const newSessions = [...old];
@@ -350,15 +395,20 @@ export const useReadingSessions = () => {
         ["today-sessions", user?.id],
         (old: ReadingSession[] | undefined) => {
           if (!old) return old;
-          const sessionIndex = old.findIndex(s => s.id === sessionId);
+          const sessionIndex = old.findIndex(
+            (s) => s.id === sessionId
+          );
           if (sessionIndex === -1) return old;
 
           const session = old[sessionIndex];
-          const newPagesRead = Math.max(0, session.pages_read - pagesToRemove);
+          const newPagesRead = Math.max(
+            0,
+            session.pages_read - pagesToRemove
+          );
 
           if (newPagesRead === 0) {
             // Remove the session completely
-            return old.filter(s => s.id !== sessionId);
+            return old.filter((s) => s.id !== sessionId);
           } else {
             // Update the session
             const newSessions = [...old];
@@ -376,10 +426,16 @@ export const useReadingSessions = () => {
     onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousSessions) {
-        queryClient.setQueryData(["reading-sessions", user?.id], context.previousSessions);
+        queryClient.setQueryData(
+          ["reading-sessions", user?.id],
+          context.previousSessions
+        );
       }
       if (context?.previousTodaySessions) {
-        queryClient.setQueryData(["today-sessions", user?.id], context.previousTodaySessions);
+        queryClient.setQueryData(
+          ["today-sessions", user?.id],
+          context.previousTodaySessions
+        );
       }
       toast({
         title: "Erro ao remover páginas",
@@ -387,7 +443,7 @@ export const useReadingSessions = () => {
         variant: "destructive",
       });
     },
-    onSuccess: result => {
+    onSuccess: (result) => {
       // Force refetch to ensure consistency
       queryClient.invalidateQueries({
         queryKey: ["reading-sessions", user?.id],
@@ -403,7 +459,9 @@ export const useReadingSessions = () => {
       });
 
       toast({
-        title: result.wasDeleted ? "Sessão removida!" : "Páginas removidas!",
+        title: result.wasDeleted
+          ? "Sessão removida!"
+          : "Páginas removidas!",
         description: result.wasDeleted
           ? "A sessão foi completamente removida."
           : "O progresso foi ajustado com sucesso.",
@@ -414,38 +472,47 @@ export const useReadingSessions = () => {
   // Delete a reading session completely
   const deleteSession = useMutation({
     mutationFn: async (sessionId: string) => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       // Get the session data before deleting
-      const { data: session, error: sessionError } = await supabase
-        .from("reading_sessions")
-        .select("pages_read, book_id")
-        .eq("id", sessionId)
-        .eq("user_id", user.id)
-        .single();
+      const { data: session, error: sessionError } =
+        await supabase
+          .from("reading_sessions")
+          .select("pages_read, book_id")
+          .eq("id", sessionId)
+          .eq("user_id", user.id)
+          .single();
 
       if (sessionError) throw sessionError;
 
       // Delete the session
-      const { error: deleteError } = await supabase
-        .from("reading_sessions")
-        .delete()
-        .eq("id", sessionId)
-        .eq("user_id", user.id);
+      const { data: deleted, error: deleteError } =
+        await supabase
+          .from("reading_sessions")
+          .delete()
+          .eq("id", sessionId)
+          .eq("user_id", user.id)
+          .select("pages_read, book_id")
+          .single();
 
       if (deleteError) throw deleteError;
 
       // Update the book's total pages read
-      const { data: book, error: bookError } = await supabase
-        .from("books")
-        .select("pages_read, total_pages")
-        .eq("id", session.book_id)
-        .eq("user_id", user.id)
-        .single();
+      const { data: book, error: bookError } =
+        await supabase
+          .from("books")
+          .select("pages_read, total_pages")
+          .eq("id", session.book_id)
+          .eq("user_id", user.id)
+          .single();
 
       if (bookError) throw bookError;
 
-      const updatedBookPages = Math.max(0, (book.pages_read || 0) - session.pages_read);
+      const updatedBookPages = Math.max(
+        0,
+        (book.pages_read || 0) - session.pages_read
+      );
       const status =
         updatedBookPages >= book.total_pages
           ? "completed"
@@ -464,9 +531,9 @@ export const useReadingSessions = () => {
 
       if (updateBookError) throw updateBookError;
 
-      return sessionId;
+      return { sessionId, deleted };
     },
-    onMutate: async sessionId => {
+    onMutate: async (sessionId) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({
         queryKey: ["reading-sessions", user?.id],
@@ -476,21 +543,36 @@ export const useReadingSessions = () => {
       });
 
       // Snapshot the previous values
-      const previousSessions = queryClient.getQueryData(["reading-sessions", user?.id]);
-      const previousTodaySessions = queryClient.getQueryData(["today-sessions", user?.id]);
+      const previousSessions = queryClient.getQueryData([
+        "reading-sessions",
+        user?.id,
+      ]);
+      const previousTodaySessions =
+        queryClient.getQueryData([
+          "today-sessions",
+          user?.id,
+        ]);
 
       // Optimistically remove the session
       queryClient.setQueryData(
         ["reading-sessions", user?.id],
         (old: ReadingSession[] | undefined) => {
-          return old?.filter(session => session.id !== sessionId) || [];
+          return (
+            old?.filter(
+              (session) => session.id !== sessionId
+            ) || []
+          );
         }
       );
 
       queryClient.setQueryData(
         ["today-sessions", user?.id],
         (old: ReadingSession[] | undefined) => {
-          return old?.filter(session => session.id !== sessionId) || [];
+          return (
+            old?.filter(
+              (session) => session.id !== sessionId
+            ) || []
+          );
         }
       );
 
@@ -499,10 +581,16 @@ export const useReadingSessions = () => {
     onError: (err, sessionId, context) => {
       // Rollback on error
       if (context?.previousSessions) {
-        queryClient.setQueryData(["reading-sessions", user?.id], context.previousSessions);
+        queryClient.setQueryData(
+          ["reading-sessions", user?.id],
+          context.previousSessions
+        );
       }
       if (context?.previousTodaySessions) {
-        queryClient.setQueryData(["today-sessions", user?.id], context.previousTodaySessions);
+        queryClient.setQueryData(
+          ["today-sessions", user?.id],
+          context.previousTodaySessions
+        );
       }
       toast({
         title: "Erro ao remover sessão",
@@ -510,7 +598,7 @@ export const useReadingSessions = () => {
         variant: "destructive",
       });
     },
-    onSuccess: () => {
+    onSuccess: async (result) => {
       // Force refetch to ensure consistency
       queryClient.invalidateQueries({
         queryKey: ["reading-sessions", user?.id],
@@ -521,12 +609,45 @@ export const useReadingSessions = () => {
       queryClient.invalidateQueries({
         queryKey: ["books", user?.id],
       });
+      // Also decrement profile.total_pages_read by the deleted session pages if possible
+      try {
+        const pagesRemoved =
+          result?.deleted?.pages_read || 0;
+        if (pagesRemoved > 0) {
+          const { data: profileData, error: profileError } =
+            await supabase
+              .from("profiles")
+              .select("total_pages_read")
+              .eq("user_id", user.id)
+              .single();
+
+          if (!profileError && profileData) {
+            const newTotal = Math.max(
+              0,
+              (profileData.total_pages_read || 0) -
+                pagesRemoved
+            );
+            await supabase
+              .from("profiles")
+              .update({ total_pages_read: newTotal })
+              .eq("user_id", user.id);
+          }
+        }
+      } catch (e) {
+        console.error(
+          "Error updating profile pages after delete:",
+          e
+        );
+      }
+
       queryClient.invalidateQueries({
         queryKey: ["profile", user?.id],
       });
+
       toast({
         title: "Sessão removida!",
-        description: "A sessão de leitura foi removida completamente.",
+        description:
+          "A sessão de leitura foi removida completamente.",
       });
     },
   });
@@ -534,25 +655,32 @@ export const useReadingSessions = () => {
   // Reset all today's activities
   const resetTodayActivities = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error("User not authenticated");
+      if (!user?.id)
+        throw new Error("User not authenticated");
 
       const today = new Date().toISOString().split("T")[0];
 
       // Get all today's sessions to calculate pages to subtract from books
-      const { data: todaySessionsData, error: fetchError } = await supabase
-        .from("reading_sessions")
-        .select("book_id, pages_read")
-        .eq("user_id", user.id)
-        .gte("session_date", `${today}T00:00:00Z`)
-        .lt("session_date", `${today}T23:59:59Z`);
+      const { data: todaySessionsData, error: fetchError } =
+        await supabase
+          .from("reading_sessions")
+          .select("book_id, pages_read")
+          .eq("user_id", user.id)
+          .gte("session_date", `${today}T00:00:00Z`)
+          .lt("session_date", `${today}T23:59:59Z`);
 
       if (fetchError) throw fetchError;
 
       // Group by book_id to calculate total pages per book
-      const pagesPerBook = todaySessionsData.reduce((acc, session) => {
-        acc[session.book_id] = (acc[session.book_id] || 0) + session.pages_read;
-        return acc;
-      }, {} as Record<string, number>);
+      const pagesPerBook = todaySessionsData.reduce(
+        (acc, session) => {
+          acc[session.book_id] =
+            (acc[session.book_id] || 0) +
+            session.pages_read;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       // Delete all today's sessions
       const { error: deleteError } = await supabase
@@ -565,17 +693,23 @@ export const useReadingSessions = () => {
       if (deleteError) throw deleteError;
 
       // Update each affected book
-      for (const [bookId, pagesRead] of Object.entries(pagesPerBook)) {
-        const { data: book, error: bookError } = await supabase
-          .from("books")
-          .select("pages_read, total_pages")
-          .eq("id", bookId)
-          .eq("user_id", user.id)
-          .single();
+      for (const [bookId, pagesRead] of Object.entries(
+        pagesPerBook
+      )) {
+        const { data: book, error: bookError } =
+          await supabase
+            .from("books")
+            .select("pages_read, total_pages")
+            .eq("id", bookId)
+            .eq("user_id", user.id)
+            .single();
 
         if (bookError) continue;
 
-        const updatedBookPages = Math.max(0, (book.pages_read || 0) - pagesRead);
+        const updatedBookPages = Math.max(
+          0,
+          (book.pages_read || 0) - pagesRead
+        );
         const status =
           updatedBookPages >= book.total_pages
             ? "completed"
@@ -595,7 +729,7 @@ export const useReadingSessions = () => {
 
       return { deletedSessions: todaySessionsData.length };
     },
-    onSuccess: result => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({
         queryKey: ["reading-sessions", user?.id],
       });

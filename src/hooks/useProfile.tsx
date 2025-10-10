@@ -130,11 +130,126 @@ export const useProfile = () => {
     },
   });
 
+  // Recompute profile stats from reading_sessions (pages read) and books
+  const recomputeFromSessions = async () => {
+    if (!user?.id)
+      throw new Error("Usuário não autenticado");
+    // 1) Load all sessions grouped by book
+    const { data: sessionsData, error: sessionsError } =
+      await supabase
+        .from("reading_sessions")
+        .select("book_id, pages_read")
+        .eq("user_id", user.id);
+
+    if (sessionsError) throw sessionsError;
+
+    // Sum pages per book
+    const pagesPerBook = (sessionsData || []).reduce(
+      (acc: Record<string, number>, s: any) => {
+        if (!s || !s.book_id) return acc;
+        acc[s.book_id] =
+          (acc[s.book_id] || 0) + (s.pages_read || 0);
+        return acc;
+      },
+      {}
+    );
+
+    const bookIds = Object.keys(pagesPerBook);
+
+    // 2) Fetch affected books to get total_pages and validate ownership
+    let booksData: any[] = [];
+    if (bookIds.length > 0) {
+      const { data: bd, error: bErr } = await supabase
+        .from("books")
+        .select("id, total_pages")
+        .in("id", bookIds)
+        .eq("user_id", user.id);
+
+      if (bErr) throw bErr;
+      booksData = bd || [];
+    }
+
+    // 3) Update each book.pages_read to match sessions sum and adjust status
+    let totalPages = 0;
+    let completedCount = 0;
+
+    for (const b of booksData) {
+      const newPages = Math.max(0, pagesPerBook[b.id] || 0);
+      totalPages += newPages;
+
+      const status =
+        newPages >= (b.total_pages || 0)
+          ? "completed"
+          : newPages > 0
+          ? "reading"
+          : "want-to-read";
+
+      // Update the book record to match sessions
+      const { error: updErr } = await supabase
+        .from("books")
+        .update({ pages_read: newPages, status })
+        .eq("id", b.id)
+        .eq("user_id", user.id);
+
+      if (updErr) {
+        console.error(
+          "Erro atualizando livro durante recalculo:",
+          updErr
+        );
+        // continue with others
+      }
+
+      if (status === "completed") completedCount++;
+    }
+
+    // 4) If there are sessions for books not present in user's books table, include their pages
+    const orphanBookPages = Object.entries(
+      pagesPerBook
+    ).reduce((sum, [bookId, pages]) => {
+      if (booksData.find((b) => b.id === bookId))
+        return sum;
+      return sum + (pages || 0);
+    }, 0);
+
+    totalPages += orphanBookPages;
+
+    // 5) Update profile totals
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({
+        total_pages_read: totalPages,
+        books_completed: completedCount,
+      })
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Refresh cache
+    queryClient.invalidateQueries({
+      queryKey: ["profile", user.id],
+    });
+    queryClient.refetchQueries({
+      queryKey: ["profile", user.id],
+    });
+    queryClient.setQueryData(["profile", user.id], data);
+
+    toast({
+      title: "Estatísticas recalculadas",
+      description:
+        "Os dados do perfil foram atualizados a partir das sessões de leitura.",
+    });
+
+    return data;
+  };
+
   return {
     profile,
     isLoading,
     updateProfile: updateProfile.mutate,
     isUpdating: updateProfile.isPending,
     forceRefresh,
+    recomputeFromSessions,
   };
 };

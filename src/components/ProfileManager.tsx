@@ -27,6 +27,7 @@ export const ProfileManager = () => {
     updateProfile,
     isUpdating,
     forceRefresh,
+    recomputeFromSessions,
   } = useProfile();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -130,6 +131,27 @@ export const ProfileManager = () => {
       }));
     };
     reader.readAsDataURL(file);
+  };
+
+  const [isRecomputing, setIsRecomputing] = useState(false);
+
+  const handleRecompute = async () => {
+    const ok = window.confirm(
+      "Recalcular estatísticas a partir das sessões de leitura? Isso ajustará 'Páginas Lidas' e 'Livros Lidos' do seu perfil."
+    );
+    if (!ok) return;
+    try {
+      setIsRecomputing(true);
+      await recomputeFromSessions?.();
+      setIsRecomputing(false);
+    } catch (err: any) {
+      setIsRecomputing(false);
+      toast({
+        title: "Erro ao recalcular",
+        description: err?.message || String(err),
+        variant: "destructive",
+      });
+    }
   };
 
   if (!profile) {
@@ -335,6 +357,21 @@ export const ProfileManager = () => {
               Editar Perfil
             </Button>
           )}
+        </div>
+
+        {/* Recompute button */}
+        <div className="flex justify-end mt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRecompute}
+            disabled={isRecomputing}
+            className="text-sm"
+          >
+            {isRecomputing
+              ? "Recalculando..."
+              : "Recalcular a partir das sessões"}
+          </Button>
         </div>
 
         {/* Stats Section */}
