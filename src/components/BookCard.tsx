@@ -49,6 +49,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useBooks } from "@/hooks/useBooks";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { useProfile } from "@/hooks/useProfile";
 import { useStreakUpdate } from "@/hooks/useStreakUpdate";
 import { useToast } from "@/hooks/use-toast";
@@ -65,8 +66,10 @@ export const BookCard: React.FC<BookCardProps> = ({
 }) => {
   const {
     updateBook,
+    updateBookAsync,
     deleteBook,
     addReadingSession,
+    addReadingSessionAsync,
     isUpdatingBook,
   } = useBooks();
   const { updateProfile, isUpdating } = useProfile();
@@ -116,7 +119,20 @@ export const BookCard: React.FC<BookCardProps> = ({
         const sessionDateTime = new Date(
           sessionDate + "T12:00:00.000Z"
         ).toISOString();
-        addReadingSession({
+
+        // Client-side guard: do not attempt if pagesAdded exceeds remaining
+        const remaining =
+          (book.total_pages || 0) - (book.pages_read || 0);
+        if (pagesAdded > remaining) {
+          toast({
+            title: "Páginas inválidas",
+            description: `Tentativa de adicionar ${pagesAdded} páginas, mas restam apenas ${remaining}.`,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        await addReadingSessionAsync({
           book_id: book.id,
           pages_read: pagesAdded,
           notes: `Atualização manual: +${pagesAdded} páginas em ${new Date(
@@ -125,27 +141,36 @@ export const BookCard: React.FC<BookCardProps> = ({
           session_date: sessionDateTime,
         });
 
-        // Aguardar a sessão ser registrada, depois atualizar outros campos se necessário
-        setTimeout(() => {
-          const { pages_read, ...otherUpdates } =
-            updateData;
-          if (Object.keys(otherUpdates).length > 0) {
-            updateBook({
-              id: book.id,
-              updates: otherUpdates,
-            });
-          }
-        }, 1000); // Pequeno delay para garantir que a sessão foi processada
-      } catch (error) {
+        // After session is added, update other fields if necessary
+        const { pages_read, ...otherUpdates } = updateData;
+        if (Object.keys(otherUpdates).length > 0) {
+          await updateBookAsync({
+            id: book.id,
+            updates: otherUpdates,
+          });
+        }
+      } catch (error: any) {
         console.error(
           "Error adding reading session:",
           error
         );
-        // Se falhar, fazer update normal
-        updateBook({
-          id: book.id,
-          updates: updateData,
+        toast({
+          title: "Erro ao registrar sessão",
+          description: getApiErrorMessage(
+            error,
+            "Erro ao registrar sessão"
+          ),
+          variant: "destructive",
         });
+        // Try fallback update to keep book data consistent
+        try {
+          await updateBookAsync({
+            id: book.id,
+            updates: updateData,
+          });
+        } catch (e: any) {
+          console.error("Fallback update failed:", e);
+        }
       }
     } else {
       // Se não houve aumento de páginas, fazer update normal

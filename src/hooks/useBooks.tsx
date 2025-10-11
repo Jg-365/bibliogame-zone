@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 import { useCheckAchievements } from "./useAchievements";
+import { getApiErrorMessage } from "@/lib/apiError";
 import type {
   Book,
   GoogleBook,
@@ -129,6 +130,25 @@ export const useBooks = () => {
       if (!user?.id)
         throw new Error("User not authenticated");
 
+      // If updates contains pages_read, validate against total_pages
+      if (typeof updates.pages_read === "number") {
+        const { data: book, error: bookError } =
+          await supabase
+            .from("books")
+            .select("total_pages")
+            .eq("id", id)
+            .eq("user_id", user.id)
+            .single();
+
+        if (bookError) throw bookError;
+
+        if (updates.pages_read > book.total_pages) {
+          throw new Error(
+            `Não é possível definir ${updates.pages_read} páginas lidas. O livro tem apenas ${book.total_pages} páginas.`
+          );
+        }
+      }
+
       const { data, error } = await (supabase as any)
         .from("books")
         .update(updates)
@@ -151,7 +171,6 @@ export const useBooks = () => {
       // Check for new achievements when a book is completed
       if (updatedBook.status === "completed") {
         try {
-          // Get current user stats - use default values since columns don't exist yet
           await checkAchievements.mutateAsync({
             booksCompleted: 0,
             totalPagesRead: 0,
@@ -173,7 +192,10 @@ export const useBooks = () => {
     onError: (error: any) => {
       toast({
         title: "Erro ao atualizar livro",
-        description: error.message,
+        description: getApiErrorMessage(
+          error,
+          "Erro ao atualizar livro"
+        ),
         variant: "destructive",
       });
     },
@@ -224,8 +246,7 @@ export const useBooks = () => {
     }) => {
       if (!user?.id)
         throw new Error("User not authenticated");
-
-      // First, get the current book data
+      // First, get the current book data and validate pages
       const { data: book, error: bookError } =
         await supabase
           .from("books")
@@ -235,6 +256,22 @@ export const useBooks = () => {
           .single();
 
       if (bookError) throw bookError;
+
+      // Prevent negative or zero pages
+      if (sessionData.pages_read <= 0) {
+        throw new Error(
+          "Número de páginas deve ser maior que zero"
+        );
+      }
+
+      // Prevent adding more pages than remaining in the book
+      const remaining =
+        book.total_pages - (book.pages_read || 0);
+      if (sessionData.pages_read > remaining) {
+        throw new Error(
+          `Não é possível adicionar ${sessionData.pages_read} páginas — restam apenas ${remaining} páginas.`
+        );
+      }
 
       // Add the reading session
       const { data, error } = await supabase
@@ -297,7 +334,10 @@ export const useBooks = () => {
     onError: (error: any) => {
       toast({
         title: "Erro ao registrar progresso",
-        description: error.message,
+        description: getApiErrorMessage(
+          error,
+          "Erro ao registrar progresso"
+        ),
         variant: "destructive",
       });
     },
@@ -313,9 +353,13 @@ export const useBooks = () => {
     books,
     isLoading,
     addBook: addBook.mutate,
+    addBookAsync: addBook.mutateAsync,
     updateBook: updateBook.mutate,
+    updateBookAsync: updateBook.mutateAsync,
     deleteBook: deleteBook.mutate,
+    deleteBookAsync: deleteBook.mutateAsync,
     addReadingSession: addReadingSession.mutate,
+    addReadingSessionAsync: addReadingSession.mutateAsync,
     searchGoogleBooks: searchGoogleBooks,
     isAddingBook: addBook.isPending,
     isUpdatingBook: updateBook.isPending,

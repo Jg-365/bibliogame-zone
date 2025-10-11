@@ -105,18 +105,9 @@ export const AuthProvider = ({
             ? localStorage.getItem("rq_remember")
             : null;
 
-        if (remember === "false") {
-          // User chose not to be remembered -> ensure sign out
-          try {
-            await supabase.auth.signOut();
-          } catch (e) {
-            /* ignore */
-          }
-          setSession(null);
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
+        // Only, and explicitly, preserve sessions when remember === 'true'.
+        // Any other value (null/undefined/'false') means the session is
+        // non-persistent and will be stored in-memory by the client.
 
         // Handle specific lifecycle events
         if (
@@ -159,14 +150,10 @@ export const AuthProvider = ({
               : null;
 
           if (session?.user) {
-            // If user chose NOT to be remembered, sign out
-            if (remember === "false") {
-              await supabase.auth.signOut();
-              setSession(null);
-              setUser(null);
-              setIsLoading(false);
-              return;
-            }
+            // If the session exists but the user didn't choose persistent
+            // storage (remember !== 'true') we still allow the in-memory
+            // session to be used for this page load. Avoid forcing a
+            // signOut here to prevent races with auth state changes.
 
             // Check if account is deleted for existing sessions
             const isValid = await checkAccountStatus(

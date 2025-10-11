@@ -6,6 +6,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { useCheckAchievements } from "./useAchievements";
 import { useStreakUpdate } from "./useStreakUpdate";
 
@@ -247,7 +248,10 @@ export const useReadingSessions = () => {
     onError: (error: any) => {
       toast({
         title: "Erro ao registrar progresso",
-        description: error.message,
+        description: getApiErrorMessage(
+          error,
+          "Erro ao registrar progresso"
+        ),
         variant: "destructive",
       });
     },
