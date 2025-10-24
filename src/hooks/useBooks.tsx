@@ -16,19 +16,82 @@ import type {
 
 // Google Books API integration
 export const searchGoogleBooks = async (
-  query: string
-): Promise<GoogleBook[]> => {
+  query: string,
+  page = 0,
+  pageSize = 10
+): Promise<{ items: GoogleBook[]; totalItems: number }> => {
+  // Simple search wrapper that requests a page from Google Books and
+  // applies a lightweight keyword scoring to improve relevance for fuzzy
+  // or partial queries.
   try {
+    const startIndex = page * pageSize;
     const response = await fetch(
       `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
         query
-      )}&maxResults=10`
+      )}&startIndex=${startIndex}&maxResults=${pageSize}`
     );
     const data = await response.json();
-    return data.items || [];
+
+    const items: GoogleBook[] = data.items || [];
+    const totalItems: number = data.totalItems || 0;
+
+    // Lightweight ranking: split query into tokens and give scores when
+    // tokens appear in title, authors, categories or ISBNs. This makes the
+    // UI more tolerant to partial or imperfect inputs without adding a
+    // heavy fuzzy library.
+    const normalize = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/[\p{P}\p{S}]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const tokens = normalize(query)
+      .split(" ")
+      .filter(Boolean);
+
+    const scored = items
+      .map((it) => {
+        const info = it.volumeInfo || ({} as any);
+        const title = info.title
+          ? normalize(info.title)
+          : "";
+        const authors = (info.authors || []).join(" ")
+          ? normalize((info.authors || []).join(" "))
+          : "";
+        const categories = (info.categories || []).join(" ")
+          ? normalize((info.categories || []).join(" "))
+          : "";
+        const isbn =
+          (info.industryIdentifiers || [])
+            .map((i: any) => i.identifier)
+            .join(" ") || "";
+
+        let score = 0;
+
+        for (const t of tokens) {
+          if (!t) continue;
+          if (title.includes(t)) score += 6;
+          // partial prefix matches are helpful
+          if (title.split(" ").some((w) => w.startsWith(t)))
+            score += 2;
+          if (authors.includes(t)) score += 4;
+          if (categories.includes(t)) score += 2;
+          if (isbn.includes(t)) score += 8;
+        }
+
+        // Slightly prefer exact title match
+        if (tokens.length && title === tokens.join(" "))
+          score += 10;
+
+        return { item: it, score };
+      })
+      .sort((a, b) => b.score - a.score || 0);
+
+    return { items: scored.map((s) => s.item), totalItems };
   } catch (error) {
     console.error("Error searching Google Books:", error);
-    return [];
+    return { items: [], totalItems: 0 };
   }
 };
 
@@ -297,8 +360,8 @@ export const useBooks = () => {
         newPagesRead >= book.total_pages
           ? "completed"
           : newPagesRead > 0
-          ? "reading"
-          : "want-to-read";
+            ? "reading"
+            : "want-to-read";
 
       const { error: updateError } = await supabase
         .from("books")

@@ -24,6 +24,9 @@ export const BookSearch = () => {
   >([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(12);
+  const [totalItems, setTotalItems] = useState(0);
   const { addBook, isAddingBook } = useBooks();
   const { toast } = useToast();
 
@@ -34,12 +37,13 @@ export const BookSearch = () => {
 
   const handleSearch = async () => {
     if (!query.trim()) return;
-
     setIsSearching(true);
     try {
-      const results = await searchGoogleBooks(query);
-      setSearchResults(results);
-      if (results.length === 0) {
+      const { items, totalItems: total } =
+        await searchGoogleBooks(query, page, pageSize);
+      setSearchResults(items);
+      setTotalItems(total);
+      if ((items || []).length === 0) {
         toast({
           title: "Nenhum resultado",
           description:
@@ -57,6 +61,13 @@ export const BookSearch = () => {
       setIsSearching(false);
     }
   };
+
+  useEffect(() => {
+    // Run search when page changes (keeps query stable)
+    if (!query.trim()) return;
+    handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const handleAddBook = (book: GoogleBook) => {
     const { volumeInfo } = book;
@@ -119,7 +130,7 @@ export const BookSearch = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {searchResults.map((book) => {
           const { volumeInfo } = book;
           return (
@@ -207,6 +218,72 @@ export const BookSearch = () => {
           );
         })}
       </div>
+
+      {/* Pagination controls */}
+      {totalItems > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-6">
+          <div className="text-sm text-gray-600">
+            Mostrando{" "}
+            {Math.min(page * pageSize + 1, totalItems)} -{" "}
+            {Math.min((page + 1) * pageSize, totalItems)} de{" "}
+            {totalItems}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                setPage((p) => Math.max(0, p - 1))
+              }
+              disabled={page === 0}
+            >
+              Anterior
+            </Button>
+
+            <div className="hidden sm:flex items-center gap-1">
+              {Array.from({
+                length: Math.min(
+                  7,
+                  Math.ceil(totalItems / pageSize)
+                ),
+              }).map((_, idx) => {
+                // center current page in this small pager window
+                const totalPages = Math.ceil(
+                  totalItems / pageSize
+                );
+                const start = Math.max(
+                  0,
+                  Math.min(page - 3, totalPages - 7)
+                );
+                const p = start + idx;
+                if (p >= totalPages) return null;
+                return (
+                  <Button
+                    key={p}
+                    size="sm"
+                    variant={
+                      p === page ? "default" : "outline"
+                    }
+                    onClick={() => setPage(p)}
+                  >
+                    {p + 1}
+                  </Button>
+                );
+              })}
+            </div>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={(page + 1) * pageSize >= totalItems}
+            >
+              Próxima
+            </Button>
+          </div>
+        </div>
+      )}
 
       {searchResults.length === 0 &&
         query &&

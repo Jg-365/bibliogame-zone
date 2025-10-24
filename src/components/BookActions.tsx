@@ -165,7 +165,7 @@ export const BookActions: React.FC<BookActionsProps> = ({
 
   const handleDeleteBook = async () => {
     try {
-      await deleteBookAsync(book.id);
+      await deleteBook(book.id);
       setShowDeleteDialog(false);
       onBookUpdate?.();
       toast({
@@ -208,15 +208,15 @@ export const BookActions: React.FC<BookActionsProps> = ({
                 book.status === "completed"
                   ? "default"
                   : book.status === "reading"
-                  ? "secondary"
-                  : "outline"
+                    ? "secondary"
+                    : "outline"
               }
             >
               {book.status === "want-to-read"
                 ? "Quero ler"
                 : book.status === "reading"
-                ? "Lendo"
-                : "Concluído"}
+                  ? "Lendo"
+                  : "Concluído"}
             </Badge>
             {book.is_favorite && (
               <Heart className="h-4 w-4 fill-red-500 text-red-500" />
