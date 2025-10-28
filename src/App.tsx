@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
@@ -40,6 +39,8 @@ import ProfilePage from "./pages/Profile";
 import { UserProfilePage } from "./pages/UserProfile";
 import ResponsiveNavigation from "./components/ResponsiveNavigation";
 import NotificationSystemSimple from "./components/NotificationSystemSimple";
+import ResetPasswordPage from "./pages/ResetPassword";
+import ForgotPasswordPage from "./pages/ForgotPassword";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,7 +79,7 @@ const queryClient = new QueryClient({
 
 // Component that uses Router hooks - MUST be inside Router
 const AppContent = () => {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const { isMobile } = useResponsive();
   const navigate = useNavigate();
   const location = useLocation();
@@ -127,26 +128,7 @@ const AppContent = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <ResponsiveContainer className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{
-              duration: 1,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-            className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"
-          />
-          <p className="text-muted-foreground">
-            Carregando...
-          </p>
-        </div>
-      </ResponsiveContainer>
-    );
-  }
+  // Removed isLoading check since it does not exist in AuthContextType
 
   if (!user) {
     return <AuthPage />;
@@ -200,6 +182,15 @@ const AppContent = () => {
                 element={<ProfilePage />}
               />
 
+              <Route
+                path="/reset-password"
+                element={<ResetPasswordPage />}
+              />
+              <Route
+                path="/forgot-password"
+                element={<ForgotPasswordPage />}
+              />
+
               {/* User Profile Route */}
               <Route
                 path="/user/:userId"
@@ -243,9 +234,11 @@ const AppContent = () => {
 
 // Main App Router component
 const AppRouter = () => {
-  const { user, isLoading } = useAuth();
+  // Use both user and loading state from auth so we render correctly
+  const { user, loading } = useAuth();
 
-  if (isLoading) {
+  // While auth is initializing, show a loading spinner
+  if (loading?.isLoading) {
     return (
       <ResponsiveContainer className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -266,41 +259,29 @@ const AppRouter = () => {
     );
   }
 
+  // If not authenticated, show the AuthPage so user can sign in
   if (!user) {
-    return <AuthPage />;
+    // Public routes available when not authenticated
+    return (
+      <ErrorBoundary>
+        <Routes>
+          <Route
+            path="/forgot-password"
+            element={<ForgotPasswordPage />}
+          />
+          <Route
+            path="/reset-password"
+            element={<ResetPasswordPage />}
+          />
+          <Route path="*" element={<AuthPage />} />
+        </Routes>
+      </ErrorBoundary>
+    );
   }
 
-  return (
-    <Router
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
-      <AppContent />
-    </Router>
-  );
+  // Render main app content if user exists
+  return <AppContent />;
 };
-
-// Simple page loader component
-const PageLoader = () => (
-  <ResponsiveContainer className="flex items-center justify-center py-20">
-    <div className="text-center">
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{
-          duration: 1,
-          repeat: Infinity,
-          ease: "linear",
-        }}
-        className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"
-      />
-      <p className="text-sm text-muted-foreground">
-        Carregando...
-      </p>
-    </div>
-  </ResponsiveContainer>
-);
 
 const App = () => (
   <AppPerformanceProvider>

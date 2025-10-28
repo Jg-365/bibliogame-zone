@@ -12,6 +12,13 @@ import {
   Library,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useResponsive } from "@/shared/utils/responsive";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -105,8 +112,8 @@ const ResponsiveNavigation = ({
     const currentLayout = isMobile
       ? "mobile"
       : isTablet
-      ? "tablet"
-      : "desktop";
+        ? "tablet"
+        : "desktop";
     if (currentLayout !== previousLayout) {
       // Close mobile menu when transitioning away from mobile
       if (
@@ -130,6 +137,8 @@ const ResponsiveNavigation = ({
 
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const [showLogoutConfirm, setShowLogoutConfirm] =
+    useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -452,6 +461,57 @@ const ResponsiveNavigation = ({
                 );
               })}
             </motion.div>
+
+            {/* Mobile logout action */}
+            <div className="px-4 mt-4">
+              <Button
+                variant="ghost"
+                className="w-full text-left"
+                onClick={() => setShowLogoutConfirm(true)}
+              >
+                Sair
+              </Button>
+
+              <Dialog
+                open={showLogoutConfirm}
+                onOpenChange={setShowLogoutConfirm}
+              >
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      Confirmar saída
+                    </DialogTitle>
+                    <div className="text-sm text-muted-foreground mt-2">
+                      Tem certeza que deseja sair da sua
+                      conta?
+                    </div>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <div className="flex gap-2 w-full">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() =>
+                          setShowLogoutConfirm(false)
+                        }
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        variant="destructive"
+                        onClick={async () => {
+                          setShowLogoutConfirm(false);
+                          await handleSignOut();
+                        }}
+                      >
+                        Sair
+                      </Button>
+                    </div>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

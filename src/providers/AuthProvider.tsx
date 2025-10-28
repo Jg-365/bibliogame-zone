@@ -8,12 +8,19 @@ import React, {
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorMessage } from "@/shared/utils";
+import { useToast } from "@/hooks/use-toast";
 import type { LoadingState } from "@/shared/types";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   isAuthenticated: boolean;
+  /**
+   * Check whether the current user's account/profile still exists.
+   * Used by background guards to force logout if the account was deleted.
+   */
+  checkAccountStatus: () => Promise<void>;
+
   signUp: (
     email: string,
     password: string,
@@ -43,6 +50,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({
   children,
 }) => {
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(
     null
@@ -53,13 +61,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   });
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session (defensive access in case supabase returns unexpected shape)
     const getInitialSession = async () => {
       try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
+        const resp = await supabase.auth.getSession();
+        const session = resp?.data?.session ?? null;
+        const error = (resp as any)?.error ?? null;
 
         if (error) {
           console.error("Error getting session:", error);
@@ -84,34 +91,76 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
 
     getInitialSession();
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
+    // Listen for auth changes (guard against unexpected return shape)
+    const authListener = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(
-          "Auth state changed:",
-          event,
-          session?.user?.id
-        );
+        try {
+          console.log(
+            "Auth state changed:",
+            event,
+            session?.user?.id
+          );
 
-        setSession(session);
-        setUser(session?.user ?? null);
+          // Detect token refresh failure or a refresh that yielded no session.
+          // In those cases we inform the user and perform a clean sign-out so
+          // the app does not remain stuck in a loading state.
+          if (
+            (event as any) === "TOKEN_REFRESH_FAILED" ||
+            (event === "TOKEN_REFRESHED" && !session)
+          ) {
+            try {
+              toast({
+                title: "Sessão expirada",
+                description:
+                  "Sua sessão expirou. Você será desconectado. Faça login novamente.",
+                variant: "destructive",
+              });
+            } catch (tErr) {
+              // best-effort toast; ignore errors here
+            }
 
-        if (
-          event === "SIGNED_OUT" ||
-          (event === "TOKEN_REFRESHED" && !session)
-        ) {
-          setUser(null);
-          setSession(null);
+            try {
+              await supabase.auth.signOut();
+            } catch (signOutErr) {
+              console.error(
+                "Error during auto sign-out:",
+                signOutErr
+              );
+            }
+
+            setUser(null);
+            setSession(null);
+            setLoading({ isLoading: false, error: null });
+            return;
+          }
+
+          setSession(session);
+          setUser(session?.user ?? null);
+
+          if (event === "SIGNED_OUT") {
+            setUser(null);
+            setSession(null);
+          }
+
+          setLoading({ isLoading: false, error: null });
+        } catch (err) {
+          console.error(
+            "Error in auth state handler:",
+            err
+          );
         }
-
-        setLoading({ isLoading: false, error: null });
       }
     );
 
+    const subscription = (authListener as any)?.data
+      ?.subscription;
+
     return () => {
-      subscription.unsubscribe();
+      try {
+        subscription?.unsubscribe?.();
+      } catch (err) {
+        // ignore cleanup errors
+      }
     };
   }, []);
 
@@ -206,6 +255,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     }
   };
 
+  const checkAccountStatus =
+    React.useCallback(async (): Promise<void> => {
+      try {
+        if (!user) return;
+
+        // Check if the profile row still exists for this user
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error) {
+          // If there's an error querying, log and bail — don't force sign-out on transient DB errors
+          console.error(
+            "Error checking account status:",
+            error
+          );
+          return;
+        }
+
+        // If there's no profile row, assume the account was deleted -> sign out
+        if (!data) {
+          try {
+            toast({
+              title: "Conta não encontrada",
+              description:
+                "Sua conta parece ter sido removida. Você será desconectado.",
+              variant: "destructive",
+            });
+          } catch (tErr) {
+            // best-effort
+          }
+
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutErr) {
+            console.error(
+              "Error signing out after account deletion:",
+              signOutErr
+            );
+          }
+
+          setUser(null);
+          setSession(null);
+          setLoading({ isLoading: false, error: null });
+        }
+      } catch (err) {
+        console.error(
+          "Unexpected error in checkAccountStatus:",
+          err
+        );
+      }
+    }, [user, toast]);
+
   const resetPassword = async (
     email: string
   ): Promise<void> => {
@@ -272,6 +376,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     user,
     session,
     isAuthenticated: !!user,
+    checkAccountStatus,
     signUp,
     signIn,
     signOut,

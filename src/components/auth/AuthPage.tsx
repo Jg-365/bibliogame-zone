@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -232,6 +233,17 @@ export const AuthPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [remember, setRemember] = useState(true);
+    const navigate = useNavigate();
+    const handleForgot = () => {
+      try {
+        console.debug(
+          "Forgot password clicked - navigating to /forgot-password"
+        );
+      } catch (e) {
+        // ignore
+      }
+      navigate("/forgot-password");
+    };
 
     const onSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -273,6 +285,15 @@ export const AuthPage = () => {
           <label htmlFor="remember" className="text-sm">
             Lembrar de mim
           </label>
+        </div>
+        <div className="text-sm text-right">
+          <button
+            type="button"
+            className="text-primary hover:underline"
+            onClick={handleForgot}
+          >
+            Esqueceu a senha?
+          </button>
         </div>
         <Button
           type="submit"
