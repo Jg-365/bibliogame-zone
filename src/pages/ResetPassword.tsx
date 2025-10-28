@@ -78,10 +78,80 @@ export const ResetPasswordPage: React.FC = () => {
         // ignore
       }
       try {
+        // First, ask the client SDK if a session is available
         const resp = await supabase.auth.getSession();
-        const session = resp?.data?.session ?? null;
+        let session = resp?.data?.session ?? null;
+
+        // If SDK didn't restore a session automatically, try manual fallback:
+        // parse tokens from the URL (hash or query) and call setSession when available.
+        if (!session) {
+          const parseParams = (str: string) =>
+            Object.fromEntries(
+              str
+                .replace(/^#|^\?/g, "")
+                .split("&")
+                .filter(Boolean)
+                .map((p) =>
+                  p.split("=").map(decodeURIComponent)
+                )
+            );
+
+          const hashParams = parseParams(
+            window.location.hash || ""
+          );
+          const queryParams = parseParams(
+            window.location.search || ""
+          );
+          const params = {
+            ...queryParams,
+            ...hashParams,
+          } as Record<string, string>;
+
+          const access_token =
+            params.access_token ||
+            params.accessToken ||
+            params.accessToken;
+          const refresh_token =
+            params.refresh_token ||
+            params.refreshToken ||
+            params.refresh_token;
+
+          if (
+            access_token &&
+            typeof (supabase.auth as any).setSession ===
+              "function"
+          ) {
+            try {
+              await (supabase.auth as any).setSession({
+                access_token,
+                refresh_token,
+              });
+              const newResp =
+                await supabase.auth.getSession();
+              session = newResp?.data?.session ?? null;
+              console.debug(
+                "setSession fallback success, session present:",
+                !!session
+              );
+            } catch (setErr) {
+              console.debug(
+                "setSession fallback failed:",
+                setErr
+              );
+            }
+          } else {
+            console.debug(
+              "No access_token in URL or setSession not available; cannot restore session automatically."
+            );
+          }
+        }
+
         if (mounted) setHasSession(!!session);
       } catch (err) {
+        console.error(
+          "Error checking/creating session:",
+          err
+        );
         if (mounted) setHasSession(false);
       }
     };
