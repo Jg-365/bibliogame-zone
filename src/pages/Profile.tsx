@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useBooks } from "@/hooks/useBooks";
@@ -46,6 +46,7 @@ import {
   Trash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatProfileLevel } from "@/shared/utils";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -107,7 +108,12 @@ const StatCard: React.FC<StatCardProps> = ({
 
 const ProfilePage = () => {
   const { user } = useAuth();
-  const { profile } = useProfile();
+  const {
+    profile,
+    isLoading: profileLoading,
+    updateProfile,
+    isUpdating,
+  } = useProfile();
   const { books } = useBooks();
   const {
     achievements,
@@ -173,18 +179,76 @@ const ProfilePage = () => {
       : 0;
 
   // Calcular tempo médio para terminar um livro (dias)
+  // Calcular tempo médio para terminar um livro (dias)
+  // Use sessões de leitura quando disponíveis (mais preciso). Para cada livro concluído,
+  // calculamos a diferença entre a primeira e última sessão (dias de calendário) — caso não
+  // haja sessões, caímos para o intervalo entre reading_started_at e date_completed.
   const booksWithDates = completedBooks.filter(
-    (b) => b.reading_started_at && b.date_completed
+    (b) =>
+      b.reading_started_at ||
+      b.date_completed ||
+      (readingSessions || []).some(
+        (s) => s.book_id === b.id
+      )
   );
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+
   const averageDaysToComplete =
     booksWithDates.length > 0
       ? booksWithDates.reduce((sum, book) => {
-          const start = new Date(book.reading_started_at!);
-          const end = new Date(book.date_completed!);
-          const days = Math.ceil(
-            (end.getTime() - start.getTime()) /
-              (1000 * 60 * 60 * 24)
+          // Gather session dates for this book (YYYY-MM-DD)
+          const sessionsForBook = (
+            readingSessions || []
+          ).filter(
+            (s) => s.book_id === book.id && s.session_date
           );
+          const sessionDateSet = new Set<string>();
+          sessionsForBook.forEach((s) => {
+            try {
+              const d = new Date(s.session_date);
+              sessionDateSet.add(
+                d.toISOString().slice(0, 10)
+              );
+            } catch (e) {
+              // ignore invalid dates
+            }
+          });
+
+          let days = 0;
+
+          if (sessionDateSet.size > 0) {
+            const dates = Array.from(sessionDateSet).map(
+              (d) => new Date(d)
+            );
+            const min = new Date(
+              Math.min(...dates.map((d) => d.getTime()))
+            );
+            const max = new Date(
+              Math.max(...dates.map((d) => d.getTime()))
+            );
+            // inclusive days: difference in days + 1
+            const diff = Math.round(
+              (max.getTime() - min.getTime()) / msPerDay
+            );
+            days = Math.max(1, diff + 1);
+          } else if (
+            book.reading_started_at &&
+            book.date_completed
+          ) {
+            const start = new Date(
+              book.reading_started_at!
+            );
+            const end = new Date(book.date_completed!);
+            const diff = Math.round(
+              (end.getTime() - start.getTime()) / msPerDay
+            );
+            days = Math.max(1, Math.abs(diff));
+          } else {
+            // fallback to 1 day if we have no dates
+            days = 1;
+          }
+
           return sum + days;
         }, 0) / booksWithDates.length
       : 0;
@@ -209,6 +273,65 @@ const ProfilePage = () => {
   const unlockedAchievements =
     achievements?.filter((a) => a.unlocked) || [];
 
+  // Display points: prefer profile.points, then profile.total_pages_read, then live session sum
+  const displayPoints =
+    (profile &&
+      (profile.points ?? profile.total_pages_read)) ||
+    totalPages ||
+    0;
+
+  // Compute a level based on the canonical formatter but prefer live-derived points
+  // Compute display level based on the live-derived points. Intentionally do NOT
+  // pass through the stored `profile.level` here so the UI reflects current
+  // pages/points (stored level can be stale). We only pass `total_pages_read`.
+  const displayLevel = profileLoading
+    ? "Carregando..."
+    : formatProfileLevel({
+        total_pages_read: displayPoints,
+      });
+
+  // Auto-sync derived level/points back to DB when different from stored values.
+  // Guarded to avoid update loops: only run when profile is loaded, not currently updating,
+  // and when the canonical formatted level differs.
+  useEffect(() => {
+    if (
+      !profile ||
+      profileLoading ||
+      isUpdating ||
+      displayLevel === "Carregando..."
+    )
+      return;
+
+    try {
+      const storedLevel = formatProfileLevel(profile);
+      if (storedLevel !== displayLevel) {
+        console.log(
+          "🔁 Sincronizando nível derivado com o banco:",
+          { from: storedLevel, to: displayLevel }
+        );
+        // updateProfile is the mutate function from the hook
+        updateProfile({
+          level: displayLevel,
+          points: displayPoints,
+        });
+      }
+    } catch (e) {
+      // ignore formatting errors
+      console.error(
+        "Erro ao sincronizar nível do perfil:",
+        e
+      );
+    }
+    // We only want to run when relevant inputs change
+  }, [
+    profile,
+    profileLoading,
+    isUpdating,
+    displayLevel,
+    displayPoints,
+    updateProfile,
+  ]);
+
   // Filtrar sessões do livro selecionado
   const selectedBookSessions = selectedBook
     ? readingSessions?.filter(
@@ -218,33 +341,52 @@ const ProfilePage = () => {
 
   // Função para converter nomes de ícones em emojis
   const getAchievementIcon = (icon: string) => {
-    const iconMap: Record<string, string> = {
-      Medal: "🏅",
-      Crown: "👑",
-      Star: "⭐",
-      Trophy: "🏆",
-      Award: "🎖️",
-      Book: "📖",
-      Books: "📚",
-      Fire: "🔥",
-      Target: "🎯",
-      Flame: "🔥",
-      Diamond: "💎",
-      Gem: "💎",
-      Runner: "🏃",
-      Page: "📄",
-      Sparkle: "✨",
-      Rocket: "🚀",
-    };
-
-    // Se já for emoji, retorna direto
-    if (icon.match(/[\u{1F300}-\u{1F9FF}]/u)) {
-      return icon;
+    // Return a lucide-react icon component for consistent rendering
+    switch (icon) {
+      case "Star":
+        return <Star className="h-6 w-6 text-yellow-500" />;
+      case "Trophy":
+        return (
+          <Trophy className="h-6 w-6 text-amber-500" />
+        );
+      case "Award":
+        return <Award className="h-6 w-6 text-slate-700" />;
+      case "Book":
+        return <Book className="h-6 w-6 text-green-600" />;
+      case "Books":
+        return (
+          <BookOpen className="h-6 w-6 text-green-600" />
+        );
+      case "Flame":
+      case "Fire":
+        return (
+          <Flame className="h-6 w-6 text-orange-500" />
+        );
+      case "Target":
+        return <Target className="h-6 w-6 text-blue-500" />;
+      case "Runner":
+        return (
+          <TrendingUp className="h-6 w-6 text-green-500" />
+        );
+      case "Page":
+        return (
+          <BookOpen className="h-6 w-6 text-muted-foreground" />
+        );
+      case "Sparkle":
+      case "Starburst":
+        return <Star className="h-6 w-6 text-yellow-300" />;
+      case "Rocket":
+        return (
+          <TrendingUp className="h-6 w-6 text-purple-500" />
+        );
+      default:
+        return (
+          <Award className="h-6 w-6 text-muted-foreground" />
+        );
     }
-
-    // Se for texto, busca no mapa
-    return iconMap[icon] || icon;
   };
+
+  // Use shared helper to format/derive level consistently
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -314,21 +456,25 @@ const ProfilePage = () => {
                     className="flex items-center gap-1"
                   >
                     <Trophy className="h-3 w-3" />
-                    {profile?.level || "Iniciante"}
+                    {displayLevel}
                   </Badge>
                   <Badge
                     variant="secondary"
                     className="flex items-center gap-1"
                   >
                     <Star className="h-3 w-3 text-yellow-500" />
-                    {profile?.points || 0} pontos
+                    {profileLoading ? "—" : displayPoints}{" "}
+                    pontos
                   </Badge>
                   <Badge
                     variant="secondary"
                     className="flex items-center gap-1"
                   >
                     <Flame className="h-3 w-3 text-orange-500" />
-                    {profile?.current_streak || 0} dias
+                    {profileLoading
+                      ? "—"
+                      : profile?.current_streak || 0}{" "}
+                    dias
                   </Badge>
                 </div>
               </div>
@@ -689,9 +835,9 @@ const ProfilePage = () => {
                                           : "livros"
                                       }`
                                     : achievement.requirementType ===
-                                      "pages_read"
-                                    ? `Leia ${achievement.requirementValue} páginas`
-                                    : `${achievement.requirementValue} ${achievement.requirementType}`}
+                                        "pages_read"
+                                      ? `Leia ${achievement.requirementValue} páginas`
+                                      : `${achievement.requirementValue} ${achievement.requirementType}`}
                                 </p>
                               </div>
                             </CardContent>

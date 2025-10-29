@@ -180,6 +180,52 @@ export const getRarityIcon = (
   return icons[rarity];
 };
 
+// Level formatting/derivation utility
+export const formatProfileLevel = (
+  p: any | string
+): string => {
+  if (!p) return "Iniciante";
+
+  // If a simple string was provided, normalize common variants
+  if (typeof p === "string") {
+    const normalized = p.trim().toLowerCase();
+    const map: Record<string, string> = {
+      iniciante: "Iniciante",
+      "leitor ativo": "Leitor Ativo",
+      "leitor dedicado": "Leitor Dedicado",
+      bibliófilo: "Bibliófilo",
+      bibliofilo: "Bibliófilo",
+      "bibliófilo experiente": "Bibliófilo Experiente",
+      "mestre dos livros": "Mestre dos Livros",
+      explorador: "Explorador",
+      aventureiro: "Aventureiro",
+      mestre: "Mestre",
+      lenda: "Lenda",
+      "grande mestre": "Grande Mestre",
+      imortal: "Imortal",
+    };
+
+    if (map[normalized]) return map[normalized];
+    return capitalizeFirst(p);
+  }
+
+  // If an object/profile was provided, prefer explicit level string
+  if (p.level && typeof p.level === "string") {
+    return formatProfileLevel(p.level);
+  }
+
+  // Derive from numeric fields (prefer total_pages_read, then experience_points/points)
+  const xp = p.total_pages_read as number;
+
+  if (xp >= 10000) return "Mestre dos Livros";
+  if (xp >= 7500) return "Bibliófilo Experiente";
+  if (xp >= 5000) return "Bibliófilo";
+  if (xp >= 2500) return "Leitor Dedicado";
+  if (xp >= 1000) return "Leitor Ativo";
+  if (xp > 0) return "Iniciante";
+  return "Iniciante";
+};
+
 // Activity utilities
 export const getActivityMessage = (
   type: ActivityType,
@@ -294,12 +340,15 @@ export const groupBy = <T, K extends keyof any>(
   array: T[],
   getKey: (item: T) => K
 ): Record<K, T[]> => {
-  return array.reduce((groups, item) => {
-    const key = getKey(item);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(item);
-    return groups;
-  }, {} as Record<K, T[]>);
+  return array.reduce(
+    (groups, item) => {
+      const key = getKey(item);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+      return groups;
+    },
+    {} as Record<K, T[]>
+  );
 };
 
 export const sortBy = <T>(

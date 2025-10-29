@@ -1,3 +1,4 @@
+import React from "react";
 import {
   useQuery,
   useMutation,
@@ -11,6 +12,7 @@ import type {
   Follow,
   LeaderboardEntry,
 } from "@/shared/types";
+import { formatProfileLevel } from "@/shared/utils";
 
 export const useActivity = () => {
   const { user } = useAuth();
@@ -485,15 +487,10 @@ export const useLeaderboard = () => {
           // Points are now just total pages read (1 point per page)
           const points = totalPagesRead;
 
-          // Determine level based on pages read
-          let level = "Iniciante";
-          if (points >= 10000) level = "Mestre dos Livros";
-          else if (points >= 7500)
-            level = "Bibliófilo Experiente";
-          else if (points >= 5000) level = "Bibliófilo";
-          else if (points >= 2500)
-            level = "Leitor Dedicado";
-          else if (points >= 1000) level = "Leitor Ativo";
+          // Determine level using shared formatter for consistency
+          const level = formatProfileLevel({
+            total_pages_read: points,
+          });
 
           return {
             userId: profile.user_id,
@@ -522,6 +519,16 @@ export const useLeaderboard = () => {
       return sortedEntries;
     },
   });
+};
+
+// Hash (Map) view over the leaderboard for O(1) lookups by userId
+export const useLeaderboardHash = () => {
+  const { data: list = [] } = useLeaderboard();
+  return React.useMemo(
+    () =>
+      new Map((list || []).map((u: any) => [u.userId, u])),
+    [list]
+  );
 };
 
 export const useSearchUsers = () => {
@@ -576,15 +583,10 @@ export const useSearchUsers = () => {
           // Points are now just total pages read (1 point per page)
           const points = totalPagesRead;
 
-          // Determine level based on pages read
-          let level = "Iniciante";
-          if (points >= 10000) level = "Mestre dos Livros";
-          else if (points >= 7500)
-            level = "Bibliófilo Experiente";
-          else if (points >= 5000) level = "Bibliófilo";
-          else if (points >= 2500)
-            level = "Leitor Dedicado";
-          else if (points >= 1000) level = "Leitor Ativo";
+          // Determine level using shared formatter for consistency
+          const level = formatProfileLevel({
+            total_pages_read: points,
+          });
 
           return {
             userId: profile.user_id,

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatProfileLevel } from "@/shared/utils";
 
 export const useUserProfile = (userId: string) => {
   return useQuery({
@@ -8,10 +9,11 @@ export const useUserProfile = (userId: string) => {
       if (!userId) throw new Error("User ID is required");
 
       // Get user profile
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select(
-          `
+      const { data: profile, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select(
+            `
           user_id,
           username,
           full_name,
@@ -20,17 +22,18 @@ export const useUserProfile = (userId: string) => {
           created_at,
           current_streak
         `
-        )
-        .eq("user_id", userId)
-        .single();
+          )
+          .eq("user_id", userId)
+          .single();
 
       if (profileError) throw profileError;
 
       // Get user's books
-      const { data: books, error: booksError } = await supabase
-        .from("books")
-        .select(
-          `
+      const { data: books, error: booksError } =
+        await supabase
+          .from("books")
+          .select(
+            `
           id,
           title,
           author,
@@ -42,14 +45,17 @@ export const useUserProfile = (userId: string) => {
           created_at,
           updated_at
         `
-        )
-        .eq("user_id", userId)
-        .order("updated_at", { ascending: false });
+          )
+          .eq("user_id", userId)
+          .order("updated_at", { ascending: false });
 
       if (booksError) throw booksError;
 
       // Get user's achievements
-      const { data: userAchievements, error: achievementsError } = await supabase
+      const {
+        data: userAchievements,
+        error: achievementsError,
+      } = await supabase
         .from("user_achievements")
         .select(
           `
@@ -73,17 +79,24 @@ export const useUserProfile = (userId: string) => {
       if (achievementsError) throw achievementsError;
 
       // Calculate stats
-      const completedBooks = books?.filter(book => book.status === "completed") || [];
-      const currentlyReading = books?.filter(book => book.status === "reading") || [];
-      const totalPagesRead = books?.reduce((sum, book) => sum + (book.pages_read || 0), 0) || 0;
+      const completedBooks =
+        books?.filter(
+          (book) => book.status === "completed"
+        ) || [];
+      const currentlyReading =
+        books?.filter(
+          (book) => book.status === "reading"
+        ) || [];
+      const totalPagesRead =
+        books?.reduce(
+          (sum, book) => sum + (book.pages_read || 0),
+          0
+        ) || 0;
 
-      // Calculate level based on pages read
-      let level = "Iniciante";
-      if (totalPagesRead >= 10000) level = "Mestre dos Livros";
-      else if (totalPagesRead >= 7500) level = "Bibliófilo Experiente";
-      else if (totalPagesRead >= 5000) level = "Bibliófilo";
-      else if (totalPagesRead >= 2500) level = "Leitor Dedicado";
-      else if (totalPagesRead >= 1000) level = "Leitor Ativo";
+      // Determine level using shared helper for consistency
+      const level = formatProfileLevel({
+        total_pages_read: totalPagesRead,
+      });
 
       return {
         profile,

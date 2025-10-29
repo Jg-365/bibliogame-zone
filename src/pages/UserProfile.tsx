@@ -1,11 +1,23 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -29,6 +41,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { formatProfileLevel } from "@/shared/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -78,8 +91,10 @@ export const UserProfilePage = () => {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [isFollowing, setIsFollowing] = useState(false);
-  const [selectedBook, setSelectedBook] = useState<UserBook | null>(null);
-  const [showSessionsDialog, setShowSessionsDialog] = useState(false);
+  const [selectedBook, setSelectedBook] =
+    useState<UserBook | null>(null);
+  const [showSessionsDialog, setShowSessionsDialog] =
+    useState(false);
 
   // Follow/Unfollow functionality
   const handleFollowToggle = async () => {
@@ -101,8 +116,12 @@ export const UserProfilePage = () => {
         setIsFollowing(true);
       }
 
-      queryClient.invalidateQueries({ queryKey: ["social-stats", userId] });
-      queryClient.invalidateQueries({ queryKey: ["is-following", currentUser.id, userId] });
+      queryClient.invalidateQueries({
+        queryKey: ["social-stats", userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["is-following", currentUser.id, userId],
+      });
     } catch (error) {
       console.error("Error toggling follow:", error);
     }
@@ -112,7 +131,12 @@ export const UserProfilePage = () => {
   useQuery({
     queryKey: ["is-following", currentUser?.id, userId],
     queryFn: async () => {
-      if (!currentUser || !userId || currentUser.id === userId) return false;
+      if (
+        !currentUser ||
+        !userId ||
+        currentUser.id === userId
+      )
+        return false;
 
       const { data } = await supabase
         .from("follows")
@@ -125,44 +149,53 @@ export const UserProfilePage = () => {
       setIsFollowing(following);
       return following;
     },
-    enabled: !!currentUser && !!userId && currentUser.id !== userId,
+    enabled:
+      !!currentUser &&
+      !!userId &&
+      currentUser.id !== userId,
   });
 
   // Fetch user profile
-  const { data: profile, isLoading: profileLoading } = useQuery({
-    queryKey: ["user-profile", userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
+  const { data: profile, isLoading: profileLoading } =
+    useQuery({
+      queryKey: ["user-profile", userId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .single();
 
-      if (error) throw error;
-      return data as UserProfile;
-    },
-    enabled: !!userId,
-  });
+        if (error) throw error;
+        return data as UserProfile;
+      },
+      enabled: !!userId,
+    });
 
   // Fetch user's books
-  const { data: books, isLoading: booksLoading } = useQuery({
-    queryKey: ["user-books", userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("books")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(9);
+  const { data: books, isLoading: booksLoading } = useQuery(
+    {
+      queryKey: ["user-books", userId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("books")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(9);
 
-      if (error) throw error;
-      return data as UserBook[];
-    },
-    enabled: !!userId,
-  });
+        if (error) throw error;
+        return data as UserBook[];
+      },
+      enabled: !!userId,
+    }
+  );
 
   // Fetch user achievements
-  const { data: achievements, isLoading: achievementsLoading } = useQuery({
+  const {
+    data: achievements,
+    isLoading: achievementsLoading,
+  } = useQuery({
     queryKey: ["user-achievements", userId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -191,12 +224,18 @@ export const UserProfilePage = () => {
   });
 
   // Fetch reading sessions for selected book
-  const { data: readingSessions, isLoading: sessionsLoading } = useQuery({
+  const {
+    data: readingSessions,
+    isLoading: sessionsLoading,
+  } = useQuery({
     queryKey: ["book-reading-sessions", selectedBook?.id],
     queryFn: async () => {
       if (!selectedBook) return [];
 
-      console.log("🔍 Fetching sessions for book:", selectedBook.id);
+      console.log(
+        "🔍 Fetching sessions for book:",
+        selectedBook.id
+      );
       const { data, error } = await supabase
         .from("reading_sessions")
         .select("*")
@@ -207,7 +246,10 @@ export const UserProfilePage = () => {
       console.log("❌ Sessions error:", error);
 
       if (error) {
-        console.error("Error fetching reading sessions:", error);
+        console.error(
+          "Error fetching reading sessions:",
+          error
+        );
         throw error;
       }
       return data as ReadingSession[];
@@ -219,16 +261,17 @@ export const UserProfilePage = () => {
   const { data: socialStats } = useQuery({
     queryKey: ["social-stats", userId],
     queryFn: async () => {
-      const [followersRes, followingRes] = await Promise.all([
-        supabase
-          .from("follows")
-          .select("*", { count: "exact", head: true })
-          .eq("following_id", userId),
-        supabase
-          .from("follows")
-          .select("*", { count: "exact", head: true })
-          .eq("follower_id", userId),
-      ]);
+      const [followersRes, followingRes] =
+        await Promise.all([
+          supabase
+            .from("follows")
+            .select("*", { count: "exact", head: true })
+            .eq("following_id", userId),
+          supabase
+            .from("follows")
+            .select("*", { count: "exact", head: true })
+            .eq("follower_id", userId),
+        ]);
 
       return {
         followers: followersRes.count || 0,
@@ -257,6 +300,14 @@ export const UserProfilePage = () => {
 
   const isOwnProfile = currentUser?.id === userId;
 
+  // Prefer explicit points, fallback to total_pages_read for level derivation
+  const displayPoints =
+    (profile.points ?? profile.total_pages_read) || 0;
+  const displayLevel = formatProfileLevel({
+    ...(profile as any),
+    total_pages_read: displayPoints,
+  });
+
   return (
     <div className="container max-w-6xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
       {/* Header */}
@@ -275,9 +326,13 @@ export const UserProfilePage = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
               <Avatar className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 shrink-0">
-                <AvatarImage src={profile.avatar_url || ""} />
+                <AvatarImage
+                  src={profile.avatar_url || ""}
+                />
                 <AvatarFallback className="text-lg sm:text-xl md:text-2xl">
-                  {profile.full_name?.charAt(0)?.toUpperCase() || "U"}
+                  {profile.full_name
+                    ?.charAt(0)
+                    ?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
 
@@ -286,21 +341,41 @@ export const UserProfilePage = () => {
                   {profile.full_name}
                 </h1>
 
+                <div className="flex items-center gap-2 mb-2 justify-center sm:justify-start">
+                  <Badge
+                    variant="secondary"
+                    className="flex items-center gap-1"
+                  >
+                    <Trophy className="h-3 w-3" />
+                    {displayLevel}
+                  </Badge>
+                </div>
+
                 <div className="flex flex-wrap gap-2 sm:gap-4 justify-center sm:justify-start text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                   <div className="flex items-center gap-1">
                     <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>{socialStats?.followers || 0} seguidores</span>
+                    <span>
+                      {socialStats?.followers || 0}{" "}
+                      seguidores
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>{socialStats?.following || 0} seguindo</span>
+                    <span>
+                      {socialStats?.following || 0} seguindo
+                    </span>
                   </div>
                 </div>
 
                 {!isOwnProfile && currentUser && (
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     <Button
-                      variant={isFollowing ? "outline" : "default"}
+                      variant={
+                        isFollowing ? "outline" : "default"
+                      }
                       onClick={handleFollowToggle}
                       size="sm"
                       className="text-xs sm:text-sm w-full sm:w-auto"
@@ -308,8 +383,12 @@ export const UserProfilePage = () => {
                       {isFollowing ? (
                         <>
                           <UserMinus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                          <span className="hidden xs:inline">Deixar de Seguir</span>
-                          <span className="xs:hidden">Seguindo</span>
+                          <span className="hidden xs:inline">
+                            Deixar de Seguir
+                          </span>
+                          <span className="xs:hidden">
+                            Seguindo
+                          </span>
                         </>
                       ) : (
                         <>
@@ -331,7 +410,9 @@ export const UserProfilePage = () => {
                   <p className="text-lg sm:text-xl md:text-2xl font-bold">
                     {profile.total_books_read || 0}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Livros Lidos</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    Livros Lidos
+                  </p>
                 </CardContent>
               </Card>
 
@@ -341,7 +422,9 @@ export const UserProfilePage = () => {
                   <p className="text-lg sm:text-xl md:text-2xl font-bold">
                     {profile.total_pages_read || 0}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Páginas</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    Páginas
+                  </p>
                 </CardContent>
               </Card>
 
@@ -351,15 +434,21 @@ export const UserProfilePage = () => {
                   <p className="text-lg sm:text-xl md:text-2xl font-bold">
                     {profile.current_streak || 0}
                   </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Dias Streak</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    Dias Streak
+                  </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-3 sm:p-4 text-center">
                   <Target className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mx-auto mb-1 sm:mb-2 text-primary" />
-                  <p className="text-lg sm:text-xl md:text-2xl font-bold">{profile.points || 0}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Pontos</p>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold">
+                    {profile.points || 0}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    Pontos
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -392,14 +481,19 @@ export const UserProfilePage = () => {
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           {booksLoading ? (
-            <p className="text-center text-muted-foreground text-sm">Carregando livros...</p>
+            <p className="text-center text-muted-foreground text-sm">
+              Carregando livros...
+            </p>
           ) : books && books.length > 0 ? (
             <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-              {books.map(book => (
+              {books.map((book) => (
                 <div
                   key={book.id}
                   onClick={() => {
-                    console.log("🎯 CLICK DETECTADO! Livro:", book.title);
+                    console.log(
+                      "🎯 CLICK DETECTADO! Livro:",
+                      book.title
+                    );
                     alert(`Clicou em: ${book.title}`);
                     setSelectedBook(book);
                     setShowSessionsDialog(true);
@@ -420,8 +514,12 @@ export const UserProfilePage = () => {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 hover:opacity-100 transition-opacity flex flex-col items-center justify-end p-1.5 sm:p-2 pointer-events-none">
                     <div className="text-white text-[10px] sm:text-xs text-center w-full mb-1">
-                      <p className="font-semibold truncate">{book.title}</p>
-                      <p className="truncate text-white/80 text-[9px] sm:text-xs">{book.author}</p>
+                      <p className="font-semibold truncate">
+                        {book.title}
+                      </p>
+                      <p className="truncate text-white/80 text-[9px] sm:text-xs">
+                        {book.author}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1 text-white/90 text-[9px] sm:text-xs">
                       <BookOpen className="h-3 w-3" />
@@ -440,7 +538,10 @@ export const UserProfilePage = () => {
       </Card>
 
       {/* Reading Sessions Dialog */}
-      <Dialog open={showSessionsDialog} onOpenChange={setShowSessionsDialog}>
+      <Dialog
+        open={showSessionsDialog}
+        onOpenChange={setShowSessionsDialog}
+      >
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -462,9 +563,16 @@ export const UserProfilePage = () => {
                     </div>
                   )}
                   <div>
-                    <p className="font-semibold text-foreground">{selectedBook.title}</p>
-                    <p className="text-sm text-muted-foreground">{selectedBook.author}</p>
-                    <Badge variant="outline" className="mt-1">
+                    <p className="font-semibold text-foreground">
+                      {selectedBook.title}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedBook.author}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="mt-1"
+                    >
                       {selectedBook.status}
                     </Badge>
                   </div>
@@ -477,13 +585,17 @@ export const UserProfilePage = () => {
             {sessionsLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="p-4 border rounded-lg animate-pulse">
+                  <div
+                    key={i}
+                    className="p-4 border rounded-lg animate-pulse"
+                  >
                     <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
                     <div className="h-3 bg-gray-200 rounded w-1/4"></div>
                   </div>
                 ))}
               </div>
-            ) : readingSessions && readingSessions.length > 0 ? (
+            ) : readingSessions &&
+              readingSessions.length > 0 ? (
               <div className="space-y-3">
                 {readingSessions.map((session, index) => (
                   <motion.div
@@ -497,24 +609,36 @@ export const UserProfilePage = () => {
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-primary" />
                         <span className="font-semibold">
-                          {format(new Date(session.session_date), "dd 'de' MMMM 'de' yyyy", {
-                            locale: ptBR,
-                          })}
+                          {format(
+                            new Date(session.session_date),
+                            "dd 'de' MMMM 'de' yyyy",
+                            {
+                              locale: ptBR,
+                            }
+                          )}
                         </span>
                       </div>
-                      <Badge variant="secondary">{session.pages_read} páginas</Badge>
+                      <Badge variant="secondary">
+                        {session.pages_read} páginas
+                      </Badge>
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         <span>
-                          {format(new Date(session.created_at), "HH:mm", { locale: ptBR })}
+                          {format(
+                            new Date(session.created_at),
+                            "HH:mm",
+                            { locale: ptBR }
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <BookOpen className="h-3 w-3" />
-                        <span>{session.pages_read} páginas lidas</span>
+                        <span>
+                          {session.pages_read} páginas lidas
+                        </span>
                       </div>
                     </div>
 
@@ -522,7 +646,9 @@ export const UserProfilePage = () => {
                       <div className="mt-3 p-3 bg-muted/50 rounded-md">
                         <div className="flex items-start gap-2">
                           <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                          <p className="text-sm text-foreground">{session.notes}</p>
+                          <p className="text-sm text-foreground">
+                            {session.notes}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -532,12 +658,17 @@ export const UserProfilePage = () => {
                 <div className="text-center pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
                     Total de sessões:{" "}
-                    <span className="font-semibold">{readingSessions.length}</span>
+                    <span className="font-semibold">
+                      {readingSessions.length}
+                    </span>
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Total de páginas:{" "}
                     <span className="font-semibold">
-                      {readingSessions.reduce((sum, s) => sum + s.pages_read, 0)}
+                      {readingSessions.reduce(
+                        (sum, s) => sum + s.pages_read,
+                        0
+                      )}
                     </span>
                   </p>
                 </div>
@@ -545,7 +676,9 @@ export const UserProfilePage = () => {
             ) : (
               <div className="text-center py-8">
                 <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-20" />
-                <p className="text-muted-foreground">Nenhuma sessão de leitura registrada</p>
+                <p className="text-muted-foreground">
+                  Nenhuma sessão de leitura registrada
+                </p>
               </div>
             )}
           </div>
@@ -562,11 +695,16 @@ export const UserProfilePage = () => {
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           {achievementsLoading ? (
-            <p className="text-center text-muted-foreground text-sm">Carregando conquistas...</p>
+            <p className="text-center text-muted-foreground text-sm">
+              Carregando conquistas...
+            </p>
           ) : achievements && achievements.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {achievements.map(achievement => (
-                <Card key={achievement.id} className="hover:shadow-lg transition-shadow">
+              {achievements.map((achievement) => (
+                <Card
+                  key={achievement.id}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardContent className="p-3 sm:p-4 text-center">
                     <div className="text-3xl sm:text-4xl mb-1 sm:mb-2">
                       {achievement.achievements.icon}
@@ -577,7 +715,10 @@ export const UserProfilePage = () => {
                     <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 line-clamp-2">
                       {achievement.achievements.description}
                     </p>
-                    <Badge variant="outline" className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs">
+                    <Badge
+                      variant="outline"
+                      className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs"
+                    >
                       {achievement.achievements.rarity}
                     </Badge>
                   </CardContent>

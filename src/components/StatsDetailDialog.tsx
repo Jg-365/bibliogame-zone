@@ -24,6 +24,7 @@ import {
   Calendar,
   Award,
 } from "lucide-react";
+import { formatProfileLevel } from "@/shared/utils";
 import type { Book } from "@/shared/types";
 
 interface StatsDetailDialogProps {
@@ -230,7 +231,7 @@ export const StatsDetailDialog: React.FC<
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {profile?.level || "Iniciante"}
+                      {formatProfileLevel(profile)}
                     </div>
                   </CardContent>
                 </Card>
@@ -254,9 +255,9 @@ export const StatsDetailDialog: React.FC<
       case "level":
         return {
           title: "Nível Atual",
-          description: `Você está no nível ${
-            profile?.level || "Iniciante"
-          }!`,
+          description: `Você está no nível ${formatProfileLevel(
+            profile
+          )}!`,
           icon: Award,
           content: (
             <div className="space-y-4">
@@ -264,7 +265,7 @@ export const StatsDetailDialog: React.FC<
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="h-5 w-5" />
-                    {profile?.level || "Iniciante"}
+                    {formatProfileLevel(profile)}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
