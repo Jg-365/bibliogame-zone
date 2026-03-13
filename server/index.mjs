@@ -25,7 +25,7 @@ import { ingestBookResearch } from "./book-research.mjs";
 import { summarizeBookChapterHybrid } from "./hybrid-book-summary.mjs";
 import { runDeduped } from "./request-coordinator.mjs";
 
-const port = Number(process.env.READQUEST_API_PORT || 8787);
+const port = Number(process.env.PORT || process.env.READQUEST_API_PORT || 8787);
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 const KNOWLEDGE_FRESH_MS = 1000 * 60 * 60 * 24;

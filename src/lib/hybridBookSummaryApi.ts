@@ -39,11 +39,17 @@ const getAuthHeaders = async () => {
   };
 };
 
+const resolveApiUrl = (path: string) => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (!baseUrl) return path;
+  return `${baseUrl.replace(/\/$/, "")}${path}`;
+};
+
 export const summarizeBookChapterHybrid = async (
   payload: HybridBookSummaryPayload,
 ): Promise<HybridBookSummaryResponse> => {
   const headers = await getAuthHeaders();
-  const response = await fetch("/api/book-summary/hybrid", {
+  const response = await fetch(resolveApiUrl("/api/book-summary/hybrid"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

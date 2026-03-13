@@ -40,9 +40,15 @@ const getAuthHeaders = async () => {
   };
 };
 
+const resolveApiUrl = (path: string) => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  if (!baseUrl) return path;
+  return `${baseUrl.replace(/\/$/, "")}${path}`;
+};
+
 const postLocalApi = async <T>(path: string, body: unknown): Promise<T> => {
   const headers = await getAuthHeaders();
-  const response = await fetch(path, {
+  const response = await fetch(resolveApiUrl(path), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
