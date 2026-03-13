@@ -4,6 +4,7 @@ import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 import { useCheckAchievements } from "./useAchievements";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { toBookCoverUrl } from "@/lib/media";
 import type { Book, GoogleBook, ReadingSession } from "@/shared/types";
 
 // Re-export so existing code that imports from this hook keeps working
@@ -65,7 +66,7 @@ export const useBooks = () => {
           total_pages: bookData.total_pages,
           pages_read: 0,
           status: bookData.status || "want-to-read",
-          cover_url: bookData.cover_url,
+          cover_url: toBookCoverUrl(bookData.cover_url),
           google_books_id: bookData.google_books_id,
           isbn: bookData.isbn,
           description: bookData.description,

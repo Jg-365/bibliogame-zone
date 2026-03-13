@@ -11,6 +11,50 @@ interface AchievementProgress extends Achievement {
   user_id: string | null;
 }
 
+const shouldFallbackAchievementsView = (error: { code?: string; message?: string } | null) => {
+  if (!error) return false;
+  return (
+    error.code === "PGRST205" ||
+    error.message?.includes("user_achievement_progress") ||
+    error.message?.includes("Could not find")
+  );
+};
+
+const loadAchievementsFallback = async (userId: string): Promise<AchievementProgress[]> => {
+  const [
+    { data: achievements, error: achievementsError },
+    { data: unlockedRows, error: unlockedError },
+  ] = await Promise.all([
+    supabase.from("achievements").select("*").order("requirement_value", { ascending: true }),
+    supabase.from("user_achievements").select("*").eq("user_id", userId),
+  ]);
+
+  if (achievementsError) throw achievementsError;
+  if (unlockedError) throw unlockedError;
+
+  const unlockedMap = new Map(
+    (unlockedRows ?? []).map((row) => [row.achievement_id, row] as const),
+  );
+
+  return (achievements ?? []).map((achievement) => {
+    const unlocked = unlockedMap.get(achievement.id);
+    return {
+      id: achievement.id,
+      title: achievement.title,
+      description: achievement.description,
+      icon: achievement.icon,
+      rarity: achievement.rarity as Achievement["rarity"],
+      requirementType: achievement.requirement_type,
+      requirementValue: achievement.requirement_value,
+      unlocked: Boolean(unlocked),
+      unlockedAt: unlocked?.unlocked_at ?? undefined,
+      unlocked_at: unlocked?.unlocked_at ?? null,
+      user_achievement_id: unlocked?.id ?? null,
+      user_id: unlocked?.user_id ?? null,
+    };
+  });
+};
+
 export const useAchievements = () => {
   const { user } = useAuth();
 
@@ -24,7 +68,12 @@ export const useAchievements = () => {
         .select("*")
         .order("requirement_value", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        if (shouldFallbackAchievementsView(error)) {
+          return loadAchievementsFallback(user.id);
+        }
+        throw error;
+      }
 
       return (rows ?? []) as AchievementProgress[];
     },

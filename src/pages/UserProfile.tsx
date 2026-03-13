@@ -32,6 +32,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { calculateReadingPoints, formatProfileLevel } from "@/shared/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toBookCoverUrl, toSecureAssetUrl } from "@/lib/media";
 
 interface UserProfile {
   user_id: string;
@@ -297,7 +298,7 @@ export const UserProfilePage = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
               <Avatar className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 shrink-0">
-                <AvatarImage src={profile.avatar_url || ""} />
+                <AvatarImage src={toSecureAssetUrl(profile.avatar_url)} />
                 <AvatarFallback className="text-lg sm:text-xl md:text-2xl">
                   {profile.full_name?.charAt(0)?.toUpperCase() || "U"}
                 </AvatarFallback>
@@ -417,7 +418,7 @@ export const UserProfilePage = () => {
                 >
                   {book.cover_url ? (
                     <img
-                      src={book.cover_url}
+                      src={toBookCoverUrl(book.cover_url)}
                       alt={book.title}
                       className="pointer-events-none h-full w-full object-cover dark:brightness-90 dark:contrast-110"
                     />
@@ -456,7 +457,7 @@ export const UserProfilePage = () => {
                 <div className="flex items-start gap-3 mt-2">
                   {selectedBook.cover_url ? (
                     <img
-                      src={selectedBook.cover_url}
+                      src={toBookCoverUrl(selectedBook.cover_url)}
                       alt={selectedBook.title}
                       className="h-24 w-16 rounded object-cover dark:brightness-90 dark:contrast-110"
                     />

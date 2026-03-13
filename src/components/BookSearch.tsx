@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toBookCoverUrl } from "@/lib/media";
 
 const DEBOUNCE_MS = 400;
 
@@ -90,7 +91,7 @@ export const BookSearch = () => {
       title: volumeInfo.title,
       author: volumeInfo.authors?.join(", ") || "Autor desconhecido",
       total_pages: volumeInfo.pageCount || 0,
-      cover_url: volumeInfo.imageLinks?.thumbnail,
+      cover_url: toBookCoverUrl(volumeInfo.imageLinks?.thumbnail),
       google_books_id: book.id,
       description: volumeInfo.description,
       published_date: volumeInfo.publishedDate,
@@ -152,7 +153,7 @@ export const BookSearch = () => {
                 <div className="flex gap-3">
                   {volumeInfo.imageLinks?.thumbnail ? (
                     <img
-                      src={volumeInfo.imageLinks.thumbnail}
+                      src={toBookCoverUrl(volumeInfo.imageLinks.thumbnail)}
                       alt={volumeInfo.title}
                       className="h-16 w-12 rounded object-cover"
                     />

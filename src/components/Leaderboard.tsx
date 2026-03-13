@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLeaderboard } from "@/hooks/useSocial";
+import { toSecureAssetUrl } from "@/lib/media";
 
 const getRankIcon = (rank: number) => {
   switch (rank) {
@@ -144,7 +145,7 @@ export const Leaderboard = () => {
               </div>
 
               <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
-                <AvatarImage src={user.avatarUrl || undefined} />
+                <AvatarImage src={toSecureAssetUrl(user.avatarUrl) || undefined} />
                 <AvatarFallback className="text-xs">
                   {getInitials(user.fullName || user.username)}
                 </AvatarFallback>

@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { toBookCoverUrl, toSecureAssetUrl } from "@/lib/media";
 
 interface PostCardProps {
   post: SocialPost;
@@ -133,7 +134,7 @@ export const PostCard = React.memo<PostCardProps>(({ post, onPostDeleted }) => {
         <div className="flex items-start justify-between">
           <div className="flex min-w-0 flex-1 items-center space-x-3">
             <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-              <AvatarImage src={post.user_avatar_url || ""} />
+              <AvatarImage src={toSecureAssetUrl(post.user_avatar_url)} />
               <AvatarFallback className="text-xs sm:text-sm">
                 {post.user_username?.charAt(0).toUpperCase() || "U"}
               </AvatarFallback>
@@ -179,7 +180,7 @@ export const PostCard = React.memo<PostCardProps>(({ post, onPostDeleted }) => {
                 <div className="flex items-center space-x-3">
                   {post.book_cover_url ? (
                     <img
-                      src={post.book_cover_url}
+                      src={toBookCoverUrl(post.book_cover_url)}
                       alt={post.book_title}
                       className="h-16 w-12 rounded object-cover dark:brightness-90 dark:contrast-110"
                     />
@@ -200,7 +201,7 @@ export const PostCard = React.memo<PostCardProps>(({ post, onPostDeleted }) => {
           {post.image_url ? (
             <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border/70">
               <img
-                src={post.image_url}
+                src={toSecureAssetUrl(post.image_url)}
                 alt={`Imagem do post de ${post.user_username ?? "usuário"}`}
                 className="max-h-96 w-full object-cover dark:brightness-90 dark:contrast-110"
               />

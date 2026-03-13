@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useActivities, type Activity } from "@/hooks/useEnhancedSocial";
+import { toSecureAssetUrl } from "@/lib/media";
 
 const getActivityIcon = (activityType: string) => {
   const icons = {
@@ -123,7 +124,7 @@ export const ActivityFeed = ({ userId, limit = 10 }: { userId?: string; limit?: 
                 >
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={activity.user_avatar_url} />
+                      <AvatarImage src={toSecureAssetUrl(activity.user_avatar_url)} />
                       <AvatarFallback className="text-xs">
                         {(activity.user_username || activity.user_full_name || "U")
                           .charAt(0)
