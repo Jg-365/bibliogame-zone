@@ -342,6 +342,107 @@ const extractJson = (raw) => {
   return raw;
 };
 
+const normalizeJsonText = (raw) =>
+  String(raw ?? "")
+    .replace(/^\uFEFF/, "")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
+
+const stripTrailingCommas = (raw) => raw.replace(/,\s*([}\]])/g, "$1");
+
+const isolateJsonEnvelope = (raw) => {
+  const objectStart = raw.indexOf("{");
+  const objectEnd = raw.lastIndexOf("}");
+  if (objectStart !== -1 && objectEnd > objectStart) {
+    return raw.slice(objectStart, objectEnd + 1);
+  }
+
+  const arrayStart = raw.indexOf("[");
+  const arrayEnd = raw.lastIndexOf("]");
+  if (arrayStart !== -1 && arrayEnd > arrayStart) {
+    return raw.slice(arrayStart, arrayEnd + 1);
+  }
+
+  return raw;
+};
+
+const tryParseJsonCandidate = (raw) => {
+  const candidate = normalizeJsonText(raw);
+  const attempts = [
+    candidate,
+    isolateJsonEnvelope(candidate),
+    stripTrailingCommas(candidate),
+    stripTrailingCommas(isolateJsonEnvelope(candidate)),
+    isolateJsonEnvelope(candidate.replace(/\n/g, " ")),
+    stripTrailingCommas(isolateJsonEnvelope(candidate.replace(/\n/g, " "))),
+  ].filter((value, index, array) => value && array.indexOf(value) === index);
+
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      return JSON.parse(attempt);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error("Unable to parse model JSON output.");
+};
+
+const repairJsonWithGemini = async ({ url, prompt, rawOutput, opts }) => {
+  const repairResponse = await fetchWithRetry(
+    url,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: [
+                  "Converta a resposta abaixo em JSON valido.",
+                  "Regras:",
+                  "- Preserve o significado.",
+                  "- Retorne apenas JSON.",
+                  "- Feche strings e objetos corretamente.",
+                  prompt ? `- Siga o schema implícito do prompt original: ${prompt.slice(0, 1200)}` : "",
+                  "",
+                  "Resposta original:",
+                  rawOutput,
+                ]
+                  .filter(Boolean)
+                  .join("\n"),
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: Math.min(opts.maxOutputTokens ?? 4096, 1600),
+          responseMimeType: "application/json",
+        },
+      }),
+    },
+    { timeoutMs: 20000, retries: 0, retryStatuses: [500, 502, 503, 504], baseDelayMs: 1200 },
+  );
+
+  if (!repairResponse.ok) {
+    const body = await repairResponse.text();
+    throw new Error(`gemini_repair_error_${repairResponse.status}: ${body.slice(0, 300)}`);
+  }
+
+  const repairData = await repairResponse.json();
+  const repairedText = repairData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  return tryParseJsonCandidate(extractJson(repairedText).trim());
+};
+
 export const callGeminiJson = async (prompt, opts = {}) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -384,7 +485,25 @@ export const callGeminiJson = async (prompt, opts = {}) => {
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-    return JSON.parse(extractJson(text).trim());
+    const extractedText = extractJson(text).trim();
+
+    try {
+      return tryParseJsonCandidate(extractedText);
+    } catch (parseError) {
+      try {
+        return await repairJsonWithGemini({
+          url,
+          prompt,
+          rawOutput: extractedText,
+          opts,
+        });
+      } catch {
+        const message = parseError instanceof Error ? parseError.message : "Invalid JSON from Gemini.";
+        const error = new Error(`gemini_invalid_json: ${message}`);
+        error.code = "gemini_invalid_json";
+        throw error;
+      }
+    }
   }
 
   throw new Error(lastError);
