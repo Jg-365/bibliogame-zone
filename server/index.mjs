@@ -40,6 +40,14 @@ const json = (res, status, body) => {
   res.end(JSON.stringify(body));
 };
 
+class InvalidJsonBodyError extends Error {
+  constructor(message = "Invalid JSON request body.") {
+    super(message);
+    this.name = "InvalidJsonBodyError";
+    this.code = "invalid_json_body";
+  }
+}
+
 const readJsonBody = async (req) =>
   new Promise((resolve, reject) => {
     let raw = "";
@@ -50,7 +58,8 @@ const readJsonBody = async (req) =>
       try {
         resolve(raw ? JSON.parse(raw) : {});
       } catch (error) {
-        reject(error);
+        const message = error instanceof Error ? error.message : "Invalid JSON request body.";
+        reject(new InvalidJsonBodyError(message));
       }
     });
     req.on("error", reject);
@@ -498,6 +507,21 @@ const buildMetadataFallbackAnswer = ({ book, question, currentPage, currentPosit
   };
 };
 
+const shouldUseNonBlockingAskFallback = (error, allowFallback) => {
+  if (!allowFallback) return false;
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase();
+  const code = error?.code;
+
+  return (
+    code === "gemini_invalid_json" ||
+    message.includes("gemini_invalid_json") ||
+    message.includes("unterminated string in json") ||
+    message.includes("unexpected token") ||
+    message.includes("quota") ||
+    message.includes("gemini_error_429")
+  );
+};
+
 const handleIngest = async (req, res) => {
   const { client, user } = await getAuthedClient(req);
   const payload = await readJsonBody(req);
@@ -873,8 +897,7 @@ const handleAsk = async (req, res) => {
           },
         );
       } catch (error) {
-        const message = error instanceof Error ? error.message : "";
-        if (allowFallback && (message.includes("gemini_error_429") || message.toLowerCase().includes("quota"))) {
+        if (shouldUseNonBlockingAskFallback(error, allowFallback)) {
           finalAnswer =
             packet && selectedChapters.length
               ? buildLocalAnswerFromContext({
@@ -1044,6 +1067,10 @@ const server = http.createServer(async (req, res) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     if (message === "UNAUTHORIZED") {
       json(res, 401, { error: "Unauthorized" });
+      return;
+    }
+    if (error?.code === "invalid_json_body") {
+      json(res, 400, { success: false, error: "JSON invalido no corpo da requisicao." });
       return;
     }
     console.error("local-api error", error);
