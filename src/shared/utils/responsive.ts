@@ -11,9 +11,7 @@ export const BREAKPOINTS = {
 // Media queries
 export const MEDIA_QUERIES = {
   mobile: `(max-width: ${BREAKPOINTS.mobile - 1}px)`,
-  tablet: `(min-width: ${
-    BREAKPOINTS.mobile
-  }px) and (max-width: ${BREAKPOINTS.tablet - 1}px)`,
+  tablet: `(min-width: ${BREAKPOINTS.mobile}px) and (max-width: ${BREAKPOINTS.tablet - 1}px)`,
   desktop: `(min-width: ${BREAKPOINTS.tablet}px)`,
   wide: `(min-width: ${BREAKPOINTS.wide}px)`,
 } as const;
@@ -21,14 +19,8 @@ export const MEDIA_QUERIES = {
 // Hook for responsive behavior
 export const useResponsive = () => {
   const [screenSize, setScreenSize] = useState({
-    width:
-      typeof window !== "undefined"
-        ? window.innerWidth
-        : 1024,
-    height:
-      typeof window !== "undefined"
-        ? window.innerHeight
-        : 768,
+    width: typeof window !== "undefined" ? window.innerWidth : 1024,
+    height: typeof window !== "undefined" ? window.innerHeight : 768,
   });
 
   useEffect(() => {
@@ -42,14 +34,11 @@ export const useResponsive = () => {
     };
 
     window.addEventListener("resize", handleResize);
-    return () =>
-      window.removeEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const isMobile = screenSize.width < BREAKPOINTS.mobile;
-  const isTablet =
-    screenSize.width >= BREAKPOINTS.mobile &&
-    screenSize.width < BREAKPOINTS.tablet;
+  const isTablet = screenSize.width >= BREAKPOINTS.mobile && screenSize.width < BREAKPOINTS.tablet;
   const isDesktop = screenSize.width >= BREAKPOINTS.tablet;
   const isWide = screenSize.width >= BREAKPOINTS.wide;
 
@@ -60,21 +49,9 @@ export const useResponsive = () => {
     isDesktop,
     isWide,
     // Alias for common usage
-    breakpoint: isMobile
-      ? "mobile"
-      : isTablet
-      ? "tablet"
-      : isDesktop
-      ? "desktop"
-      : "wide",
+    breakpoint: isMobile ? "mobile" : isTablet ? "tablet" : isDesktop ? "desktop" : "wide",
     // Grid columns based on screen size
-    columns: isMobile
-      ? 1
-      : isTablet
-      ? 2
-      : isDesktop
-      ? 3
-      : 4,
+    columns: isMobile ? 1 : isTablet ? 2 : isDesktop ? 3 : 4,
   };
 };
 
@@ -86,25 +63,18 @@ export const useBreakpointValue = <T>(values: {
   wide?: T;
   default: T;
 }): T => {
-  const { isMobile, isTablet, isDesktop, isWide } =
-    useResponsive();
+  const { isMobile, isTablet, isDesktop, isWide } = useResponsive();
 
-  if (isWide && values.wide !== undefined)
-    return values.wide;
-  if (isDesktop && values.desktop !== undefined)
-    return values.desktop;
-  if (isTablet && values.tablet !== undefined)
-    return values.tablet;
-  if (isMobile && values.mobile !== undefined)
-    return values.mobile;
+  if (isWide && values.wide !== undefined) return values.wide;
+  if (isDesktop && values.desktop !== undefined) return values.desktop;
+  if (isTablet && values.tablet !== undefined) return values.tablet;
+  if (isMobile && values.mobile !== undefined) return values.mobile;
 
   return values.default;
 };
 
 // Utility for touch target classes
-export const getTouchTargetClasses = (
-  size: "sm" | "md" | "lg" = "md"
-) => {
+export const getTouchTargetClasses = (size: "sm" | "md" | "lg" = "md") => {
   const sizeMap = {
     sm: "min-h-[32px] min-w-[32px]",
     md: "min-h-[44px] min-w-[44px]",
@@ -115,27 +85,19 @@ export const getTouchTargetClasses = (
 };
 
 // Utility for responsive padding/margin
-export const getResponsiveSpacing = (
-  mobile: string,
-  desktop?: string
-) => {
-  const { isMobile } = useResponsive();
+export const getResponsiveSpacing = (mobile: string, desktop?: string) => {
+  const isMobile = typeof window !== "undefined" ? window.innerWidth < BREAKPOINTS.mobile : false;
   return isMobile ? mobile : desktop || mobile;
 };
 
 // Check if device supports hover
 export const useHoverSupport = () => {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(hover: hover)").matches
-  );
+  return typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
 };
 
 // Check if device supports touch
 export const useTouchSupport = () => {
   return (
-    typeof window !== "undefined" &&
-    ("ontouchstart" in window ||
-      navigator.maxTouchPoints > 0)
+    typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0)
   );
 };

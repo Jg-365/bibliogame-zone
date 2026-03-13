@@ -31,7 +31,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     if (!name) return "U";
     return name
       .split(" ")
-      .map(word => word.charAt(0))
+      .map((word) => word.charAt(0))
       .join("")
       .substring(0, 2)
       .toUpperCase();
@@ -54,15 +54,12 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     <header
       className={cn(
         "flex items-center justify-between p-4 bg-white border-b border-slate-200 shadow-sm",
-        className
+        className,
       )}
     >
       {/* Logo e Brand à esquerda */}
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">RQ</span>
-          </div>
           <div className="hidden sm:block">
             <h1 className="text-xl font-bold text-slate-900">ReadQuest</h1>
             <p className="text-xs text-slate-500">Sua jornada de leitura</p>
@@ -80,7 +77,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               "text-sm font-semibold border",
               currentLevel === "Explorador"
                 ? "bg-green-700 text-white border-green-800"
-                : getLevelColor(currentLevel)
+                : getLevelColor(currentLevel),
             )}
           >
             {currentLevel}

@@ -1,39 +1,38 @@
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
-import { Camera, Save, X, RefreshCw } from "lucide-react";
-import { useProfile } from "@/hooks/useProfile";
+import React, { useEffect, useState } from "react";
+import { Camera, Eraser, ImagePlus, RefreshCw, Save, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useBooks } from "@/hooks/useBooks";
+import { useProfile } from "@/hooks/useProfile";
+import { useProfileAppearance } from "@/hooks/useProfileAppearance";
+import { useReadingSessions } from "@/hooks/useReadingSessions";
 import { useToast } from "@/hooks/use-toast";
+import { PROFILE_BANNER_PRESETS } from "@/features/profile/constants/bannerPresets";
+import { calculateReadingPoints, formatProfileLevel } from "@/shared/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export const ProfileManager = () => {
   const { user } = useAuth();
-  const {
-    profile,
-    updateProfile,
-    isUpdating,
-    forceRefresh,
-    recomputeFromSessions,
-  } = useProfile();
+  const { books = [] } = useBooks();
+  const { sessions = [] } = useReadingSessions();
   const { toast } = useToast();
+  const { profile, updateProfile, isUpdating, forceRefresh, recomputeFromSessions } = useProfile();
+  const {
+    bannerUrl,
+    bannerPresetId,
+    customBannerUrl,
+    setBannerPreset,
+    setCustomBanner,
+    clearCustomBanner,
+  } = useProfileAppearance(user?.id);
+
   const [isEditing, setIsEditing] = useState(false);
-  const [avatarFit, setAvatarFit] = useState<
-    "cover" | "contain"
-  >("cover");
+  const [avatarFit, setAvatarFit] = useState<"cover" | "contain">("cover");
+  const [isRecomputing, setIsRecomputing] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     full_name: "",
@@ -41,7 +40,6 @@ export const ProfileManager = () => {
     avatar_url: "",
   });
 
-  // Sincronizar formData com profile quando carregado
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -51,29 +49,32 @@ export const ProfileManager = () => {
         avatar_url: profile.avatar_url || "",
       });
     }
-    // load avatar fit preference from localStorage
+
     try {
       const stored = localStorage.getItem("rq_avatar_fit");
-      if (stored === "contain" || stored === "cover")
-        setAvatarFit(stored);
-    } catch (e) {
-      // ignore
+      if (stored === "contain" || stored === "cover") setAvatarFit(stored);
+    } catch {
+      // no-op
     }
   }, [profile]);
 
+  const completedBooksCount = books.filter((book) => book.status === "completed").length;
+  const totalPagesRead = sessions.reduce(
+    (sum, session) => sum + Math.max(0, session.pages_read || 0),
+    0,
+  );
+  const points = calculateReadingPoints({
+    totalPagesRead,
+    booksCompleted: completedBooksCount,
+  });
+  const level = formatProfileLevel({ total_pages_read: totalPagesRead });
+
   const handleSave = async () => {
     try {
-      console.log(
-        "💾 Iniciando salvamento do perfil:",
-        formData
-      );
-
-      // Validação básica
-      if (!formData.username?.trim()) {
+      if (!formData.username.trim()) {
         toast({
-          title: "Nome de usuário obrigatório",
-          description:
-            "Por favor, preencha o nome de usuário.",
+          title: "Nome de usuario obrigatorio",
+          description: "Preencha o nome de usuario para salvar.",
           variant: "destructive",
         });
         return;
@@ -81,47 +82,37 @@ export const ProfileManager = () => {
 
       await updateProfile(formData);
       setIsEditing(false);
-
-      console.log("🎊 Perfil salvo com sucesso!");
-    } catch (error: any) {
-      console.error("💥 Erro ao salvar perfil:", error);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Nao foi possivel salvar alteracoes.";
       toast({
         title: "Erro ao atualizar perfil",
-        description:
-          error.message ||
-          "Não foi possível salvar as alterações.",
+        description: message,
         variant: "destructive",
       });
     }
   };
 
-  const handleImageUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    // Simple file validation
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Formato invalido",
+        description: "Selecione uma imagem valida.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Arquivo muito grande",
-        description: "A imagem deve ter menos de 5MB.",
+        description: "A foto de perfil precisa ter menos de 5MB.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Formato inválido",
-        description:
-          "Por favor, selecione uma imagem válida.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Convert to base64 for now (in production, upload to storage)
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
@@ -133,24 +124,56 @@ export const ProfileManager = () => {
     reader.readAsDataURL(file);
   };
 
-  const [isRecomputing, setIsRecomputing] = useState(false);
+  const handleBannerUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Formato invalido",
+        description: "Selecione uma imagem para o banner.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "O banner precisa ter menos de 8MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (!result) return;
+      setCustomBanner(result);
+      toast({
+        title: "Banner atualizado",
+        description: "Seu banner personalizado foi salvo com sucesso.",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleRecompute = async () => {
     const ok = window.confirm(
-      "Recalcular estatísticas a partir das sessões de leitura? Isso ajustará 'Páginas Lidas' e 'Livros Lidos' do seu perfil."
+      "Recalcular estatisticas com base nas sessoes de leitura? Isso atualiza paginas, livros concluidos e pontos.",
     );
     if (!ok) return;
     try {
       setIsRecomputing(true);
       await recomputeFromSessions?.();
-      setIsRecomputing(false);
-    } catch (err: any) {
-      setIsRecomputing(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Nao foi possivel recalcular.";
       toast({
         title: "Erro ao recalcular",
-        description: err?.message || String(err),
+        description: message,
         variant: "destructive",
       });
+    } finally {
+      setIsRecomputing(false);
     }
   };
 
@@ -159,14 +182,13 @@ export const ProfileManager = () => {
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="mx-auto w-full max-w-2xl border-border/70">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Gerenciar Perfil</CardTitle>
+            <CardTitle>Gerenciar perfil</CardTitle>
             <CardDescription>
-              Atualize suas informações pessoais e foto de
-              perfil
+              Edite seu perfil, escolha banner e revise estatisticas reais.
             </CardDescription>
           </div>
           <Button
@@ -181,38 +203,26 @@ export const ProfileManager = () => {
           </Button>
         </div>
       </CardHeader>
+
       <CardContent className="space-y-6">
-        {/* Avatar Section */}
         <div className="flex items-center space-x-4">
           <Avatar className="h-20 w-20">
             <AvatarImage
-              src={
-                isEditing
-                  ? formData.avatar_url
-                  : profile.avatar_url
-              }
-              className={
-                avatarFit === "contain"
-                  ? "object-contain"
-                  : "object-cover"
-              }
+              src={isEditing ? formData.avatar_url : profile.avatar_url || ""}
+              className={avatarFit === "contain" ? "object-contain" : "object-cover"}
             />
             <AvatarFallback className="text-lg">
-              {(formData.full_name || user?.email)
-                ?.charAt(0)
-                .toUpperCase()}
+              {(formData.full_name || user?.email)?.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          {isEditing && (
+
+          {isEditing ? (
             <div>
-              <Label
-                htmlFor="avatar-upload"
-                className="cursor-pointer"
-              >
+              <Label htmlFor="avatar-upload" className="cursor-pointer">
                 <Button variant="outline" size="sm" asChild>
                   <span>
-                    <Camera className="h-4 w-4 mr-2" />
-                    Alterar Foto
+                    <Camera className="mr-2 h-4 w-4" />
+                    Alterar foto
                   </span>
                 </Button>
               </Label>
@@ -223,83 +233,118 @@ export const ProfileManager = () => {
                 onChange={handleImageUpload}
                 className="hidden"
               />
-              {/* Avatar fit selector */}
+
               <div className="mt-2">
-                <Label
-                  htmlFor="avatar-fit"
-                  className="text-xs"
-                >
-                  Modo de Ajuste
+                <Label htmlFor="avatar-fit" className="text-xs">
+                  Ajuste da foto
                 </Label>
                 <select
                   id="avatar-fit"
                   value={avatarFit}
                   onChange={(e) => {
-                    const v = e.target.value as
-                      | "cover"
-                      | "contain";
-                    setAvatarFit(v);
+                    const value = e.target.value as "cover" | "contain";
+                    setAvatarFit(value);
                     try {
-                      localStorage.setItem(
-                        "rq_avatar_fit",
-                        v
-                      );
-                    } catch (err) {
-                      // ignore
+                      localStorage.setItem("rq_avatar_fit", value);
+                    } catch {
+                      // no-op
                     }
                   }}
                   className="mt-1 block rounded-md border px-2 py-1 text-sm"
                 >
-                  <option value="cover">
-                    Cortar (padrão)
-                  </option>
-                  <option value="contain">
-                    Ajustar (manter proporção)
-                  </option>
+                  <option value="cover">Cortar</option>
+                  <option value="contain">Ajustar</option>
                 </select>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Form Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">
-              Nome de usuário
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium">Banner do perfil</h3>
+            <p className="text-xs text-muted-foreground">
+              Escolha um banner da biblioteca ou envie uma foto personalizada.
+            </p>
+          </div>
+
+          <div className="relative h-28 overflow-hidden rounded-[var(--radius-lg)] border border-border/70">
+            {bannerUrl ? (
+              <img
+                src={bannerUrl}
+                alt="Preview do banner"
+                className="h-full w-full object-cover dark:brightness-90 dark:contrast-110"
+              />
+            ) : (
+              <div className="h-full w-full bg-card-pattern" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/35 to-transparent" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {PROFILE_BANNER_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => setBannerPreset(preset.id)}
+                className={`group overflow-hidden rounded-[var(--radius-md)] border text-left transition ${
+                  bannerPresetId === preset.id && !customBannerUrl
+                    ? "border-primary shadow-sm shadow-primary/30"
+                    : "border-border/70 hover:border-primary/40"
+                }`}
+              >
+                <img
+                  src={preset.imageUrl}
+                  alt={preset.name}
+                  className="h-14 w-full object-cover transition-transform duration-300 group-hover:scale-105 dark:brightness-90"
+                />
+                <div className="px-2 py-1.5 text-xs font-medium">{preset.name}</div>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="banner-upload" className="cursor-pointer">
+              <Button variant="outline" size="sm" asChild>
+                <span>
+                  <ImagePlus className="mr-2 h-4 w-4" />
+                  Enviar foto
+                </span>
+              </Button>
             </Label>
             <Input
+              id="banner-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleBannerUpload}
+              className="hidden"
+            />
+            {customBannerUrl ? (
+              <Button variant="ghost" size="sm" onClick={clearCustomBanner}>
+                <Eraser className="mr-2 h-4 w-4" />
+                Remover foto custom
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="username">Nome de usuario</Label>
+            <Input
               id="username"
-              value={
-                isEditing
-                  ? formData.username
-                  : profile.username || ""
-              }
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  username: e.target.value,
-                }))
-              }
+              value={isEditing ? formData.username : profile.username || ""}
+              onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
               disabled={!isEditing}
-              placeholder="Seu nome de usuário"
+              placeholder="Seu nome de usuario"
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="full_name">Nome completo</Label>
             <Input
               id="full_name"
-              value={
-                isEditing
-                  ? formData.full_name
-                  : profile.full_name || ""
-              }
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  full_name: e.target.value,
-                }))
-              }
+              value={isEditing ? formData.full_name : profile.full_name || ""}
+              onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))}
               disabled={!isEditing}
               placeholder="Seu nome completo"
             />
@@ -310,22 +355,14 @@ export const ProfileManager = () => {
           <Label htmlFor="bio">Biografia</Label>
           <Textarea
             id="bio"
-            value={
-              isEditing ? formData.bio : profile.bio || ""
-            }
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                bio: e.target.value,
-              }))
-            }
+            value={isEditing ? formData.bio : profile.bio || ""}
+            onChange={(e) => setFormData((prev) => ({ ...prev, bio: e.target.value }))}
             disabled={!isEditing}
-            placeholder="Conte um pouco sobre você e seus gostos literários..."
+            placeholder="Conte um pouco sobre voce e seus gostos literarios."
             rows={4}
           />
         </div>
 
-        {/* Action Buttons */}
         <div className="flex justify-end space-x-2">
           {isEditing ? (
             <>
@@ -334,85 +371,53 @@ export const ProfileManager = () => {
                 onClick={() => {
                   setIsEditing(false);
                   setFormData({
-                    username: profile?.username || "",
-                    full_name: profile?.full_name || "",
-                    bio: profile?.bio || "",
-                    avatar_url: profile?.avatar_url || "",
+                    username: profile.username || "",
+                    full_name: profile.full_name || "",
+                    bio: profile.bio || "",
+                    avatar_url: profile.avatar_url || "",
                   });
                 }}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="mr-2 h-4 w-4" />
                 Cancelar
               </Button>
-              <Button
-                onClick={handleSave}
-                disabled={isUpdating}
-              >
-                <Save className="h-4 w-4 mr-2" />
+              <Button onClick={handleSave} disabled={isUpdating}>
+                <Save className="mr-2 h-4 w-4" />
                 {isUpdating ? "Salvando..." : "Salvar"}
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)}>
-              Editar Perfil
-            </Button>
+            <Button onClick={() => setIsEditing(true)}>Editar perfil</Button>
           )}
         </div>
 
-        {/* Recompute button */}
-        <div className="flex justify-end mt-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRecompute}
-            disabled={isRecomputing}
-            className="text-sm"
-          >
-            {isRecomputing
-              ? "Recalculando..."
-              : "Recalcular a partir das sessões"}
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={handleRecompute} disabled={isRecomputing}>
+            {isRecomputing ? "Recalculando..." : "Recalcular a partir das sessoes"}
           </Button>
         </div>
 
-        {/* Stats Section */}
         <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Estatísticas
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <h3 className="mb-4 text-lg font-semibold">Estatisticas</h3>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {profile.total_books_read || 0}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Livros Lidos
-              </div>
+              <div className="text-2xl font-bold text-primary">{completedBooksCount}</div>
+              <div className="text-sm text-muted-foreground">Livros lidos</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {profile.total_pages_read || 0}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Páginas Lidas
-              </div>
+              <div className="text-2xl font-bold text-primary">{totalPagesRead}</div>
+              <div className="text-sm text-muted-foreground">Paginas lidas</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {profile.current_streak || 0}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Dias Seguidos
-              </div>
+              <div className="text-2xl font-bold text-primary">{profile.current_streak || 0}</div>
+              <div className="text-sm text-muted-foreground">Dias seguidos</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-primary">
-                {profile.reading_level || 1}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Nível
-              </div>
+              <div className="text-2xl font-bold text-primary">{points}</div>
+              <div className="text-sm text-muted-foreground">Pontos</div>
             </div>
           </div>
+          <p className="mt-3 text-center text-xs text-muted-foreground">Nivel atual: {level}</p>
         </div>
       </CardContent>
     </Card>

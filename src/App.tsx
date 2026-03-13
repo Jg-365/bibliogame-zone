@@ -1,81 +1,98 @@
-import React, { useState, useEffect } from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
+import React, { useState, useEffect, Suspense, lazy } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import {
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { useAccountGuard } from "./hooks/useAccountGuard";
 import { AuthPage } from "./components/auth/AuthPage";
-import { motion } from "framer-motion";
+import { LazyMotion, domAnimation, m, useReducedMotion } from "framer-motion";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import {
-  AppPerformanceProvider,
-  PerformanceDebugger,
-  BundleAnalysisDisplay,
-} from "@/shared/performance";
+import { AppPerformanceProvider } from "@/shared/performance";
 import { useAnnouncer } from "@/shared/accessibility";
 import { useResponsive } from "@/shared/utils/responsive";
+import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 
-import { ResponsiveContainer } from "@/shared/components/ResponsiveComponents";
-
-// Import types
-import type { NavigationPage } from "./components/ResponsiveNavigation";
-
-// Import components directly to avoid lazy loading issues
-import SocialFeed from "./pages/SocialFeed";
-import { SearchPage } from "./pages/Search";
-import { LibraryPage } from "./pages/Library";
-import ProfilePage from "./pages/Profile";
-import { UserProfilePage } from "./pages/UserProfile";
-import ResponsiveNavigation from "./components/ResponsiveNavigation";
+import ResponsiveNavigation, { type NavigationPage } from "./components/ResponsiveNavigation";
 import NotificationSystemSimple from "./components/NotificationSystemSimple";
-import ResetPasswordPage from "./pages/ResetPassword";
-import ForgotPasswordPage from "./pages/ForgotPassword";
+
+// Route-level code splitting — each page loads only when first visited
+const SocialFeed = lazy(() => import("./pages/SocialFeed"));
+const SearchPage = lazy(() =>
+  import("./pages/Search").then((m) => ({
+    default: m.SearchPage,
+  })),
+);
+const LibraryPage = lazy(() =>
+  import("./pages/Library").then((m) => ({
+    default: m.LibraryPage,
+  })),
+);
+const CopilotPage = lazy(() => import("./pages/Copilot"));
+const ProfilePage = lazy(() => import("./pages/Profile"));
+const UserProfilePage = lazy(() =>
+  import("./pages/UserProfile").then((m) => ({
+    default: m.UserProfilePage,
+  })),
+);
+const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 2 * 60 * 1000, // 2 minutos - dados frescos por mais tempo
-      gcTime: 15 * 60 * 1000, // 15 minutos - cache mais longo
-      retry: (failureCount, error: any) => {
-        // Não retry para erros 4xx (cliente)
-        if (error?.status >= 400 && error?.status < 500)
-          return false;
-        // Retry até 3 vezes para erros de rede/servidor
+      staleTime: 10 * 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000,
+      retry: (failureCount, error: unknown) => {
+        const err = error as { status?: number };
+        if (err?.status !== undefined && err.status >= 400 && err.status < 500) return false;
         return failureCount < 3;
       },
-      retryDelay: (attemptIndex) =>
-        Math.min(1000 * 2 ** attemptIndex, 10000),
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
       refetchOnWindowFocus: false,
-      refetchOnMount: true,
+      refetchOnMount: false,
       refetchOnReconnect: true,
     },
     mutations: {
-      retry: (failureCount, error: any) => {
-        // Retry mutations apenas para erros de rede
-        if (
-          error?.message?.includes("fetch") ||
-          error?.status >= 500
-        ) {
+      retry: (failureCount, error: unknown) => {
+        const err = error as {
+          message?: string;
+          status?: number;
+        };
+        if (err?.message?.includes("fetch") || (err?.status !== undefined && err.status >= 500)) {
           return failureCount < 2;
         }
         return false;
       },
-      retryDelay: (attemptIndex) =>
-        Math.min(1000 * 2 ** attemptIndex, 5000),
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     },
   },
 });
+
+/** Full-page loader shown while lazy-loaded route chunks are fetching. */
+const PageLoader = () => {
+  const shouldReduceMotion = useReducedMotion();
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative w-10 h-10">
+          <div className="absolute inset-0 rounded-full border-4 border-primary/15" />
+          <m.div
+            animate={shouldReduceMotion ? undefined : { rotate: 360 }}
+            transition={{
+              duration: 1,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+            className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Component that uses Router hooks - MUST be inside Router
 const AppContent = () => {
@@ -83,52 +100,65 @@ const AppContent = () => {
   const { isMobile } = useResponsive();
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentPage, setCurrentPage] =
-    useState<NavigationPage>("dashboard");
+  const [currentPage, setCurrentPage] = useState<NavigationPage>("social-feed");
 
-  // Use account guard to check for deleted accounts
   useAccountGuard();
 
-  // Accessibility announcements
   const { announce, AnnouncerComponent } = useAnnouncer();
 
-  // Update currentPage based on current route
+  // Sync active nav tab with URL and announce route change to screen readers
   useEffect(() => {
     const path = location.pathname;
-    if (path === "/" || path === "/social-feed") {
-      setCurrentPage("social-feed");
-    } else if (path === "/search") {
-      setCurrentPage("search");
-    } else if (path === "/library") {
-      setCurrentPage("library");
-    } else if (path === "/profile") {
-      setCurrentPage("profile");
-    }
-  }, [location.pathname]);
+    const searchParams = new URLSearchParams(location.search);
+    const isRankingTab = searchParams.get("tab") === "ranking";
+    const routeToPage: Record<string, NavigationPage> = {
+      "/social-feed": "social-feed",
+      "/": "social-feed",
+      "/search": "search",
+      "/library": "library",
+      "/copilot": "copilot",
+      "/profile": "profile",
+    };
+    const page = routeToPage[path];
+    if (page) setCurrentPage(isRankingTab ? "ranking" : page);
 
-  // Handle navigation
+    // Move focus to main content on every route change (SPA accessibility)
+    const main = document.getElementById("main-content");
+    if (main) main.focus();
+
+    announce(`Navegando para ${path.replace("/", "") || "início"}`, "polite");
+  }, [location.pathname, location.search, announce]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const day = new Date().toISOString().slice(0, 10);
+    const key = `rq:route-view:${location.pathname}:${day}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+
+    void trackEvent({
+      userId: user.id,
+      eventName: "route_viewed",
+      eventCategory: "navigation",
+      payload: { path: location.pathname },
+    });
+  }, [location.pathname, user?.id]);
+
   const handleNavigate = (page: NavigationPage) => {
+    const pageToRoute: Record<NavigationPage, string> = {
+      "social-feed": "/social-feed",
+      search: "/search",
+      library: "/library",
+      copilot: "/copilot",
+      profile: "/profile",
+      // legacy entries still referenced by type
+      dashboard: "/social-feed",
+      social: "/social-feed",
+      ranking: "/social-feed?tab=ranking",
+    };
     setCurrentPage(page);
-    switch (page) {
-      case "social-feed":
-        navigate("/social-feed");
-        break;
-      case "search":
-        navigate("/search");
-        break;
-      case "library":
-        navigate("/library");
-        break;
-      case "profile":
-        navigate("/profile");
-        break;
-      default:
-        navigate("/social-feed");
-        break;
-    }
+    navigate(pageToRoute[page] ?? "/social-feed");
   };
-
-  // Removed isLoading check since it does not exist in AuthContextType
 
   if (!user) {
     return <AuthPage />;
@@ -137,94 +167,37 @@ const AppContent = () => {
   return (
     <NotificationSystemSimple>
       <div className="min-h-screen bg-background">
-        {/* Accessibility Announcer */}
         {AnnouncerComponent && <AnnouncerComponent />}
 
-        {/* Navigation */}
-        <ResponsiveNavigation
-          currentPage={currentPage}
-          onNavigate={handleNavigate}
-        />
+        <ResponsiveNavigation currentPage={currentPage} onNavigate={handleNavigate} />
 
-        {/* Main Content */}
         <main
           id="main-content"
-          className={`
-          flex-1 
-          ${isMobile ? "pb-20 pt-16" : "pt-20"}
-          transition-all duration-300 ease-in-out
-        `}
+          className={cn(
+            "flex-1 transition-all duration-[var(--duration-normal)] ease-[var(--easing-standard)]",
+            isMobile ? "pb-20 pt-14" : "pt-16",
+          )}
           tabIndex={-1}
         >
           <ErrorBoundary>
-            <Routes>
-              {/* Main Routes */}
-              <Route
-                path="/"
-                element={
-                  <Navigate to="/social-feed" replace />
-                }
-              />
-              <Route
-                path="/social-feed"
-                element={<SocialFeed />}
-              />
-              <Route
-                path="/search"
-                element={<SearchPage />}
-              />
-              <Route
-                path="/library"
-                element={<LibraryPage />}
-              />
-              <Route
-                path="/profile"
-                element={<ProfilePage />}
-              />
-
-              <Route
-                path="/reset-password"
-                element={<ResetPasswordPage />}
-              />
-              <Route
-                path="/forgot-password"
-                element={<ForgotPasswordPage />}
-              />
-
-              {/* User Profile Route */}
-              <Route
-                path="/user/:userId"
-                element={<UserProfilePage />}
-              />
-
-              {/* Redirect old routes to new structure */}
-              <Route
-                path="/dashboard"
-                element={
-                  <Navigate to="/social-feed" replace />
-                }
-              />
-              <Route
-                path="/social"
-                element={
-                  <Navigate to="/social-feed" replace />
-                }
-              />
-              <Route
-                path="/ranking"
-                element={
-                  <Navigate to="/social-feed" replace />
-                }
-              />
-
-              {/* Catch all - redirect to social feed */}
-              <Route
-                path="*"
-                element={
-                  <Navigate to="/social-feed" replace />
-                }
-              />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/social-feed" replace />} />
+                <Route path="/social-feed" element={<SocialFeed />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/library" element={<LibraryPage />} />
+                <Route path="/copilot" element={<CopilotPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/user/:userId" element={<UserProfilePage />} />
+                {/* Legacy route redirects */}
+                <Route path="/dashboard" element={<Navigate to="/social-feed" replace />} />
+                <Route path="/social" element={<Navigate to="/social-feed" replace />} />
+                <Route path="/ranking" element={<Navigate to="/social-feed" replace />} />
+                <Route path="*" element={<Navigate to="/social-feed" replace />} />
+              </Routes>
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>
@@ -232,69 +205,31 @@ const AppContent = () => {
   );
 };
 
-// Main App Router component
+/** Handles auth-initialisation gate. AppContent owns all authenticated routing. */
 const AppRouter = () => {
-  // Use both user and loading state from auth so we render correctly
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
 
-  // While auth is initializing, show a loading spinner
   if (loading?.isLoading) {
-    return (
-      <ResponsiveContainer className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{
-              duration: 1,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-            className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"
-          />
-          <p className="text-muted-foreground">
-            Carregando...
-          </p>
-        </div>
-      </ResponsiveContainer>
-    );
+    return <PageLoader />;
   }
 
-  // If not authenticated, show the AuthPage so user can sign in
-  if (!user) {
-    // Public routes available when not authenticated
-    return (
-      <ErrorBoundary>
-        <Routes>
-          <Route
-            path="/forgot-password"
-            element={<ForgotPasswordPage />}
-          />
-          <Route
-            path="/reset-password"
-            element={<ResetPasswordPage />}
-          />
-          <Route path="*" element={<AuthPage />} />
-        </Routes>
-      </ErrorBoundary>
-    );
-  }
-
-  // Render main app content if user exists
   return <AppContent />;
 };
 
 const App = () => (
-  <AppPerformanceProvider>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppRouter />
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </AppPerformanceProvider>
+  <LazyMotion features={domAnimation} strict>
+    <AppPerformanceProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppRouter />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </AppPerformanceProvider>
+  </LazyMotion>
 );
 
 export default App;

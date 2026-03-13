@@ -55,7 +55,7 @@ export const AccessibleButton: React.FC<AccessibleButtonProps> = ({
         "disabled:opacity-50 disabled:cursor-not-allowed",
         variants[variant],
         sizes[size],
-        className
+        className,
       )}
       disabled={disabled || loading}
       aria-busy={loading}
@@ -167,7 +167,7 @@ export const AccessibleModal: React.FC<AccessibleModalProps> = ({
         className={cn(
           "relative bg-background rounded-lg shadow-xl max-w-md w-full mx-4 p-6",
           "transform transition-all duration-200",
-          className
+          className,
         )}
       >
         {/* Header */}
@@ -228,7 +228,8 @@ export const AccessibleInput: React.FC<AccessibleInputProps> = ({
   className,
   ...props
 }) => {
-  const inputId = id || `input-${React.useId()}`;
+  const generatedId = React.useId();
+  const inputId = id || `input-${generatedId}`;
   const errorId = `${inputId}-error`;
   const helperId = `${inputId}-helper`;
 
@@ -254,7 +255,7 @@ export const AccessibleInput: React.FC<AccessibleInputProps> = ({
           error
             ? "border-destructive focus:ring-destructive"
             : "border-input focus:ring-purple-500",
-          className
+          className,
         )}
         aria-invalid={!!error}
         aria-describedby={cn(error && errorId, helperText && helperId).trim() || undefined}
@@ -290,7 +291,7 @@ export const SkipLink: React.FC<SkipLinkProps> = ({ href, children }) => (
     className={cn(
       "sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0",
       "z-50 p-2 bg-purple-600 text-white font-medium",
-      "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+      "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500",
     )}
   >
     {children}
@@ -341,7 +342,7 @@ export const AccessibleMenu: React.FC<AccessibleMenuProps> = ({
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        onKeyDown={e => {
+        onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
             e.preventDefault();
             setIsOpen(true);
@@ -366,7 +367,7 @@ export const AccessibleMenu: React.FC<AccessibleMenuProps> = ({
             className={cn(
               "absolute z-20 mt-1 w-48 bg-background border rounded-md shadow-lg",
               "focus:outline-none",
-              align === "right" ? "right-0" : "left-0"
+              align === "right" ? "right-0" : "left-0",
             )}
           >
             {children}
@@ -399,7 +400,7 @@ export const AccessibleMenuItem: React.FC<AccessibleMenuItemProps> = ({
       "w-full text-left px-4 py-2 text-sm hover:bg-accent",
       "focus:outline-none focus:bg-accent",
       "disabled:opacity-50 disabled:cursor-not-allowed",
-      "first:rounded-t-md last:rounded-b-md"
+      "first:rounded-t-md last:rounded-b-md",
     )}
   >
     {children}
