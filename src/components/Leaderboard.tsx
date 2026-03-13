@@ -1,62 +1,64 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+﻿import React, { useState } from "react";
+import {
+  Award,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Crown,
+  Medal,
+  Trophy,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Trophy,
-  Medal,
-  Award,
-  Crown,
-  TrendingUp,
-  BookOpen,
-  Zap,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLeaderboard } from "@/hooks/useSocial";
+import { toSecureAssetUrl } from "@/lib/media";
 
 const getRankIcon = (rank: number) => {
   switch (rank) {
     case 1:
-      return <Crown className="h-5 w-5 text-yellow-600" />;
+      return <Crown className="h-5 w-5 text-accent-foreground" />;
     case 2:
-      return <Trophy className="h-5 w-5 text-slate-600" />;
+      return <Trophy className="h-5 w-5 text-muted-foreground" />;
     case 3:
-      return <Medal className="h-5 w-5 text-orange-600" />;
+      return <Medal className="h-5 w-5 text-orange-500" />;
     default:
-      return <Award className="h-4 w-4 text-slate-700" />;
+      return <Award className="h-4 w-4 text-muted-foreground" />;
   }
 };
 
-const getRankColor = (rank: number) => {
+const getRankTone = (rank: number) => {
   switch (rank) {
     case 1:
-      return "bg-yellow-50 border-yellow-200";
+      return "border-accent/40 bg-accent/10";
     case 2:
-      return "bg-gray-50 border-gray-200";
+      return "border-border/70 bg-muted/30";
     case 3:
-      return "bg-orange-50 border-orange-200";
+      return "border-orange-500/40 bg-orange-500/10";
     default:
-      return "bg-white border-gray-200";
+      return "border-border/70 bg-card";
   }
 };
 
 const getInitials = (name?: string) => {
   if (!name) return "?";
+
   return name
     .split(" ")
-    .map(n => n[0])
+    .map((n) => n[0])
     .join("")
     .toUpperCase()
-    .substring(0, 2);
+    .slice(0, 2);
 };
 
 export const Leaderboard = () => {
   const { data: leaderboard, isLoading } = useLeaderboard();
   const [expanded, setExpanded] = useState(false);
 
-  // Show minimum 4 users, maximum 20
   const minUsers = 4;
   const maxUsers = 20;
   const displayCount = expanded
@@ -70,21 +72,24 @@ export const Leaderboard = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Ranking de Leitores
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Ranking de leitores
           </CardTitle>
-          <CardDescription>Carregando ranking...</CardDescription>
+          <CardDescription>Carregando posições...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg animate-pulse">
-                <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-1"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-[var(--radius-md)] border border-border/70 p-3"
+              >
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
                 </div>
-                <div className="h-6 bg-gray-200 rounded w-16"></div>
+                <Skeleton className="h-6 w-16" />
               </div>
             ))}
           </div>
@@ -98,15 +103,15 @@ export const Leaderboard = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Ranking de Leitores
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Ranking de leitores
           </CardTitle>
           <CardDescription>O ranking ainda não tem dados suficientes.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-slate-600 font-medium">
-            <Trophy className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>Seja o primeiro no ranking!</p>
+          <div className="py-8 text-center text-muted-foreground">
+            <Trophy className="mx-auto mb-3 h-10 w-10" />
+            <p>Seja o primeiro no ranking.</p>
           </div>
         </CardContent>
       </Card>
@@ -116,108 +121,95 @@ export const Leaderboard = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-slate-900">
-          <TrendingUp className="h-5 w-5 text-blue-600" />
-          Ranking de Leitores
+        <CardTitle className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-primary" />
+          Ranking de leitores
         </CardTitle>
-        <CardDescription className="text-slate-600">
-          Top {displayCount} de {leaderboard.length} leitores mais ativos da comunidade
+        <CardDescription>
+          Top {displayCount} de {leaderboard.length} leitores mais ativos da comunidade.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {visibleUsers.map((user, index) => (
+          {visibleUsers.map((user) => (
             <div
-              key={user.userId}
-              className={`flex items-start sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border transition-colors hover:shadow-sm ${getRankColor(
-                user.rank
-              )}`}
+              key={user.id}
+              className={`flex items-start gap-3 rounded-[var(--radius-md)] border p-3 transition-colors hover:bg-muted/40 sm:items-center ${getRankTone(user.rank)}`}
             >
-              {/* Rank */}
-              <div className="flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center">
                 {user.rank <= 3 ? (
                   getRankIcon(user.rank)
                 ) : (
-                  <span className="text-xs sm:text-sm font-bold text-gray-600">{user.rank}</span>
+                  <span className="text-sm font-bold">{user.rank}</span>
                 )}
               </div>
 
-              {/* Avatar */}
-              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
-                <AvatarImage src={user.avatarUrl || undefined} />
+              <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
+                <AvatarImage src={toSecureAssetUrl(user.avatarUrl) || undefined} />
                 <AvatarFallback className="text-xs">
                   {getInitials(user.fullName || user.username)}
                 </AvatarFallback>
               </Avatar>
 
-              {/* User Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                  <h4 className="font-medium text-sm truncate">{user.fullName || user.username}</h4>
-                  {user.username && user.fullName && (
-                    <span className="text-xs text-slate-600 font-medium truncate">
-                      @{user.username}
-                    </span>
-                  )}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h4 className="truncate text-sm font-medium">{user.fullName || user.username}</h4>
+                  {user.username && user.fullName ? (
+                    <span className="text-xs text-muted-foreground">@{user.username}</span>
+                  ) : null}
                 </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {user.level}
-                  </Badge>
-                  <span className="text-xs text-gray-600 flex items-center gap-1">
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant="secondary">{user.level}</Badge>
+                  <span className="inline-flex items-center gap-1">
                     <BookOpen className="h-3 w-3" />
                     {user.booksCompleted} livros
                   </span>
-                  <span className="text-xs text-gray-600 flex items-center gap-1">
+                  <span className="inline-flex items-center gap-1">
                     <Zap className="h-3 w-3" />
                     {user.readingStreak} dias
                   </span>
                 </div>
               </div>
 
-              {/* Points */}
-              <div className="text-right flex-shrink-0">
-                <div className="font-bold text-base sm:text-lg">{user.points.toLocaleString()}</div>
-                <div className="text-xs text-slate-600 font-medium">pontos</div>
+              <div className="text-right">
+                <div className="text-base font-bold sm:text-lg">
+                  {user.points.toLocaleString("pt-BR")}
+                </div>
+                <div className="text-xs text-muted-foreground">pontos</div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Expand/Collapse Button */}
-        {canExpand && (
+        {canExpand ? (
           <div className="mt-4 text-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setExpanded(!expanded)}
-              className="text-blue-600 border-blue-200 hover:bg-blue-50"
-            >
+            <Button variant="outline" size="sm" onClick={() => setExpanded((prev) => !prev)}>
               {expanded ? (
                 <>
-                  <ChevronUp className="h-4 w-4 mr-2" />
+                  <ChevronUp className="mr-2 h-4 w-4" />
                   Mostrar menos
                 </>
               ) : (
                 <>
-                  <ChevronDown className="h-4 w-4 mr-2" />
-                  Ver mais ({Math.min(leaderboard?.length || 0, maxUsers)} total)
+                  <ChevronDown className="mr-2 h-4 w-4" />
+                  Ver mais ({Math.min(leaderboard.length, maxUsers)} total)
                 </>
               )}
             </Button>
           </div>
-        )}
+        ) : null}
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-center gap-2 mb-2">
-            <Trophy className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-900">Como subir no ranking</span>
+        <div className="mt-6 rounded-[var(--radius-md)] border border-accent/40 bg-accent/10 p-4 text-sm text-foreground">
+          <div className="mb-2 inline-flex items-center gap-2 font-medium">
+            <Trophy className="h-4 w-4 text-accent-foreground" />
+            Como subir no ranking
           </div>
-          <div className="text-xs text-blue-700 space-y-1">
-            <p>• Complete livros para ganhar pontos (10 pontos por livro)</p>
-            <p>• Mantenha uma sequência de leitura diária</p>
-            <p>• Ganhe pontos extras por páginas lidas (1 ponto a cada 50 páginas)</p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Pontuação oficial: 1 ponto por página lida + 50 pontos por livro concluído.
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground/90">
+            Estatísticas do ranking sincronizadas diretamente com livros e sessões reais.
+          </p>
         </div>
       </CardContent>
     </Card>

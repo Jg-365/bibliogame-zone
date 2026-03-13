@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: readquest-backend
+    runtime: node
+    plan: starter
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm run start:api
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: BRAVE_SEARCH_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: GEMINI_HYBRID_MODEL
+        value: gemini-1.5-flash
+      - key: GEMINI_HYBRID_FALLBACK_MODEL
+        value: gemini-2.5-flash
