@@ -1,9 +1,11 @@
-﻿import React from "react";
+import React, { useMemo, useState } from "react";
 import { m } from "framer-motion";
-import { Book, BookOpen, Star } from "lucide-react";
+import { Book, BookOpen, Search, Star } from "lucide-react";
 import type { Book as BookType } from "@/shared/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface ProfileBooksTabProps {
   readingBooks: BookType[];
@@ -29,6 +31,16 @@ const BookCoverGrid = ({
   mode: "reading" | "completed";
   onSelectBook: (bookId: string) => void;
 }) => {
+  if (!books.length) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Nenhum livro corresponde aos filtros atuais.
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-3 xs:grid-cols-3 sm:grid-cols-4 sm:gap-4 md:grid-cols-5 lg:grid-cols-6">
       {books.map((book) => (
@@ -81,11 +93,16 @@ const BookCoverGrid = ({
                 </div>
               ) : null}
             </div>
-            <CardContent className="p-2">
+            <CardContent className="space-y-1 p-2">
               <h3 className="line-clamp-2 min-h-[2.2rem] text-xs font-semibold leading-tight">
                 {book.title}
               </h3>
               <p className="line-clamp-1 text-xs text-muted-foreground">{book.author}</p>
+              {book.genres?.[0] ? (
+                <p className="line-clamp-1 text-[11px] text-muted-foreground/80">
+                  {book.genres[0]}
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </m.button>
@@ -99,6 +116,42 @@ export const ProfileBooksTab = ({
   completedBooks,
   onSelectBook,
 }: ProfileBooksTabProps) => {
+  const [query, setQuery] = useState("");
+  const [genreFilter, setGenreFilter] = useState("all");
+
+  const availableGenres = useMemo(() => {
+    const counts = new Map<string, number>();
+    [...readingBooks, ...completedBooks].forEach((book) => {
+      (book.genres ?? []).forEach((genre) => {
+        counts.set(genre, (counts.get(genre) ?? 0) + 1);
+      });
+    });
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 8)
+      .map(([genre]) => genre);
+  }, [completedBooks, readingBooks]);
+
+  const applyFilters = (books: BookType[]) =>
+    books.filter((book) => {
+      const matchesGenre =
+        genreFilter === "all" ||
+        (book.genres ?? []).some((genre) => genre.toLowerCase() === genreFilter.toLowerCase());
+      const haystack =
+        `${book.title} ${book.author} ${(book.genres ?? []).join(" ")}`.toLowerCase();
+      const matchesQuery = !query.trim() || haystack.includes(query.trim().toLowerCase());
+      return matchesGenre && matchesQuery;
+    });
+
+  const filteredReadingBooks = useMemo(
+    () => applyFilters(readingBooks),
+    [readingBooks, query, genreFilter],
+  );
+  const filteredCompletedBooks = useMemo(
+    () => applyFilters(completedBooks),
+    [completedBooks, query, genreFilter],
+  );
+
   if (readingBooks.length === 0 && completedBooks.length === 0) {
     return (
       <Card className="border-dashed p-12 text-center">
@@ -111,13 +164,56 @@ export const ProfileBooksTab = ({
 
   return (
     <div className="space-y-6">
+      <Card className="border-border/70">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="pl-9"
+                placeholder="Filtrar por título, autor ou gênero..."
+              />
+            </div>
+            {genreFilter !== "all" ? (
+              <Button variant="outline" size="sm" onClick={() => setGenreFilter("all")}>
+                Limpar filtro
+              </Button>
+            ) : null}
+          </div>
+
+          {availableGenres.length ? (
+            <div className="flex flex-wrap gap-2">
+              <Badge
+                variant={genreFilter === "all" ? "default" : "secondary"}
+                className="cursor-pointer"
+                onClick={() => setGenreFilter("all")}
+              >
+                Todos
+              </Badge>
+              {availableGenres.map((genre) => (
+                <Badge
+                  key={genre}
+                  variant={genreFilter === genre ? "default" : "secondary"}
+                  className="cursor-pointer"
+                  onClick={() => setGenreFilter(genre)}
+                >
+                  {genre}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       {readingBooks.length > 0 ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">Lendo agora ({readingBooks.length})</h3>
+            <h3 className="text-lg font-semibold">Lendo agora ({filteredReadingBooks.length})</h3>
           </div>
-          <BookCoverGrid books={readingBooks} onSelectBook={onSelectBook} mode="reading" />
+          <BookCoverGrid books={filteredReadingBooks} onSelectBook={onSelectBook} mode="reading" />
         </div>
       ) : null}
 
@@ -125,9 +221,13 @@ export const ProfileBooksTab = ({
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Book className="h-5 w-5 text-success" />
-            <h3 className="text-lg font-semibold">Concluídos ({completedBooks.length})</h3>
+            <h3 className="text-lg font-semibold">Concluídos ({filteredCompletedBooks.length})</h3>
           </div>
-          <BookCoverGrid books={completedBooks} onSelectBook={onSelectBook} mode="completed" />
+          <BookCoverGrid
+            books={filteredCompletedBooks}
+            onSelectBook={onSelectBook}
+            mode="completed"
+          />
         </div>
       ) : null}
     </div>

@@ -22,6 +22,7 @@ import { useProfileAppearance } from "@/hooks/useProfileAppearance";
 import {
   ProfileAchievementsTab,
   ProfileBooksTab,
+  ProfileGenreMetrics,
   ProfileHero,
   ProfileStatsGrid,
   ReadingSessionsDialog,
@@ -142,6 +143,59 @@ const ProfilePage = () => {
 
   const daysWithSessions = sessionDateSet.size;
   const readingPace = daysWithSessions > 0 ? Math.round(totalPages / daysWithSessions) : 0;
+
+  const genreMetrics = useMemo(() => {
+    const metrics = new Map<
+      string,
+      {
+        genre: string;
+        books: number;
+        pages: number;
+        ratedSum: number;
+        ratedCount: number;
+        completed: number;
+      }
+    >();
+
+    (books || []).forEach((book) => {
+      (book.genres ?? []).forEach((genre) => {
+        const entry = metrics.get(genre) ?? {
+          genre,
+          books: 0,
+          pages: 0,
+          ratedSum: 0,
+          ratedCount: 0,
+          completed: 0,
+        };
+
+        entry.books += 1;
+        entry.pages += Number(
+          book.pages_read ||
+            (book.status === "completed" || book.status === "lido" ? book.total_pages : 0),
+        );
+        if (Number(book.rating || 0) > 0) {
+          entry.ratedSum += Number(book.rating);
+          entry.ratedCount += 1;
+        }
+        if (book.status === "completed" || book.status === "lido") {
+          entry.completed += 1;
+        }
+
+        metrics.set(genre, entry);
+      });
+    });
+
+    return [...metrics.values()]
+      .map((entry) => ({
+        genre: entry.genre,
+        books: entry.books,
+        pages: entry.pages,
+        averageRating: entry.ratedCount ? entry.ratedSum / entry.ratedCount : 0,
+        completionRate: entry.books ? entry.completed / entry.books : 0,
+      }))
+      .sort((a, b) => b.pages - a.pages || b.books - a.books)
+      .slice(0, 6);
+  }, [books]);
 
   const displayPoints = calculateReadingPoints({
     totalPagesRead: readingStats?.total_pages_read ?? profile?.total_pages_read ?? totalPages,
@@ -280,6 +334,8 @@ const ProfilePage = () => {
         readingPace={readingPace}
         averageDaysToComplete={averageDaysToComplete}
       />
+
+      <ProfileGenreMetrics items={genreMetrics} />
 
       {retentionEnabled ? <RetentionMetricsCard /> : null}
 

@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Award,
   BookOpen,
@@ -14,8 +14,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useLeaderboard } from "@/hooks/useSocial";
+import { useLeaderboardWithFilters } from "@/hooks/social";
 import { toSecureAssetUrl } from "@/lib/media";
 
 const getRankIcon = (rank: number) => {
@@ -55,9 +62,27 @@ const getInitials = (name?: string) => {
     .slice(0, 2);
 };
 
+const metricLabels = {
+  points: "pontos",
+  pages: "páginas",
+  books: "livros",
+  streak: "dias",
+} as const;
+
 export const Leaderboard = () => {
-  const { data: leaderboard, isLoading } = useLeaderboard();
+  const currentYear = new Date().getFullYear();
+  const yearOptions = useMemo(
+    () => ["all", ...Array.from({ length: 4 }, (_, index) => String(currentYear - index))],
+    [currentYear],
+  );
+  const [metric, setMetric] = useState<"points" | "pages" | "books" | "streak">("points");
+  const [period, setPeriod] = useState<string>("all");
   const [expanded, setExpanded] = useState(false);
+
+  const { data: leaderboard, isLoading } = useLeaderboardWithFilters({
+    metric,
+    period: period === "all" ? "all" : Number(period),
+  });
 
   const minUsers = 4;
   const maxUsers = 20;
@@ -66,6 +91,7 @@ export const Leaderboard = () => {
     : Math.min(leaderboard?.length || 0, minUsers);
   const visibleUsers = leaderboard?.slice(0, displayCount) || [];
   const canExpand = (leaderboard?.length || 0) > minUsers;
+  const metricLabel = metricLabels[metric];
 
   if (isLoading) {
     return (
@@ -121,13 +147,45 @@ export const Leaderboard = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          Ranking de leitores
-        </CardTitle>
-        <CardDescription>
-          Top {displayCount} de {leaderboard.length} leitores mais ativos da comunidade.
-        </CardDescription>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Ranking de leitores
+            </CardTitle>
+            <CardDescription>
+              Top {displayCount} de {leaderboard.length} leitores em {metricLabel}
+              {period === "all" ? " no histórico completo." : ` no ano de ${period}.`}
+            </CardDescription>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Select value={metric} onValueChange={(value) => setMetric(value as typeof metric)}>
+              <SelectTrigger className="w-full sm:w-[170px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="points">Pontos</SelectItem>
+                <SelectItem value="pages">Páginas</SelectItem>
+                <SelectItem value="books">Livros</SelectItem>
+                <SelectItem value="streak">Sequência</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option === "all" ? "Todo período" : option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -173,9 +231,9 @@ export const Leaderboard = () => {
 
               <div className="text-right">
                 <div className="text-base font-bold sm:text-lg">
-                  {user.points.toLocaleString("pt-BR")}
+                  {(user.metricValue ?? user.points).toLocaleString("pt-BR")}
                 </div>
-                <div className="text-xs text-muted-foreground">pontos</div>
+                <div className="text-xs text-muted-foreground">{metricLabel}</div>
               </div>
             </div>
           ))}
@@ -208,7 +266,8 @@ export const Leaderboard = () => {
             Pontuação oficial: 1 ponto por página lida + 50 pontos por livro concluído.
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground/90">
-            Estatísticas do ranking sincronizadas diretamente com livros e sessões reais.
+            Compare o histórico completo com recortes anuais para entender quem mantém ritmo ao
+            longo do tempo.
           </p>
         </div>
       </CardContent>
