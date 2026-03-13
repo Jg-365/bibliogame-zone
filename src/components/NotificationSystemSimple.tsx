@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Bell, Check, X, Settings } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -168,19 +168,19 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const markAsRead = (notificationId: string) => {
-    const updatedNotifications = notifications.map(n =>
-      n.id === notificationId ? { ...n, isRead: true } : n
+    const updatedNotifications = notifications.map((n) =>
+      n.id === notificationId ? { ...n, isRead: true } : n,
     );
     saveNotifications(updatedNotifications);
   };
 
   const markAllAsRead = () => {
-    const updatedNotifications = notifications.map(n => ({ ...n, isRead: true }));
+    const updatedNotifications = notifications.map((n) => ({ ...n, isRead: true }));
     saveNotifications(updatedNotifications);
   };
 
   const deleteNotification = (notificationId: string) => {
-    const updatedNotifications = notifications.filter(n => n.id !== notificationId);
+    const updatedNotifications = notifications.filter((n) => n.id !== notificationId);
     saveNotifications(updatedNotifications);
   };
 
@@ -189,7 +189,7 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     savePreferences(updatedPreferences);
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const contextValue: NotificationContextType = {
     notifications,
@@ -280,8 +280,8 @@ export const NotificationBell: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {notifications.map(notification => (
-                  <motion.div
+                {notifications.map((notification) => (
+                  <m.div
                     key={notification.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -334,7 +334,7 @@ export const NotificationBell: React.FC = () => {
                         )}
                       </div>
                     </div>
-                  </motion.div>
+                  </m.div>
                 ))}
               </div>
             )}
@@ -421,13 +421,13 @@ export const NotificationSettings: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {settingsGroups.map(group => (
+        {settingsGroups.map((group) => (
           <div key={group.title} className="space-y-4">
             <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
               {group.title}
             </h4>
             <div className="space-y-4">
-              {group.settings.map(setting => (
+              {group.settings.map((setting) => (
                 <div key={setting.key} className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <Label htmlFor={setting.key} className="font-medium">
@@ -438,7 +438,7 @@ export const NotificationSettings: React.FC = () => {
                   <Switch
                     id={setting.key}
                     checked={preferences[setting.key]}
-                    onCheckedChange={checked => updatePreferences({ [setting.key]: checked })}
+                    onCheckedChange={(checked) => updatePreferences({ [setting.key]: checked })}
                   />
                 </div>
               ))}
@@ -456,7 +456,7 @@ export const useNotificationTriggers = () => {
 
   const triggerAchievementNotification = (
     achievementTitle: string,
-    achievementDescription: string
+    achievementDescription: string,
   ) => {
     if (!preferences.achievementNotifications) return;
 

@@ -1,17 +1,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -30,21 +21,10 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Camera,
-  BookOpen,
-  PenTool,
-  X,
-  Upload,
-  Plus,
-  Image as ImageIcon,
-} from "lucide-react";
+import { Camera, BookOpen, PenTool, X, Upload, Plus, Image as ImageIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBooks } from "@/hooks/useBooks";
-import {
-  usePosts,
-  useImageUpload,
-} from "@/hooks/usePostsOptimized";
+import { usePosts, useImageUpload } from "@/hooks/usePostsOptimized";
 import { useResponsive } from "@/shared/utils/responsive";
 
 interface CreatePostProps {
@@ -52,10 +32,7 @@ interface CreatePostProps {
   onPostCreated?: () => void;
 }
 
-export const CreatePost: React.FC<CreatePostProps> = ({
-  trigger,
-  onPostCreated,
-}) => {
+export const CreatePost: React.FC<CreatePostProps> = ({ trigger, onPostCreated }) => {
   const { user } = useAuth();
   const { books } = useBooks();
   const { createPost, isCreatingPost } = usePosts();
@@ -64,17 +41,11 @@ export const CreatePost: React.FC<CreatePostProps> = ({
 
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState("");
-  const [selectedBookId, setSelectedBookId] =
-    useState<string>("");
-  const [imageFile, setImageFile] = useState<File | null>(
-    null
-  );
-  const [imagePreview, setImagePreview] =
-    useState<string>("");
+  const [selectedBookId, setSelectedBookId] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
 
-  const handleImageSelect = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setImageFile(file);
@@ -106,10 +77,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({
       createPost(
         {
           content: content.trim(),
-          book_id:
-            selectedBookId && selectedBookId !== "none"
-              ? selectedBookId
-              : undefined,
+          book_id: selectedBookId && selectedBookId !== "none" ? selectedBookId : undefined,
           image_url: imageUrl || undefined,
         },
         {
@@ -122,7 +90,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({
             setIsOpen(false);
             onPostCreated?.();
           },
-        }
+        },
       );
     } catch (error) {
       console.error("Error creating post:", error);
@@ -135,13 +103,11 @@ export const CreatePost: React.FC<CreatePostProps> = ({
       : null;
 
   const defaultTrigger = (
-    <Card className="cursor-pointer hover:shadow-lg transition-all shadow-md border rounded-lg overflow-hidden w-full max-w-3xl mx-auto">
+    <Card className="mx-auto w-full max-w-3xl cursor-pointer overflow-hidden border-border/70 bg-card/95 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
       <CardContent className="p-3 sm:p-4">
         <div className="flex items-center gap-2 sm:gap-3">
           <Avatar className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0">
-            <AvatarImage
-              src={user?.user_metadata?.avatar_url}
-            />
+            <AvatarImage src={user?.user_metadata?.avatar_url} />
             <AvatarFallback className="text-sm">
               {user?.email?.charAt(0).toUpperCase()}
             </AvatarFallback>
@@ -156,7 +122,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            className="h-9 w-9 sm:h-10 sm:w-10 p-0 hover:bg-muted flex-shrink-0"
+            className="h-9 w-9 flex-shrink-0 p-0 hover:bg-muted sm:h-10 sm:w-10"
           >
             <ImageIcon className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
@@ -167,15 +133,9 @@ export const CreatePost: React.FC<CreatePostProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {trigger || defaultTrigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
       <DialogContent
-        className={`${
-          isMobile
-            ? "w-full h-full max-h-screen overflow-y-auto"
-            : "max-w-2xl"
-        }`}
+        className={`${isMobile ? "h-full max-h-screen w-full overflow-y-auto" : "max-w-2xl"} border-border/70 bg-card/95`}
       >
         <DialogHeader className="pb-3 sm:pb-6">
           <DialogTitle className="flex items-center space-x-2 text-lg sm:text-xl">
@@ -193,23 +153,16 @@ export const CreatePost: React.FC<CreatePostProps> = ({
           {/* Usuário */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-              <AvatarImage
-                src={user?.user_metadata?.avatar_url}
-              />
+              <AvatarImage src={user?.user_metadata?.avatar_url} />
               <AvatarFallback className="text-xs sm:text-sm">
                 {user?.email?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
               <p className="font-medium text-sm sm:text-base">
-                {user?.user_metadata?.username ||
-                  user?.email?.split("@")[0] ||
-                  "Você"}
+                {user?.user_metadata?.username || user?.email?.split("@")[0] || "Você"}
               </p>
-              <Badge
-                variant="secondary"
-                className="text-xs"
-              >
+              <Badge variant="secondary" className="text-xs">
                 Público
               </Badge>
             </div>
@@ -233,37 +186,27 @@ export const CreatePost: React.FC<CreatePostProps> = ({
               maxLength={500}
               className="resize-none text-sm"
             />
-            <div className="text-xs text-muted-foreground text-right">
-              {content.length}/500
-            </div>
+            <div className="text-xs text-muted-foreground text-right">{content.length}/500</div>
           </div>
 
           {/* Seleção de livro */}
           <div className="space-y-2">
-            <Label htmlFor="book">
-              Livro relacionado (opcional)
-            </Label>
+            <Label htmlFor="book">Livro relacionado (opcional)</Label>
             <Select
               value={selectedBookId || undefined}
-              onValueChange={(value) =>
-                setSelectedBookId(value || "")
-              }
+              onValueChange={(value) => setSelectedBookId(value || "")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um livro..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">
-                  Nenhum livro
-                </SelectItem>
+                <SelectItem value="none">Nenhum livro</SelectItem>
                 {books?.map((book) => (
                   <SelectItem key={book.id} value={book.id}>
                     <div className="flex items-center space-x-2">
                       <BookOpen className="h-4 w-4" />
                       <span>{book.title}</span>
-                      <span className="text-muted-foreground">
-                        - {book.author}
-                      </span>
+                      <span className="text-muted-foreground">- {book.author}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -273,14 +216,14 @@ export const CreatePost: React.FC<CreatePostProps> = ({
 
           {/* Preview do livro selecionado */}
           {selectedBook && (
-            <Card className="bg-muted/50">
+            <Card className="border-border/70 bg-muted/40">
               <CardContent className="p-3">
                 <div className="flex items-center space-x-3">
                   {selectedBook.cover_url ? (
                     <img
                       src={selectedBook.cover_url}
                       alt={selectedBook.title}
-                      className="w-12 h-16 object-cover rounded"
+                      className="h-16 w-12 rounded object-cover dark:brightness-90 dark:contrast-110"
                     />
                   ) : (
                     <div className="w-12 h-16 bg-muted rounded flex items-center justify-center">
@@ -288,17 +231,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({
                     </div>
                   )}
                   <div>
-                    <h4 className="font-medium text-sm">
-                      {selectedBook.title}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedBook.author}
-                    </p>
+                    <h4 className="font-medium text-sm">{selectedBook.title}</h4>
+                    <p className="text-sm text-muted-foreground">{selectedBook.author}</p>
                     {selectedBook.status === "reading" && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs mt-1"
-                      >
+                      <Badge variant="outline" className="text-xs mt-1">
                         Lendo atualmente
                       </Badge>
                     )}
@@ -313,7 +249,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({
             <Label>Imagem (opcional)</Label>
 
             {!imagePreview ? (
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+              <div className="rounded-[var(--radius-lg)] border-2 border-dashed border-border p-6 text-center">
                 <Input
                   type="file"
                   accept="image/*"
@@ -335,8 +271,8 @@ export const CreatePost: React.FC<CreatePostProps> = ({
               <div className="relative">
                 <img
                   src={imagePreview}
-                  alt="Preview"
-                  className="w-full max-h-64 object-cover rounded-lg"
+                  alt="Pré-visualização da imagem do post"
+                  className="w-full max-h-64 rounded-lg object-cover dark:brightness-90 dark:contrast-110"
                 />
                 <Button
                   variant="destructive"
@@ -353,9 +289,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({
           {/* Botões de ação - otimizados para mobile */}
           <div
             className={`flex ${
-              isMobile
-                ? "flex-col space-y-2"
-                : "justify-end space-x-2"
+              isMobile ? "flex-col space-y-2" : "justify-end space-x-2"
             } pt-3 sm:pt-4`}
           >
             <Button
@@ -368,19 +302,13 @@ export const CreatePost: React.FC<CreatePostProps> = ({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={
-                !content.trim() ||
-                isCreatingPost ||
-                isUploading
-              }
+              disabled={!content.trim() || isCreatingPost || isUploading}
               className={isMobile ? "w-full" : ""}
             >
               {isCreatingPost || isUploading ? (
                 <>
                   <Upload className="h-4 w-4 mr-2 animate-spin" />
-                  {isUploading
-                    ? "Enviando..."
-                    : "Publicando..."}
+                  {isUploading ? "Enviando..." : "Publicando..."}
                 </>
               ) : (
                 <>

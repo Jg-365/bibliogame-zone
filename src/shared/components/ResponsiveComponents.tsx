@@ -71,10 +71,13 @@ export const ResponsiveGrid: React.FC<ResponsiveGridProps> = ({
   gap = "md",
 }) => {
   const { columns: defaultColumns } = useResponsive();
-
-  const responsiveColumns = columns
-    ? useBreakpointValue({ base: defaultColumns, ...columns })
-    : defaultColumns;
+  const responsiveColumns = useBreakpointValue({
+    default: columns?.lg ?? columns?.md ?? defaultColumns,
+    mobile: columns?.xs ?? columns?.sm ?? 1,
+    tablet: columns?.md ?? columns?.sm ?? 2,
+    desktop: columns?.lg ?? columns?.md ?? defaultColumns,
+    wide: columns?.["2xl"] ?? columns?.xl ?? columns?.lg ?? defaultColumns,
+  });
 
   const gapClasses = {
     sm: "gap-2",
@@ -89,7 +92,7 @@ export const ResponsiveGrid: React.FC<ResponsiveGridProps> = ({
         "grid",
         `grid-cols-${Math.min(responsiveColumns, 12)}`,
         gapClasses[gap],
-        className
+        className,
       )}
     >
       {children}
@@ -159,7 +162,7 @@ export const ResponsiveText: React.FC<ResponsiveTextProps> = ({
     {
       className: cn(getVariantClasses(), weightClasses[weight], className),
     },
-    children
+    children,
   );
 };
 
@@ -217,7 +220,7 @@ export const ResponsiveButton: React.FC<ResponsiveButtonProps> = ({
         touchTargetClass,
         fullWidth && "w-full",
         loading && "cursor-not-allowed opacity-70",
-        className
+        className,
       )}
       disabled={disabled || loading}
       {...props}
@@ -281,14 +284,14 @@ export const ResponsiveCard: React.FC<ResponsiveCardProps> = ({
         paddingClasses[padding],
         hover && "transition-shadow hover:shadow-lg",
         clickable && "cursor-pointer transition-all hover:scale-[1.02]",
-        className
+        className,
       )}
       onClick={onClick}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
       onKeyDown={
         clickable
-          ? e => {
+          ? (e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 onClick?.();
@@ -362,7 +365,7 @@ export const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
           "relative w-full bg-background shadow-lg",
           isMobile ? "h-full" : "max-h-[90vh] rounded-lg",
           sizes[size],
-          className
+          className,
         )}
         role="dialog"
         aria-modal="true"
@@ -381,7 +384,7 @@ export const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
               className={cn(
                 "rounded-sm opacity-70 ring-offset-background transition-opacity",
                 "hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                getTouchTargetClasses(isMobile)
+                getTouchTargetClasses(isMobile),
               )}
               aria-label="Close modal"
             >
@@ -457,7 +460,7 @@ export const ResponsiveNavigation: React.FC<ResponsiveNavigationProps> = ({
       "fixed bottom-0 left-0 right-0 z-40",
       "flex items-center justify-around",
       "bg-background border-t p-2",
-      getSafeAreaClasses()
+      getSafeAreaClasses(),
     ),
   };
 
@@ -485,7 +488,8 @@ export const ResponsiveInput: React.FC<ResponsiveInputProps> = ({
   ...props
 }) => {
   const { isMobile } = useResponsive();
-  const inputId = id || `input-${React.useId()}`;
+  const generatedId = React.useId();
+  const inputId = id || `input-${generatedId}`;
 
   return (
     <div className={cn("space-y-2", fullWidth && "w-full")}>
@@ -495,7 +499,7 @@ export const ResponsiveInput: React.FC<ResponsiveInputProps> = ({
           className={cn(
             "block font-medium",
             isMobile ? "text-sm" : "text-base",
-            error ? "text-destructive" : "text-foreground"
+            error ? "text-destructive" : "text-foreground",
           )}
         >
           {label}
@@ -512,7 +516,7 @@ export const ResponsiveInput: React.FC<ResponsiveInputProps> = ({
           "disabled:cursor-not-allowed disabled:opacity-50",
           isMobile && "min-h-[44px] text-base", // Larger touch targets on mobile
           error && "border-destructive focus-visible:ring-destructive",
-          className
+          className,
         )}
         {...props}
       />

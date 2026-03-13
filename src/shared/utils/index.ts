@@ -1,10 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type {
-  ReadingStatus,
-  AchievementRarity,
-  ActivityType,
-} from "@/shared/types";
+import type { ReadingStatus, AchievementRarity, ActivityType } from "@/shared/types";
 
 // Export responsive utilities
 export * from "./responsive";
@@ -18,8 +14,7 @@ export function cn(...inputs: ClassValue[]) {
 
 // Date utilities
 export const formatDate = (date: string | Date): string => {
-  const dateObj =
-    typeof date === "string" ? new Date(date) : date;
+  const dateObj = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -27,37 +22,25 @@ export const formatDate = (date: string | Date): string => {
   }).format(dateObj);
 };
 
-export const formatRelativeTime = (
-  date: string | Date
-): string => {
-  const dateObj =
-    typeof date === "string" ? new Date(date) : date;
+export const formatRelativeTime = (date: string | Date): string => {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
   const now = new Date();
-  const diffInSeconds = Math.floor(
-    (now.getTime() - dateObj.getTime()) / 1000
-  );
+  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
 
   if (diffInSeconds < 60) return "Agora";
-  if (diffInSeconds < 3600)
-    return `${Math.floor(diffInSeconds / 60)}m`;
-  if (diffInSeconds < 86400)
-    return `${Math.floor(diffInSeconds / 3600)}h`;
-  if (diffInSeconds < 604800)
-    return `${Math.floor(diffInSeconds / 86400)}d`;
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
 
   return formatDate(dateObj);
 };
 
-export const getDaysInMonth = (
-  year: number,
-  month: number
-): number => {
+export const getDaysInMonth = (year: number, month: number): number => {
   return new Date(year, month + 1, 0).getDate();
 };
 
 export const isToday = (date: string | Date): boolean => {
-  const dateObj =
-    typeof date === "string" ? new Date(date) : date;
+  const dateObj = typeof date === "string" ? new Date(date) : date;
   const today = new Date();
   return dateObj.toDateString() === today.toDateString();
 };
@@ -73,27 +56,17 @@ export const formatNumber = (num: number): string => {
   return num.toString();
 };
 
-export const calculatePercentage = (
-  current: number,
-  total: number
-): number => {
+export const calculatePercentage = (current: number, total: number): number => {
   if (total === 0) return 0;
   return Math.round((current / total) * 100);
 };
 
-export const clamp = (
-  value: number,
-  min: number,
-  max: number
-): number => {
+export const clamp = (value: number, min: number, max: number): number => {
   return Math.min(Math.max(value, min), max);
 };
 
 // String utilities
-export const truncateText = (
-  text: string,
-  maxLength: number
-): string => {
+export const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) return text;
   return `${text.substring(0, maxLength)}...`;
 };
@@ -110,16 +83,11 @@ export const slugify = (text: string): string => {
 };
 
 export const capitalizeFirst = (text: string): string => {
-  return (
-    text.charAt(0).toUpperCase() +
-    text.slice(1).toLowerCase()
-  );
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 };
 
 // Reading utilities
-export const getStatusColor = (
-  status: ReadingStatus
-): string => {
+export const getStatusColor = (status: ReadingStatus): string => {
   const colors = {
     "não lido": "bg-gray-100 text-gray-800",
     lendo: "bg-blue-100 text-blue-800",
@@ -129,9 +97,7 @@ export const getStatusColor = (
   return colors[status];
 };
 
-export const getStatusIcon = (
-  status: ReadingStatus
-): string => {
+export const getStatusIcon = (status: ReadingStatus): string => {
   const icons = {
     "não lido": "📚",
     lendo: "📖",
@@ -141,24 +107,16 @@ export const getStatusIcon = (
   return icons[status];
 };
 
-export const calculateReadingProgress = (
-  pagesRead: number,
-  totalPages: number
-): number => {
+export const calculateReadingProgress = (pagesRead: number, totalPages: number): number => {
   return calculatePercentage(pagesRead, totalPages);
 };
 
-export const estimateReadingTime = (
-  totalPages: number,
-  pagesPerHour = 30
-): number => {
+export const estimateReadingTime = (totalPages: number, pagesPerHour = 30): number => {
   return Math.ceil(totalPages / pagesPerHour);
 };
 
 // Achievement utilities
-export const getRarityColor = (
-  rarity: AchievementRarity
-): string => {
+export const getRarityColor = (rarity: AchievementRarity): string => {
   const colors = {
     common: "text-gray-600 bg-gray-100",
     rare: "text-blue-600 bg-blue-100",
@@ -168,9 +126,7 @@ export const getRarityColor = (
   return colors[rarity];
 };
 
-export const getRarityIcon = (
-  rarity: AchievementRarity
-): string => {
+export const getRarityIcon = (rarity: AchievementRarity): string => {
   const icons = {
     common: "🏅",
     rare: "🥈",
@@ -181,9 +137,7 @@ export const getRarityIcon = (
 };
 
 // Level formatting/derivation utility
-export const formatProfileLevel = (
-  p: any | string
-): string => {
+export const formatProfileLevel = (p: any | string): string => {
   if (!p) return "Iniciante";
 
   // If a simple string was provided, normalize common variants
@@ -226,37 +180,39 @@ export const formatProfileLevel = (
   return "Iniciante";
 };
 
+export const calculateReadingPoints = ({
+  totalPagesRead,
+  booksCompleted,
+}: {
+  totalPagesRead?: number | null;
+  booksCompleted?: number | null;
+}): number => {
+  const pages = Math.max(0, totalPagesRead ?? 0);
+  const completed = Math.max(0, booksCompleted ?? 0);
+  return pages + completed * 50;
+};
+
 // Activity utilities
 export const getActivityMessage = (
   type: ActivityType,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ): string => {
   const messages = {
-    book_completed: `completou a leitura de "${
-      metadata?.bookTitle || "um livro"
-    }"`,
-    book_added: `adicionou "${
-      metadata?.bookTitle || "um livro"
-    }" à sua biblioteca`,
+    book_completed: `completou a leitura de "${metadata?.bookTitle || "um livro"}"`,
+    book_added: `adicionou "${metadata?.bookTitle || "um livro"}" à sua biblioteca`,
     achievement_unlocked: `desbloqueou a conquista "${
       metadata?.achievementTitle || "uma conquista"
     }"`,
     review_posted: `avaliou "${
       metadata?.bookTitle || "um livro"
     }" com ${metadata?.rating || 0} estrelas`,
-    reading_session: `leu ${
-      metadata?.pagesRead || 0
-    } páginas`,
-    goal_reached: `alcançou a meta de ${
-      metadata?.goalType || "leitura"
-    }`,
+    reading_session: `leu ${metadata?.pagesRead || 0} páginas`,
+    goal_reached: `alcançou a meta de ${metadata?.goalType || "leitura"}`,
   };
   return messages[type] || "realizou uma atividade";
 };
 
-export const getActivityIcon = (
-  type: ActivityType
-): string => {
+export const getActivityIcon = (type: ActivityType): string => {
   const icons = {
     book_completed: "✅",
     book_added: "📚",
@@ -274,9 +230,7 @@ export const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email);
 };
 
-export const isValidPassword = (
-  password: string
-): boolean => {
+export const isValidPassword = (password: string): boolean => {
   return password.length >= 8;
 };
 
@@ -300,10 +254,7 @@ export const storage = {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
-      console.error(
-        "Failed to save to localStorage:",
-        error
-      );
+      console.error("Failed to save to localStorage:", error);
     }
   },
 
@@ -311,10 +262,7 @@ export const storage = {
     try {
       localStorage.removeItem(key);
     } catch (error) {
-      console.error(
-        "Failed to remove from localStorage:",
-        error
-      );
+      console.error("Failed to remove from localStorage:", error);
     }
   },
 };
@@ -326,10 +274,7 @@ export const getErrorMessage = (error: unknown): string => {
   return "Ocorreu um erro inesperado";
 };
 
-export const createError = (
-  message: string,
-  code?: string
-): Error => {
+export const createError = (message: string, code?: string): Error => {
   const error = new Error(message);
   if (code) (error as any).code = code;
   return error;
@@ -338,7 +283,7 @@ export const createError = (
 // Array utilities
 export const groupBy = <T, K extends keyof any>(
   array: T[],
-  getKey: (item: T) => K
+  getKey: (item: T) => K,
 ): Record<K, T[]> => {
   return array.reduce(
     (groups, item) => {
@@ -347,14 +292,14 @@ export const groupBy = <T, K extends keyof any>(
       groups[key].push(item);
       return groups;
     },
-    {} as Record<K, T[]>
+    {} as Record<K, T[]>,
   );
 };
 
 export const sortBy = <T>(
   array: T[],
   getKey: (item: T) => string | number,
-  direction: "asc" | "desc" = "asc"
+  direction: "asc" | "desc" = "asc",
 ): T[] => {
   return [...array].sort((a, b) => {
     const aKey = getKey(a);
@@ -366,10 +311,7 @@ export const sortBy = <T>(
   });
 };
 
-export const uniqueBy = <T, K>(
-  array: T[],
-  getKey: (item: T) => K
-): T[] => {
+export const uniqueBy = <T, K>(array: T[], getKey: (item: T) => K): T[] => {
   const seen = new Set<K>();
   return array.filter((item) => {
     const key = getKey(item);
@@ -382,7 +324,7 @@ export const uniqueBy = <T, K>(
 // Debounce utility
 export const debounce = <T extends (...args: any[]) => any>(
   func: T,
-  delay: number
+  delay: number,
 ): ((...args: Parameters<T>) => void) => {
   let timeoutId: NodeJS.Timeout;
 
