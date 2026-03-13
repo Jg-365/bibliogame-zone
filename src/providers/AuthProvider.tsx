@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-} from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getErrorMessage } from "@/shared/utils";
@@ -21,40 +15,24 @@ interface AuthContextType {
    */
   checkAccountStatus: () => Promise<void>;
 
-  signUp: (
-    email: string,
-    password: string,
-    userData?: { fullName?: string }
-  ) => Promise<void>;
-  signIn: (
-    email: string,
-    password: string
-  ) => Promise<void>;
+  signUp: (email: string, password: string, userData?: { fullName?: string }) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  updateProfile: (updates: {
-    fullName?: string;
-    avatarUrl?: string;
-  }) => Promise<void>;
+  updateProfile: (updates: { fullName?: string; avatarUrl?: string }) => Promise<void>;
   loading: LoadingState;
 }
 
-const AuthContext = createContext<
-  AuthContextType | undefined
->(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({
-  children,
-}) => {
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(
-    null
-  );
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<LoadingState>({
     isLoading: true,
     error: null,
@@ -92,68 +70,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     getInitialSession();
 
     // Listen for auth changes (guard against unexpected return shape)
-    const authListener = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          console.log(
-            "Auth state changed:",
-            event,
-            session?.user?.id
-          );
+    const authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
+        console.log("Auth state changed:", event, session?.user?.id);
 
-          // Detect token refresh failure or a refresh that yielded no session.
-          // In those cases we inform the user and perform a clean sign-out so
-          // the app does not remain stuck in a loading state.
-          if (
-            (event as any) === "TOKEN_REFRESH_FAILED" ||
-            (event === "TOKEN_REFRESHED" && !session)
-          ) {
-            try {
-              toast({
-                title: "Sessão expirada",
-                description:
-                  "Sua sessão expirou. Você será desconectado. Faça login novamente.",
-                variant: "destructive",
-              });
-            } catch (tErr) {
-              // best-effort toast; ignore errors here
-            }
-
-            try {
-              await supabase.auth.signOut();
-            } catch (signOutErr) {
-              console.error(
-                "Error during auto sign-out:",
-                signOutErr
-              );
-            }
-
-            setUser(null);
-            setSession(null);
-            setLoading({ isLoading: false, error: null });
-            return;
+        // Detect token refresh failure or a refresh that yielded no session.
+        // In those cases we inform the user and perform a clean sign-out so
+        // the app does not remain stuck in a loading state.
+        if (
+          (event as any) === "TOKEN_REFRESH_FAILED" ||
+          (event === "TOKEN_REFRESHED" && !session)
+        ) {
+          try {
+            toast({
+              title: "Sessão expirada",
+              description: "Sua sessão expirou. Você será desconectado. Faça login novamente.",
+              variant: "destructive",
+            });
+          } catch (tErr) {
+            // best-effort toast; ignore errors here
           }
 
-          setSession(session);
-          setUser(session?.user ?? null);
-
-          if (event === "SIGNED_OUT") {
-            setUser(null);
-            setSession(null);
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutErr) {
+            console.error("Error during auto sign-out:", signOutErr);
           }
 
+          setUser(null);
+          setSession(null);
           setLoading({ isLoading: false, error: null });
-        } catch (err) {
-          console.error(
-            "Error in auth state handler:",
-            err
-          );
+          return;
         }
-      }
-    );
 
-    const subscription = (authListener as any)?.data
-      ?.subscription;
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+          setSession(null);
+        }
+
+        setLoading({ isLoading: false, error: null });
+      } catch (err) {
+        console.error("Error in auth state handler:", err);
+      }
+    });
+
+    const subscription = (authListener as any)?.data?.subscription;
 
     return () => {
       try {
@@ -167,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
   const signUp = async (
     email: string,
     password: string,
-    userData?: { fullName?: string }
+    userData?: { fullName?: string },
   ): Promise<void> => {
     setLoading({ isLoading: true, error: null });
 
@@ -186,24 +150,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
 
       // If user is created successfully, create profile
       if (data.user && !error) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert({
-            user_id: data.user.id,
-            full_name: userData?.fullName,
-            points: 0,
-            level: "Iniciante",
-            books_completed: 0,
-            total_pages_read: 0,
-            current_streak: 0,
-            longest_streak: 0,
-          });
+        const { error: profileError } = await supabase.from("profiles").insert({
+          user_id: data.user.id,
+          full_name: userData?.fullName,
+          points: 0,
+          level: "Iniciante",
+          books_completed: 0,
+          total_pages_read: 0,
+          current_streak: 0,
+          longest_streak: 0,
+        });
 
         if (profileError) {
-          console.error(
-            "Error creating profile:",
-            profileError
-          );
+          console.error("Error creating profile:", profileError);
           // Don't throw here, as the user was created successfully
         }
       }
@@ -216,18 +175,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     }
   };
 
-  const signIn = async (
-    email: string,
-    password: string
-  ): Promise<void> => {
+  const signIn = async (email: string, password: string): Promise<void> => {
     setLoading({ isLoading: true, error: null });
 
     try {
-      const { error } =
-        await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
       if (error) throw error;
       setLoading({ isLoading: false, error: null });
@@ -255,71 +210,71 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     }
   };
 
-  const checkAccountStatus =
-    React.useCallback(async (): Promise<void> => {
-      try {
-        if (!user) return;
+  const checkAccountStatus = React.useCallback(async (): Promise<void> => {
+    try {
+      if (!user) return;
 
-        // Check if the profile row still exists for this user
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+      // Check if the profile row still exists for this user
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-        if (error) {
-          // If there's an error querying, log and bail — don't force sign-out on transient DB errors
-          console.error(
-            "Error checking account status:",
-            error
-          );
-          return;
+      if (error) {
+        // Don't force sign-out on transient network/database errors.
+        const message = String((error as { message?: string })?.message ?? "");
+        const isTransientNetworkError =
+          message.toLowerCase().includes("failed to fetch") ||
+          message.toLowerCase().includes("network") ||
+          message.toLowerCase().includes("err_connection_closed");
+        if (!isTransientNetworkError) {
+          console.error("Error checking account status:", error);
         }
-
-        // If there's no profile row, assume the account was deleted -> sign out
-        if (!data) {
-          try {
-            toast({
-              title: "Conta não encontrada",
-              description:
-                "Sua conta parece ter sido removida. Você será desconectado.",
-              variant: "destructive",
-            });
-          } catch (tErr) {
-            // best-effort
-          }
-
-          try {
-            await supabase.auth.signOut();
-          } catch (signOutErr) {
-            console.error(
-              "Error signing out after account deletion:",
-              signOutErr
-            );
-          }
-
-          setUser(null);
-          setSession(null);
-          setLoading({ isLoading: false, error: null });
-        }
-      } catch (err) {
-        console.error(
-          "Unexpected error in checkAccountStatus:",
-          err
-        );
+        return;
       }
-    }, [user, toast]);
 
-  const resetPassword = async (
-    email: string
-  ): Promise<void> => {
+      // If there's no profile row, assume the account was deleted -> sign out
+      if (!data) {
+        try {
+          toast({
+            title: "Conta não encontrada",
+            description: "Sua conta parece ter sido removida. Você será desconectado.",
+            variant: "destructive",
+          });
+        } catch (tErr) {
+          // best-effort
+        }
+
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutErr) {
+          console.error("Error signing out after account deletion:", signOutErr);
+        }
+
+        setUser(null);
+        setSession(null);
+        setLoading({ isLoading: false, error: null });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const isTransientNetworkError =
+        message.toLowerCase().includes("failed to fetch") ||
+        message.toLowerCase().includes("network") ||
+        message.toLowerCase().includes("err_connection_closed");
+      if (!isTransientNetworkError) {
+        console.error("Unexpected error in checkAccountStatus:", err);
+      }
+    }
+  }, [user, toast]);
+
+  const resetPassword = async (email: string): Promise<void> => {
     setLoading({ isLoading: true, error: null });
 
     try {
-      const { error } =
-        await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
 
       if (error) throw error;
       setLoading({ isLoading: false, error: null });
@@ -358,10 +313,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
         .eq("id", user.id);
 
       if (profileError) {
-        console.error(
-          "Error updating profile:",
-          profileError
-        );
+        console.error("Error updating profile:", profileError);
       }
 
       setLoading({ isLoading: false, error: null });
@@ -385,19 +337,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({
     loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error(
-      "useAuth deve ser usado dentro de um AuthProvider"
-    );
+    throw new Error("useAuth deve ser usado dentro de um AuthProvider");
   }
   return context;
 };

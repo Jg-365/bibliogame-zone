@@ -1,86 +1,75 @@
-import React, { Suspense } from "react";
+﻿import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SocialSection } from "@/components/SocialSection";
 import { ActivityFeed } from "@/components/ActivityFeed";
-const Leaderboard = React.lazy(() =>
-  import("@/components/Leaderboard").then((mod) => ({
-    default: mod.Leaderboard,
-  }))
-);
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { TrendingUp, Trophy } from "lucide-react";
+import { Leaderboard } from "@/components/Leaderboard";
+import { PageHeader, PageSection, PageShell } from "@/components/layout/PageLayout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLeaderboard } from "@/hooks/social";
+import { Compass, TrendingUp, Trophy } from "lucide-react";
 
 export const SocialFeedPage = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
-            🌟 Comunidade de Leitores
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
-            Compartilhe e conecte-se com outros leitores
-          </p>
-        </div>
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<"feed" | "ranking">("feed");
+  useLeaderboard();
 
-        <Tabs defaultValue="feed" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-auto max-w-md mx-auto">
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    setActiveTab(searchParams.get("tab") === "ranking" ? "ranking" : "feed");
+  }, [location.search]);
+
+  const handleTabChange = (tab: string) => {
+    const value = tab as "feed" | "ranking";
+    setActiveTab(value);
+
+    navigate(
+      {
+        pathname: "/social-feed",
+        search: value === "ranking" ? "?tab=ranking" : "",
+      },
+      { replace: true },
+    );
+  };
+
+  return (
+    <PageShell containerClassName="max-w-5xl space-y-6">
+      <PageHeader
+        icon={Compass}
+        title="Comunidade de leitores"
+        description="Compartilhe sua jornada, acompanhe atividades e descubra leitores em destaque."
+      />
+
+      <PageSection>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="grid h-auto w-full grid-cols-2 rounded-[var(--radius-lg)] p-1 sm:max-w-md">
             <TabsTrigger
               value="feed"
-              className="flex items-center justify-center gap-1.5 sm:gap-2 text-sm sm:text-base py-2.5 sm:py-3"
+              className="flex items-center justify-center gap-1.5 py-2.5 text-sm sm:gap-2 sm:text-base"
             >
-              <TrendingUp className="w-4 h-4" />
-              <span className="hidden xs:inline">
-                Posts
-              </span>
-              <span className="xs:hidden">📰</span>
+              <TrendingUp className="h-4 w-4" />
+              <span>Feed</span>
             </TabsTrigger>
             <TabsTrigger
               value="ranking"
-              className="flex items-center justify-center gap-1.5 sm:gap-2 text-sm sm:text-base py-2.5 sm:py-3"
+              className="flex items-center justify-center gap-1.5 py-2.5 text-sm sm:gap-2 sm:text-base"
             >
-              <Trophy className="w-4 h-4" />
-              <span className="hidden xs:inline">
-                Ranking
-              </span>
-              <span className="xs:hidden">🏆</span>
+              <Trophy className="h-4 w-4" />
+              <span>Ranking</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent
-            value="feed"
-            className="mt-6 sm:mt-8 focus-visible:outline-none"
-          >
-            <div className="space-y-6">
-              {/* Activity Feed da última semana */}
-              <ActivityFeed limit={15} />
-
-              {/* Social Section com posts */}
-              <SocialSection />
-            </div>
+          <TabsContent value="feed" className="mt-6 space-y-6 focus-visible:outline-none">
+            <ActivityFeed limit={15} />
+            <SocialSection />
           </TabsContent>
 
-          <TabsContent
-            value="ranking"
-            className="mt-6 sm:mt-8 focus-visible:outline-none"
-          >
-            <Suspense
-              fallback={
-                <div className="p-4">
-                  Carregando ranking...
-                </div>
-              }
-            >
-              <Leaderboard />
-            </Suspense>
+          <TabsContent value="ranking" className="mt-6 focus-visible:outline-none">
+            <Leaderboard />
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+      </PageSection>
+    </PageShell>
   );
 };
 

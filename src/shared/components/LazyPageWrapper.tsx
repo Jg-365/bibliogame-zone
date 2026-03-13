@@ -1,5 +1,5 @@
 import React, { Suspense, ComponentType } from "react";
-import { motion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 
 // Loading component for pages
 const PageLoader = () => (
@@ -62,15 +62,15 @@ export const LazyPageWrapper = ({
 );
 
 // HOC to make any component lazy-loadable
-export const withLazyLoading = <P extends Record<string, any> = {}>(
+export const withLazyLoading = <P extends object = Record<string, never>>(
   Component: ComponentType<P>,
-  componentName: string
+  componentName: string,
 ) => {
   const LazyComponent = React.lazy(() => Promise.resolve({ default: Component }));
 
   const WrappedComponent = (props: P) => (
     <LazyPageWrapper pageName={componentName}>
-      <LazyComponent {...(props as any)} />
+      <LazyComponent {...props} />
     </LazyPageWrapper>
   );
 

@@ -10,18 +10,23 @@ export function useAccountGuard() {
 
   useEffect(() => {
     if (!user) return;
+    const isOffline = () => typeof navigator !== "undefined" && !navigator.onLine;
+    const runCheck = () => {
+      if (isOffline()) return;
+      void checkAccountStatus();
+    };
 
     // Verifica imediatamente ao montar
-    checkAccountStatus();
+    runCheck();
 
     // Verifica a cada 30 segundos se a conta ainda existe
     const interval = setInterval(() => {
-      checkAccountStatus();
+      runCheck();
     }, 30000); // 30 segundos
 
     // Verifica quando a aba volta a ter foco
     const handleFocus = () => {
-      checkAccountStatus();
+      runCheck();
     };
 
     window.addEventListener("focus", handleFocus);
