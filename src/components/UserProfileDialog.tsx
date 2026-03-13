@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { motion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 
 interface UserProfileDialogProps {
   userId: string;
@@ -210,7 +210,7 @@ export const UserProfileDialog = ({ userId, open, onOpenChange }: UserProfileDia
             <TabsContent value="books" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
               {books.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-h-80 sm:max-h-96 overflow-y-auto pr-2">
-                  {books.map(book => (
+                  {books.map((book) => (
                     <Card
                       key={book.id}
                       className="cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-primary transition-all"
@@ -241,16 +241,16 @@ export const UserProfileDialog = ({ userId, open, onOpenChange }: UserProfileDia
                                   book.status === "completed"
                                     ? "default"
                                     : book.status === "reading"
-                                    ? "secondary"
-                                    : "outline"
+                                      ? "secondary"
+                                      : "outline"
                                 }
                                 className="text-xs"
                               >
                                 {book.status === "completed"
                                   ? "Completo"
                                   : book.status === "reading"
-                                  ? "Lendo"
-                                  : "Quer Ler"}
+                                    ? "Lendo"
+                                    : "Quer Ler"}
                               </Badge>
                               {book.rating && (
                                 <div className="flex items-center gap-1">
@@ -280,7 +280,7 @@ export const UserProfileDialog = ({ userId, open, onOpenChange }: UserProfileDia
             <TabsContent value="achievements" className="space-y-3 sm:space-y-4 mt-3 sm:mt-4">
               {achievements.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-h-80 sm:max-h-96 overflow-y-auto pr-2">
-                  {achievements.map(userAchievement => (
+                  {achievements.map((userAchievement) => (
                     <Card key={userAchievement.id}>
                       <CardContent className="p-3 sm:p-4">
                         <div className="flex items-center gap-2 sm:gap-3">
@@ -346,8 +346,8 @@ export const UserProfileDialog = ({ userId, open, onOpenChange }: UserProfileDia
                       {selectedBook.status === "completed"
                         ? "Completo"
                         : selectedBook.status === "reading"
-                        ? "Lendo"
-                        : "Quer Ler"}
+                          ? "Lendo"
+                          : "Quer Ler"}
                     </Badge>
                   </div>
                 </div>
@@ -368,7 +368,7 @@ export const UserProfileDialog = ({ userId, open, onOpenChange }: UserProfileDia
             ) : readingSessions && readingSessions.length > 0 ? (
               <div className="space-y-2 sm:space-y-3">
                 {readingSessions.map((session, index) => (
-                  <motion.div
+                  <m.div
                     key={session.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -410,7 +410,7 @@ export const UserProfileDialog = ({ userId, open, onOpenChange }: UserProfileDia
                         </div>
                       </div>
                     )}
-                  </motion.div>
+                  </m.div>
                 ))}
 
                 <div className="text-center pt-3 sm:pt-4 border-t">

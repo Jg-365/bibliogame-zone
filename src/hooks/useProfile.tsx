@@ -1,21 +1,19 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
+import { calculateReadingPoints } from "@/shared/utils";
 
-export type Profile =
-  Database["public"]["Tables"]["profiles"]["Row"];
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 // Define allowed update fields (excluding system fields)
 interface ProfileUpdateFields {
   username?: string | null;
   full_name?: string | null;
   avatar_url?: string | null;
+  banner_url?: string | null;
+  banner_preset_id?: string | null;
   bio?: string | null;
   preferred_genres?: string[] | null;
   points?: number;
@@ -64,8 +62,7 @@ export const useProfile = () => {
 
   const updateProfile = useMutation({
     mutationFn: async (updates: ProfileUpdateFields) => {
-      if (!user?.id)
-        throw new Error("Usuário não autenticado");
+      if (!user?.id) throw new Error("Usuário não autenticado");
 
       console.log("🔄 Atualizando perfil:", {
         userId: user.id,
@@ -80,25 +77,15 @@ export const useProfile = () => {
         .single();
 
       if (error) {
-        console.error(
-          "❌ Erro ao atualizar perfil:",
-          error
-        );
-        throw new Error(
-          `Erro no banco de dados: ${error.message}`
-        );
+        console.error("❌ Erro ao atualizar perfil:", error);
+        throw new Error(`Erro no banco de dados: ${error.message}`);
       }
 
-      console.log(
-        "✅ Perfil atualizado com sucesso:",
-        data
-      );
+      console.log("✅ Perfil atualizado com sucesso:", data);
       return data;
     },
     onSuccess: (data) => {
-      console.log(
-        "🎉 Sucesso na mutação, invalidando cache"
-      );
+      console.log("🎉 Sucesso na mutação, invalidando cache");
 
       // Invalidar múltiplas queries relacionadas
       queryClient.invalidateQueries({
@@ -115,16 +102,14 @@ export const useProfile = () => {
 
       toast({
         title: "Perfil atualizado!",
-        description:
-          "Suas informações foram salvas com sucesso.",
+        description: "Suas informações foram salvas com sucesso.",
       });
     },
     onError: (error: any) => {
       console.error("💥 Erro na mutação:", error);
       toast({
         title: "Erro ao atualizar perfil",
-        description:
-          error.message || "Ocorreu um erro inesperado",
+        description: error.message || "Ocorreu um erro inesperado",
         variant: "destructive",
       });
     },
@@ -132,27 +117,21 @@ export const useProfile = () => {
 
   // Recompute profile stats from reading_sessions (pages read) and books
   const recomputeFromSessions = async () => {
-    if (!user?.id)
-      throw new Error("Usuário não autenticado");
+    if (!user?.id) throw new Error("Usuário não autenticado");
     // 1) Load all sessions grouped by book
-    const { data: sessionsData, error: sessionsError } =
-      await supabase
-        .from("reading_sessions")
-        .select("book_id, pages_read")
-        .eq("user_id", user.id);
+    const { data: sessionsData, error: sessionsError } = await supabase
+      .from("reading_sessions")
+      .select("book_id, pages_read")
+      .eq("user_id", user.id);
 
     if (sessionsError) throw sessionsError;
 
     // Sum pages per book
-    const pagesPerBook = (sessionsData || []).reduce(
-      (acc: Record<string, number>, s: any) => {
-        if (!s || !s.book_id) return acc;
-        acc[s.book_id] =
-          (acc[s.book_id] || 0) + (s.pages_read || 0);
-        return acc;
-      },
-      {}
-    );
+    const pagesPerBook = (sessionsData || []).reduce((acc: Record<string, number>, s: any) => {
+      if (!s || !s.book_id) return acc;
+      acc[s.book_id] = (acc[s.book_id] || 0) + (s.pages_read || 0);
+      return acc;
+    }, {});
 
     const bookIds = Object.keys(pagesPerBook);
 
@@ -178,11 +157,7 @@ export const useProfile = () => {
       totalPages += newPages;
 
       const status =
-        newPages >= (b.total_pages || 0)
-          ? "completed"
-          : newPages > 0
-          ? "reading"
-          : "want-to-read";
+        newPages >= (b.total_pages || 0) ? "completed" : newPages > 0 ? "reading" : "want-to-read";
 
       // Update the book record to match sessions
       const { error: updErr } = await supabase
@@ -192,10 +167,7 @@ export const useProfile = () => {
         .eq("user_id", user.id);
 
       if (updErr) {
-        console.error(
-          "Erro atualizando livro durante recalculo:",
-          updErr
-        );
+        console.error("Erro atualizando livro durante recalculo:", updErr);
         // continue with others
       }
 
@@ -203,11 +175,8 @@ export const useProfile = () => {
     }
 
     // 4) If there are sessions for books not present in user's books table, include their pages
-    const orphanBookPages = Object.entries(
-      pagesPerBook
-    ).reduce((sum, [bookId, pages]) => {
-      if (booksData.find((b) => b.id === bookId))
-        return sum;
+    const orphanBookPages = Object.entries(pagesPerBook).reduce((sum, [bookId, pages]) => {
+      if (booksData.find((b) => b.id === bookId)) return sum;
       return sum + (pages || 0);
     }, 0);
 
@@ -219,6 +188,10 @@ export const useProfile = () => {
       .update({
         total_pages_read: totalPages,
         books_completed: completedCount,
+        points: calculateReadingPoints({
+          totalPagesRead: totalPages,
+          booksCompleted: completedCount,
+        }),
       })
       .eq("user_id", user.id)
       .select()
@@ -237,8 +210,7 @@ export const useProfile = () => {
 
     toast({
       title: "Estatísticas recalculadas",
-      description:
-        "Os dados do perfil foram atualizados a partir das sessões de leitura.",
+      description: "Os dados do perfil foram atualizados a partir das sessões de leitura.",
     });
 
     return data;

@@ -1,8 +1,13 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
+import { Calendar, Edit, Heart, MoreVertical, Plus, Star, Target, Trash2 } from "lucide-react";
+import { useBooks } from "@/hooks/useBooks";
+import { getApiErrorMessage } from "@/lib/apiError";
+import { useProfile } from "@/hooks/useProfile";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -10,16 +15,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -27,32 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { Progress } from "@/components/ui/progress";
-import {
-  Star,
-  BookOpen,
-  CheckCircle,
-  Clock,
-  Heart,
-  Edit,
-  Trash2,
-  Plus,
-  MoreVertical,
-  Target,
-  Calendar,
-} from "lucide-react";
-import { useBooks } from "@/hooks/useBooks";
-import { getApiErrorMessage } from "@/lib/apiError";
-import { useProfile } from "@/hooks/useProfile";
-import { useStreakUpdate } from "@/hooks/useStreakUpdate";
-import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 import type { Book } from "@/shared/types";
 
 interface BookCardProps {
@@ -60,28 +41,15 @@ interface BookCardProps {
   onUpdate?: () => void;
 }
 
-export const BookCard: React.FC<BookCardProps> = ({
-  book,
-  onUpdate,
-}) => {
-  const {
-    updateBook,
-    updateBookAsync,
-    deleteBook,
-    addReadingSession,
-    addReadingSessionAsync,
-    isUpdatingBook,
-  } = useBooks();
-  const { updateProfile, isUpdating } = useProfile();
-  const { checkStreakUpdate } = useStreakUpdate();
+export const BookCard = React.memo<BookCardProps>(({ book, onUpdate }) => {
+  const { updateBook, updateBookAsync, deleteBook, addReadingSession, addReadingSessionAsync } =
+    useBooks();
+  const { updateProfile } = useProfile();
   const { toast } = useToast();
 
-  const [showUpdateDialog, setShowUpdateDialog] =
-    useState(false);
-  const [showReadingDialog, setShowReadingDialog] =
-    useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] =
-    useState(false);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [showReadingDialog, setShowReadingDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const [updateData, setUpdateData] = useState({
     pages_read: book.pages_read || 0,
@@ -92,37 +60,22 @@ export const BookCard: React.FC<BookCardProps> = ({
     is_favorite: book.is_favorite || false,
   });
 
-  const [sessionDate, setSessionDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
 
-  const [readingSessionData, setReadingSessionData] =
-    useState({
-      pages_read: 0,
-      notes: "",
-    });
+  const [readingSessionData, setReadingSessionData] = useState({
+    pages_read: 0,
+    notes: "",
+  });
 
   const handleUpdateBook = async () => {
-    // Verificar se houve mudança nas páginas lidas
-    const pagesChanged =
-      updateData.pages_read !== (book.pages_read || 0);
-    const pagesIncreased =
-      updateData.pages_read > (book.pages_read || 0);
-    const pagesAdded = pagesIncreased
-      ? updateData.pages_read - (book.pages_read || 0)
-      : 0;
+    const pagesIncreased = updateData.pages_read > (book.pages_read || 0);
+    const pagesAdded = pagesIncreased ? updateData.pages_read - (book.pages_read || 0) : 0;
 
-    // Se as páginas aumentaram, registrar uma sessão de leitura primeiro
     if (pagesIncreased && pagesAdded > 0) {
       try {
-        // Registrar sessão de leitura para manter streak com data customizada
-        const sessionDateTime = new Date(
-          sessionDate + "T12:00:00.000Z"
-        ).toISOString();
+        const sessionDateTime = new Date(`${sessionDate}T12:00:00.000Z`).toISOString();
+        const remaining = (book.total_pages || 0) - (book.pages_read || 0);
 
-        // Client-side guard: do not attempt if pagesAdded exceeds remaining
-        const remaining =
-          (book.total_pages || 0) - (book.pages_read || 0);
         if (pagesAdded > remaining) {
           toast({
             title: "Páginas inválidas",
@@ -135,45 +88,33 @@ export const BookCard: React.FC<BookCardProps> = ({
         await addReadingSessionAsync({
           book_id: book.id,
           pages_read: pagesAdded,
-          notes: `Atualização manual: +${pagesAdded} páginas em ${new Date(
-            sessionDate
-          ).toLocaleDateString("pt-BR")}`,
+          notes: `Atualização manual: +${pagesAdded} páginas em ${new Date(sessionDate).toLocaleDateString("pt-BR")}`,
           session_date: sessionDateTime,
         });
 
-        // After session is added, update other fields if necessary
-        const { pages_read, ...otherUpdates } = updateData;
+        const { pages_read: _pagesRead, ...otherUpdates } = updateData;
         if (Object.keys(otherUpdates).length > 0) {
           await updateBookAsync({
             id: book.id,
             updates: otherUpdates,
           });
         }
-      } catch (error: any) {
-        console.error(
-          "Error adding reading session:",
-          error
-        );
+      } catch (error: unknown) {
         toast({
           title: "Erro ao registrar sessão",
-          description: getApiErrorMessage(
-            error,
-            "Erro ao registrar sessão"
-          ),
+          description: getApiErrorMessage(error as Error, "Erro ao registrar sessão"),
           variant: "destructive",
         });
-        // Try fallback update to keep book data consistent
         try {
           await updateBookAsync({
             id: book.id,
             updates: updateData,
           });
-        } catch (e: any) {
-          console.error("Fallback update failed:", e);
+        } catch {
+          // noop fallback
         }
       }
     } else {
-      // Se não houve aumento de páginas, fazer update normal
       updateBook({
         id: book.id,
         updates: updateData,
@@ -187,7 +128,6 @@ export const BookCard: React.FC<BookCardProps> = ({
   const handleSetCurrentBook = () => {
     updateProfile({ current_book_id: book.id });
 
-    // Se o livro não estiver como "reading", atualizar para "reading"
     if (book.status !== "reading") {
       updateBook({
         id: book.id,
@@ -199,7 +139,6 @@ export const BookCard: React.FC<BookCardProps> = ({
   };
 
   const handleAddReadingSession = () => {
-    // Apenas adicionar a sessão - o hook já cuida da atualização do livro
     addReadingSession({
       book_id: book.id,
       pages_read: readingSessionData.pages_read,
@@ -220,85 +159,71 @@ export const BookCard: React.FC<BookCardProps> = ({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return (
-          <Badge className="bg-green-100 text-green-800">
-            Concluído
-          </Badge>
-        );
+      case "lido":
+        return <Badge variant="success">Concluído</Badge>;
       case "reading":
-        return (
-          <Badge className="bg-blue-100 text-blue-800">
-            Lendo
-          </Badge>
-        );
+      case "lendo":
+        return <Badge variant="default">Lendo</Badge>;
       case "want-to-read":
-        return <Badge variant="outline">Quero Ler</Badge>;
+      case "não lido":
+        return <Badge variant="outline">Quero ler</Badge>;
       default:
-        return (
-          <Badge variant="secondary">Desconhecido</Badge>
-        );
+        return <Badge variant="secondary">Sem status</Badge>;
     }
   };
 
-  const progressPercentage =
-    book.total_pages > 0
-      ? (book.pages_read / book.total_pages) * 100
-      : 0;
+  const progressPercentage = book.total_pages > 0 ? (book.pages_read / book.total_pages) * 100 : 0;
 
   return (
-    <Card className="transition-shadow hover:shadow-md">
+    <Card className="h-full border-border/70 transition-all hover:-translate-y-0.5 hover:shadow-md">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg flex items-center gap-2">
-              {book.is_favorite && (
-                <Heart className="h-4 w-4 text-red-500 fill-current" />
-              )}
-              {book.title}
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-2">
+            <CardTitle className="line-clamp-2 text-base sm:text-lg">
+              <span className="inline-flex items-center gap-2">
+                {book.is_favorite ? (
+                  <Heart className="h-4 w-4 fill-current text-destructive" />
+                ) : null}
+                {book.title}
+              </span>
             </CardTitle>
-            <CardDescription className="text-sm">
-              por {book.author}
-            </CardDescription>
-            <div className="flex items-center gap-2 mt-2">
+            <CardDescription>por {book.author}</CardDescription>
+            <div className="flex flex-wrap items-center gap-2">
               {getStatusBadge(book.status)}
-              {book.rating && book.rating > 0 && (
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="text-sm text-gray-600">
-                    {book.rating}/5
-                  </span>
-                </div>
-              )}
+              {book.rating && book.rating > 0 ? (
+                <Badge variant="accent">
+                  <Star className="mr-1 h-3 w-3 fill-current" />
+                  {book.rating}/5
+                </Badge>
+              ) : null}
             </div>
           </div>
 
-          {/* Botões de Ação Rápida */}
           <div className="flex items-center gap-1">
-            {/* Botão de Adicionar Páginas */}
             <Button
               variant="outline"
-              size="sm"
+              size="icon-sm"
               onClick={() => setShowReadingDialog(true)}
               disabled={book.status === "completed"}
+              aria-label="Adicionar sessão de leitura"
             >
               <Plus className="h-4 w-4" />
             </Button>
 
-            {/* Botão de Definir como Atual */}
-            {book.status !== "completed" && (
+            {book.status !== "completed" ? (
               <Button
                 variant="outline"
-                size="sm"
+                size="icon-sm"
                 onClick={handleSetCurrentBook}
+                aria-label="Definir como livro atual"
               >
                 <Target className="h-4 w-4" />
               </Button>
-            )}
+            ) : null}
 
-            {/* Menu de Ações Extras */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="icon-sm" aria-label="Mais opções">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -307,33 +232,27 @@ export const BookCard: React.FC<BookCardProps> = ({
                   onClick={handleSetCurrentBook}
                   disabled={book.status === "completed"}
                 >
-                  <Target className="h-4 w-4 mr-2" />
-                  Definir como Atual
+                  <Target className="mr-2 h-4 w-4" />
+                  Definir como atual
                 </DropdownMenuItem>
-
                 <DropdownMenuItem
                   onClick={() => setShowReadingDialog(true)}
                   disabled={book.status === "completed"}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Páginas
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar páginas
                 </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={() => setShowUpdateDialog(true)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar Livro
+                <DropdownMenuItem onClick={() => setShowUpdateDialog(true)}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar livro
                 </DropdownMenuItem>
-
                 <DropdownMenuSeparator />
-
                 <DropdownMenuItem
                   onClick={() => setShowDeleteDialog(true)}
-                  className="text-red-600"
+                  className="text-destructive focus:text-destructive"
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Remover Livro
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remover livro
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -341,52 +260,40 @@ export const BookCard: React.FC<BookCardProps> = ({
         </div>
       </CardHeader>
 
-      <CardContent>
-        <div className="space-y-3">
-          {/* Progresso de Leitura */}
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span>Progresso</span>
-              <span>
-                {book.pages_read} / {book.total_pages}{" "}
-                páginas
-              </span>
-            </div>
-            <Progress
-              value={progressPercentage}
-              className="h-2"
-            />
-            <div className="text-xs text-gray-500 mt-1">
-              {Math.round(progressPercentage)}% concluído
-            </div>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Progresso</span>
+            <span className="font-medium">
+              {book.pages_read} / {book.total_pages} páginas
+            </span>
           </div>
-
-          {/* Review preview se existir */}
-          {book.review && (
-            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-              <p className="line-clamp-2">{book.review}</p>
-            </div>
-          )}
+          <Progress
+            value={progressPercentage}
+            size="sm"
+            color={progressPercentage >= 100 ? "success" : "primary"}
+          />
+          <div className="text-xs text-muted-foreground">
+            {Math.round(progressPercentage)}% concluído
+          </div>
         </div>
+
+        {book.review ? (
+          <div className="rounded-[var(--radius-md)] border border-border/70 bg-muted/40 p-2.5 text-sm text-muted-foreground">
+            <p className="line-clamp-2">{book.review}</p>
+          </div>
+        ) : null}
       </CardContent>
 
-      {/* Dialog para Adicionar Páginas */}
-      <Dialog
-        open={showReadingDialog}
-        onOpenChange={setShowReadingDialog}
-      >
+      <Dialog open={showReadingDialog} onOpenChange={setShowReadingDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Registrar Progresso de Leitura
-            </DialogTitle>
-            <DialogDescription>
-              Adicione as páginas lidas de "{book.title}"
-            </DialogDescription>
+            <DialogTitle>Registrar progresso</DialogTitle>
+            <DialogDescription>Adicione as páginas lidas de "{book.title}".</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="pages">Páginas Lidas</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="pages">Páginas lidas</Label>
               <Input
                 id="pages"
                 type="number"
@@ -394,23 +301,19 @@ export const BookCard: React.FC<BookCardProps> = ({
                 onChange={(e) =>
                   setReadingSessionData((prev) => ({
                     ...prev,
-                    pages_read:
-                      parseInt(e.target.value) || 0,
+                    pages_read: parseInt(e.target.value) || 0,
                   }))
                 }
                 min="1"
                 max={book.total_pages - book.pages_read}
                 placeholder="Ex: 25"
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Máximo: {book.total_pages - book.pages_read}{" "}
-                páginas restantes
+              <p className="text-xs text-muted-foreground">
+                Máximo: {book.total_pages - book.pages_read} páginas restantes.
               </p>
             </div>
-            <div>
-              <Label htmlFor="notes">
-                Notas (opcional)
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="notes">Notas (opcional)</Label>
               <Textarea
                 id="notes"
                 value={readingSessionData.notes}
@@ -420,148 +323,105 @@ export const BookCard: React.FC<BookCardProps> = ({
                     notes: e.target.value,
                   }))
                 }
-                placeholder="Suas impressões sobre esta sessão de leitura..."
+                placeholder="Registre insights desta sessão..."
                 rows={3}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowReadingDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowReadingDialog(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleAddReadingSession}>
-              Registrar Progresso
-            </Button>
+            <Button onClick={handleAddReadingSession}>Salvar sessão</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para Editar Livro */}
-      <Dialog
-        open={showUpdateDialog}
-        onOpenChange={setShowUpdateDialog}
-      >
+      <Dialog open={showUpdateDialog} onOpenChange={setShowUpdateDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar Livro</DialogTitle>
-            <DialogDescription>
-              Atualize as informações de "{book.title}"
-            </DialogDescription>
+            <DialogTitle>Editar livro</DialogTitle>
+            <DialogDescription>Atualize as informações de "{book.title}".</DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4">
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="status">Status</Label>
               <Select
                 value={updateData.status}
-                onValueChange={(value: any) =>
-                  setUpdateData((prev) => ({
-                    ...prev,
-                    status: value,
-                  }))
+                onValueChange={(value: "want-to-read" | "reading" | "completed") =>
+                  setUpdateData((prev) => ({ ...prev, status: value }))
                 }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="want-to-read">
-                    Quero Ler
-                  </SelectItem>
-                  <SelectItem value="reading">
-                    Lendo
-                  </SelectItem>
-                  <SelectItem value="completed">
-                    Concluído
-                  </SelectItem>
+                  <SelectItem value="want-to-read">Quero ler</SelectItem>
+                  <SelectItem value="reading">Lendo</SelectItem>
+                  <SelectItem value="completed">Concluído</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="pages_read">
-                Páginas Lidas
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="pages_read">Páginas lidas</Label>
               <Input
                 id="pages_read"
                 type="number"
                 value={updateData.pages_read}
                 onChange={(e) =>
-                  setUpdateData((prev) => ({
-                    ...prev,
-                    pages_read:
-                      parseInt(e.target.value) || 0,
-                  }))
+                  setUpdateData((prev) => ({ ...prev, pages_read: parseInt(e.target.value) || 0 }))
                 }
                 min="0"
                 max={updateData.total_pages}
               />
-              {updateData.pages_read >
-                (book.pages_read || 0) && (
-                <div className="mt-2">
+
+              {updateData.pages_read > (book.pages_read || 0) ? (
+                <div className="space-y-1.5 rounded-[var(--radius-md)] border border-primary/30 bg-primary/5 p-3">
                   <Label
                     htmlFor="session_date"
-                    className="text-sm text-blue-600"
+                    className="inline-flex items-center gap-1 text-primary"
                   >
-                    Data da leitura (para páginas
-                    adicionadas)
+                    <Calendar className="h-3.5 w-3.5" />
+                    Data da sessão
                   </Label>
                   <Input
                     id="session_date"
                     type="date"
                     value={sessionDate}
-                    onChange={(e) =>
-                      setSessionDate(e.target.value)
-                    }
-                    max={
-                      new Date().toISOString().split("T")[0]
-                    }
-                    className="text-sm"
+                    onChange={(e) => setSessionDate(e.target.value)}
+                    max={new Date().toISOString().split("T")[0]}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
-                    +
-                    {updateData.pages_read -
-                      (book.pages_read || 0)}{" "}
-                    páginas serão registradas nesta data
+                  <p className="text-xs text-muted-foreground">
+                    +{updateData.pages_read - (book.pages_read || 0)} páginas serão registradas
+                    nessa data.
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
 
-            <div>
-              <Label htmlFor="total_pages">
-                Total de Páginas
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="total_pages">Total de páginas</Label>
               <Input
                 id="total_pages"
                 type="number"
                 value={updateData.total_pages}
                 onChange={(e) =>
-                  setUpdateData((prev) => ({
-                    ...prev,
-                    total_pages:
-                      parseInt(e.target.value) || 0,
-                  }))
+                  setUpdateData((prev) => ({ ...prev, total_pages: parseInt(e.target.value) || 0 }))
                 }
                 min="1"
               />
             </div>
 
-            <div>
-              <Label htmlFor="rating">
-                Avaliação (1-5 estrelas)
-              </Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="rating">Avaliação</Label>
               <Select
                 value={updateData.rating?.toString() || "0"}
                 onValueChange={(value) =>
                   setUpdateData((prev) => ({
                     ...prev,
-                    rating:
-                      value === "0"
-                        ? null
-                        : parseInt(value),
+                    rating: value === "0" ? null : parseInt(value),
                   }))
                 }
               >
@@ -569,100 +429,67 @@ export const BookCard: React.FC<BookCardProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">
-                    Sem avaliação
-                  </SelectItem>
-                  <SelectItem value="1">
-                    1 estrela
-                  </SelectItem>
-                  <SelectItem value="2">
-                    2 estrelas
-                  </SelectItem>
-                  <SelectItem value="3">
-                    3 estrelas
-                  </SelectItem>
-                  <SelectItem value="4">
-                    4 estrelas
-                  </SelectItem>
-                  <SelectItem value="5">
-                    5 estrelas
-                  </SelectItem>
+                  <SelectItem value="0">Sem avaliação</SelectItem>
+                  <SelectItem value="1">1 estrela</SelectItem>
+                  <SelectItem value="2">2 estrelas</SelectItem>
+                  <SelectItem value="3">3 estrelas</SelectItem>
+                  <SelectItem value="4">4 estrelas</SelectItem>
+                  <SelectItem value="5">5 estrelas</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div>
+            <div className="space-y-1.5">
               <Label htmlFor="review">Resenha</Label>
               <Textarea
                 id="review"
                 value={updateData.review}
-                onChange={(e) =>
-                  setUpdateData((prev) => ({
-                    ...prev,
-                    review: e.target.value,
-                  }))
-                }
+                onChange={(e) => setUpdateData((prev) => ({ ...prev, review: e.target.value }))}
                 placeholder="Sua opinião sobre o livro..."
                 rows={3}
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border/70 p-3">
+              <Checkbox
                 id="favorite"
                 checked={updateData.is_favorite}
-                onChange={(e) =>
+                onCheckedChange={(checked) =>
                   setUpdateData((prev) => ({
                     ...prev,
-                    is_favorite: e.target.checked,
+                    is_favorite: Boolean(checked),
                   }))
                 }
               />
-              <Label htmlFor="favorite">
+              <Label htmlFor="favorite" className="cursor-pointer">
                 Marcar como favorito
               </Label>
             </div>
           </div>
+
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowUpdateDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowUpdateDialog(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleUpdateBook}>
-              Salvar Alterações
-            </Button>
+            <Button onClick={handleUpdateBook}>Salvar alterações</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para Confirmar Exclusão */}
-      <Dialog
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-      >
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remover Livro</DialogTitle>
+            <DialogTitle>Remover livro</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja remover "{book.title}"
-              da sua biblioteca? Esta ação não pode ser
-              desfeita.
+              Tem certeza que deseja remover "{book.title}" da sua biblioteca? Esta ação não pode
+              ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-            >
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancelar
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteBook}
-            >
+            <Button variant="destructive" onClick={handleDeleteBook}>
               Remover
             </Button>
           </DialogFooter>
@@ -670,4 +497,5 @@ export const BookCard: React.FC<BookCardProps> = ({
       </Dialog>
     </Card>
   );
-};
+});
+BookCard.displayName = "BookCard";

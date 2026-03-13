@@ -1,6 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { useResponsive } from "../utils/responsive";
 import { BaseCard, UniversalLoader } from "./UniversalComponents";
 
@@ -51,7 +51,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
           <div
             className={cn(
               "flex items-center gap-1 text-xs",
-              data.trend.isPositive ? "text-green-600" : "text-red-600"
+              data.trend.isPositive ? "text-green-600" : "text-red-600",
             )}
           >
             <span>{data.trend.isPositive ? "↗" : "↘"}</span>
@@ -72,7 +72,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         variant === "gradient" &&
           "bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20",
         variant === "outline" && "border-2 border-dashed",
-        className
+        className,
       )}
     >
       {content}
@@ -131,7 +131,7 @@ export const BookCard: React.FC<BookCardProps> = ({
               alt={book.title}
               className={cn(
                 "rounded object-cover flex-shrink-0",
-                isMobile ? "w-16 h-20" : "w-20 h-28"
+                isMobile ? "w-16 h-20" : "w-20 h-28",
               )}
             />
           )}
@@ -171,7 +171,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                     key={i}
                     className={cn(
                       "text-sm",
-                      i < book.rating! ? "text-yellow-500" : "text-gray-300"
+                      i < book.rating! ? "text-yellow-500" : "text-gray-300",
                     )}
                   >
                     ★
@@ -191,9 +191,21 @@ export const BookCard: React.FC<BookCardProps> = ({
       <div
         className={cn(
           "flex items-center gap-3 p-2 rounded hover:bg-muted/50 cursor-pointer transition-colors",
-          className
+          className,
         )}
         onClick={handleClick}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={
+          onClick
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleClick();
+                }
+              }
+            : undefined
+        }
       >
         {book.cover && (
           <img
@@ -299,7 +311,7 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
         achievement.rarity ? rarityColors[achievement.rarity] : rarityColors.common,
         isUnlocked ? "shadow-sm hover:shadow-md" : "opacity-60 grayscale",
         currentSize.container,
-        className
+        className,
       )}
     >
       <div className="space-y-2">
@@ -399,7 +411,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
       )}
 
       <div className={cn("w-full bg-secondary rounded-full overflow-hidden", sizes[size])}>
-        <motion.div
+        <m.div
           className={cn("h-full rounded-full transition-all duration-500", variants[variant])}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
@@ -463,7 +475,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             "px-4 py-2 bg-primary text-primary-foreground rounded-md",
             "hover:bg-primary/90 transition-colors",
             "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-            isMobile && "min-h-[44px]"
+            isMobile && "min-h-[44px]",
           )}
         >
           {action.label}

@@ -1,27 +1,52 @@
 import React from "react";
+import { Library } from "lucide-react";
 import { BookLibrary } from "@/components/BookLibrary";
 import { BookActionButtons } from "@/components/BookActionButtons";
 import { useBooks } from "@/hooks/useBooks";
+import { useAuth } from "@/hooks/useAuth";
+import { useReadingSessions } from "@/hooks/useReadingSessions";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader, PageSection, PageShell } from "@/components/layout/PageLayout";
+import { useFeatureFlags } from "@/lib/featureFlags";
+import { ResumeReadingCard } from "@/features/library/components/ResumeReadingCard";
+import { WeeklyGoalCard } from "@/features/library/components/WeeklyGoalCard";
+import { FocusTimerCard } from "@/features/library/components/FocusTimerCard";
+import { AIReadingCopilotCard } from "@/features/library/components/AIReadingCopilotCard";
+import { SmartRecommendationsCard } from "@/features/library/components/SmartRecommendationsCard";
 
 export const LibraryPage = () => {
+  const { user } = useAuth();
   const { books = [] } = useBooks();
+  const { sessions = [] } = useReadingSessions();
+  const flags = useFeatureFlags();
+  const total = books?.length || 0;
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-      <div className="text-center mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">
-          📚 Minha Biblioteca
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          {books?.length || 0} {(books?.length || 0) === 1 ? "livro" : "livros"} na sua coleção
-        </p>
-      </div>
+    <PageShell containerClassName="max-w-7xl space-y-6" density="compact">
+      <PageHeader
+        icon={Library}
+        title="Minha biblioteca"
+        description="Organize sua coleção, acompanhe progresso e evolua sua consistência de leitura."
+        actions={
+          <Badge variant="secondary" className="text-xs sm:text-sm">
+            {total} {total === 1 ? "livro" : "livros"}
+          </Badge>
+        }
+      />
 
-      <div className="space-y-4 sm:space-y-6">
+      <PageSection>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <ResumeReadingCard books={books} />
+          {flags.enableWeeklyGoal ? <WeeklyGoalCard sessions={sessions} /> : null}
+          {flags.enableReadingFocusTimer ? <FocusTimerCard /> : null}
+          {flags.enableAiCopilot ? <AIReadingCopilotCard userId={user?.id} books={books} /> : null}
+          {flags.enableSmartRecommendations ? <SmartRecommendationsCard books={books} /> : null}
+        </div>
+
         <BookActionButtons />
         <BookLibrary />
-      </div>
-    </div>
+      </PageSection>
+    </PageShell>
   );
 };
 

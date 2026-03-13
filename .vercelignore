@@ -1,0 +1,15 @@
+/.cache
+/.github
+/.husky
+/docs
+/server
+/supabase
+/tests
+/scripts
+/node_modules
+/.env
+/.env.local
+/.env.example
+/README.md
+/playwright.config.ts
+/vitest.config.ts
