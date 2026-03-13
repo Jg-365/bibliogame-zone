@@ -6,7 +6,7 @@ const badgeVariants = cva(
   [
     "inline-flex items-center gap-1 rounded-full border",
     "px-2.5 py-0.5 text-xs font-semibold",
-    "transition-colors duration-[var(--duration-fast)]",
+    "transition-colors [transition-duration:var(--duration-fast)]",
     "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
     "select-none",
   ].join(" "),

@@ -11,7 +11,7 @@ const Switch = React.forwardRef<
       // Track
       "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center",
       "rounded-full border-2 border-transparent",
-      "transition-all duration-[var(--duration-normal)] ease-[var(--easing-spring)]",
+      "transition-all [transition-duration:var(--duration-normal)] [transition-timing-function:var(--easing-spring)]",
       "data-[state=checked]:bg-primary data-[state=checked]:shadow-glow",
       "data-[state=unchecked]:bg-muted",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -27,7 +27,7 @@ const Switch = React.forwardRef<
         // Thumb — slides and scales slightly when toggled
         "pointer-events-none block h-5 w-5 rounded-full",
         "bg-background shadow-md ring-0",
-        "transition-all duration-[var(--duration-normal)] ease-[var(--easing-spring)]",
+        "transition-all [transition-duration:var(--duration-normal)] [transition-timing-function:var(--easing-spring)]",
         "data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0",
         "data-[state=checked]:scale-[0.9]",
       )}

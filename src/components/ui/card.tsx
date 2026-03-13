@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const cardVariants = cva(
   // Base: consistent structure for all card types
-  "rounded-[var(--radius-lg)] border text-card-foreground transition-all duration-[var(--duration-normal)] ease-[var(--easing-standard)]",
+  "rounded-[var(--radius-lg)] border text-card-foreground transition-all [transition-duration:var(--duration-normal)] [transition-timing-function:var(--easing-standard)]",
   {
     variants: {
       variant: {

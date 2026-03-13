@@ -174,7 +174,7 @@ const AppContent = () => {
         <main
           id="main-content"
           className={cn(
-            "flex-1 transition-all duration-[var(--duration-normal)] ease-[var(--easing-standard)]",
+            "flex-1 transition-all [transition-duration:var(--duration-normal)] [transition-timing-function:var(--easing-standard)]",
             isMobile ? "pb-20 pt-14" : "pt-16",
           )}
           tabIndex={-1}
