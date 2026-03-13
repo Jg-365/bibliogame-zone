@@ -1,99 +1,13 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
 import { useCheckAchievements } from "./useAchievements";
 import { getApiErrorMessage } from "@/lib/apiError";
-import type {
-  Book,
-  GoogleBook,
-  ReadingSession,
-} from "@/shared/types";
+import type { Book, GoogleBook, ReadingSession } from "@/shared/types";
 
-// Google Books API integration
-export const searchGoogleBooks = async (
-  query: string,
-  page = 0,
-  pageSize = 10
-): Promise<{ items: GoogleBook[]; totalItems: number }> => {
-  // Simple search wrapper that requests a page from Google Books and
-  // applies a lightweight keyword scoring to improve relevance for fuzzy
-  // or partial queries.
-  try {
-    const startIndex = page * pageSize;
-    const response = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
-        query
-      )}&startIndex=${startIndex}&maxResults=${pageSize}`
-    );
-    const data = await response.json();
-
-    const items: GoogleBook[] = data.items || [];
-    const totalItems: number = data.totalItems || 0;
-
-    // Lightweight ranking: split query into tokens and give scores when
-    // tokens appear in title, authors, categories or ISBNs. This makes the
-    // UI more tolerant to partial or imperfect inputs without adding a
-    // heavy fuzzy library.
-    const normalize = (s: string) =>
-      s
-        .toLowerCase()
-        .replace(/[\p{P}\p{S}]/gu, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-    const tokens = normalize(query)
-      .split(" ")
-      .filter(Boolean);
-
-    const scored = items
-      .map((it) => {
-        const info = it.volumeInfo || ({} as any);
-        const title = info.title
-          ? normalize(info.title)
-          : "";
-        const authors = (info.authors || []).join(" ")
-          ? normalize((info.authors || []).join(" "))
-          : "";
-        const categories = (info.categories || []).join(" ")
-          ? normalize((info.categories || []).join(" "))
-          : "";
-        const isbn =
-          (info.industryIdentifiers || [])
-            .map((i: any) => i.identifier)
-            .join(" ") || "";
-
-        let score = 0;
-
-        for (const t of tokens) {
-          if (!t) continue;
-          if (title.includes(t)) score += 6;
-          // partial prefix matches are helpful
-          if (title.split(" ").some((w) => w.startsWith(t)))
-            score += 2;
-          if (authors.includes(t)) score += 4;
-          if (categories.includes(t)) score += 2;
-          if (isbn.includes(t)) score += 8;
-        }
-
-        // Slightly prefer exact title match
-        if (tokens.length && title === tokens.join(" "))
-          score += 10;
-
-        return { item: it, score };
-      })
-      .sort((a, b) => b.score - a.score || 0);
-
-    return { items: scored.map((s) => s.item), totalItems };
-  } catch (error) {
-    console.error("Error searching Google Books:", error);
-    return { items: [], totalItems: 0 };
-  }
-};
+// Re-export so existing code that imports from this hook keeps working
+export { searchGoogleBooks } from "@/integrations/googleBooks/client";
 
 export const useBooks = () => {
   const { user } = useAuth();
@@ -120,6 +34,11 @@ export const useBooks = () => {
       return data as Book[];
     },
     enabled: !!user?.id,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    placeholderData: (previous) => previous,
   });
 
   const addBook = useMutation({
@@ -135,8 +54,7 @@ export const useBooks = () => {
       published_date?: string;
       genres?: string[];
     }) => {
-      if (!user?.id)
-        throw new Error("User not authenticated");
+      if (!user?.id) throw new Error("User not authenticated");
 
       const { data, error } = await supabase
         .from("books")
@@ -169,8 +87,7 @@ export const useBooks = () => {
       });
       toast({
         title: "Livro adicionado!",
-        description:
-          "O livro foi adicionado à sua biblioteca.",
+        description: "O livro foi adicionado à sua biblioteca.",
       });
     },
     onError: (error: any) => {
@@ -183,31 +100,23 @@ export const useBooks = () => {
   });
 
   const updateBook = useMutation({
-    mutationFn: async ({
-      id,
-      updates,
-    }: {
-      id: string;
-      updates: any;
-    }) => {
-      if (!user?.id)
-        throw new Error("User not authenticated");
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      if (!user?.id) throw new Error("User not authenticated");
 
       // If updates contains pages_read, validate against total_pages
       if (typeof updates.pages_read === "number") {
-        const { data: book, error: bookError } =
-          await supabase
-            .from("books")
-            .select("total_pages")
-            .eq("id", id)
-            .eq("user_id", user.id)
-            .single();
+        const { data: book, error: bookError } = await supabase
+          .from("books")
+          .select("total_pages")
+          .eq("id", id)
+          .eq("user_id", user.id)
+          .single();
 
         if (bookError) throw bookError;
 
         if (updates.pages_read > book.total_pages) {
           throw new Error(
-            `Não é possível definir ${updates.pages_read} páginas lidas. O livro tem apenas ${book.total_pages} páginas.`
+            `Não é possível definir ${updates.pages_read} páginas lidas. O livro tem apenas ${book.total_pages} páginas.`,
           );
         }
       }
@@ -240,10 +149,7 @@ export const useBooks = () => {
             readingStreak: 0,
           });
         } catch (error) {
-          console.error(
-            "Error checking achievements:",
-            error
-          );
+          console.error("Error checking achievements:", error);
         }
       }
 
@@ -255,10 +161,7 @@ export const useBooks = () => {
     onError: (error: any) => {
       toast({
         title: "Erro ao atualizar livro",
-        description: getApiErrorMessage(
-          error,
-          "Erro ao atualizar livro"
-        ),
+        description: getApiErrorMessage(error, "Erro ao atualizar livro"),
         variant: "destructive",
       });
     },
@@ -266,14 +169,9 @@ export const useBooks = () => {
 
   const deleteBook = useMutation({
     mutationFn: async (id: string) => {
-      if (!user?.id)
-        throw new Error("User not authenticated");
+      if (!user?.id) throw new Error("User not authenticated");
 
-      const { error } = await supabase
-        .from("books")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", user.id);
+      const { error } = await supabase.from("books").delete().eq("id", id).eq("user_id", user.id);
 
       if (error) throw error;
       return { success: true };
@@ -287,8 +185,7 @@ export const useBooks = () => {
       });
       toast({
         title: "Livro removido!",
-        description:
-          "O livro foi removido da sua biblioteca.",
+        description: "O livro foi removido da sua biblioteca.",
       });
     },
     onError: (error: any) => {
@@ -307,32 +204,27 @@ export const useBooks = () => {
       notes?: string;
       session_date?: string;
     }) => {
-      if (!user?.id)
-        throw new Error("User not authenticated");
+      if (!user?.id) throw new Error("User not authenticated");
       // First, get the current book data and validate pages
-      const { data: book, error: bookError } =
-        await supabase
-          .from("books")
-          .select("pages_read, total_pages")
-          .eq("id", sessionData.book_id)
-          .eq("user_id", user.id)
-          .single();
+      const { data: book, error: bookError } = await supabase
+        .from("books")
+        .select("pages_read, total_pages")
+        .eq("id", sessionData.book_id)
+        .eq("user_id", user.id)
+        .single();
 
       if (bookError) throw bookError;
 
       // Prevent negative or zero pages
       if (sessionData.pages_read <= 0) {
-        throw new Error(
-          "Número de páginas deve ser maior que zero"
-        );
+        throw new Error("Número de páginas deve ser maior que zero");
       }
 
       // Prevent adding more pages than remaining in the book
-      const remaining =
-        book.total_pages - (book.pages_read || 0);
+      const remaining = book.total_pages - (book.pages_read || 0);
       if (sessionData.pages_read > remaining) {
         throw new Error(
-          `Não é possível adicionar ${sessionData.pages_read} páginas — restam apenas ${remaining} páginas.`
+          `Não é possível adicionar ${sessionData.pages_read} páginas — restam apenas ${remaining} páginas.`,
         );
       }
 
@@ -344,9 +236,7 @@ export const useBooks = () => {
           book_id: sessionData.book_id,
           pages_read: sessionData.pages_read,
           notes: sessionData.notes,
-          session_date:
-            sessionData.session_date ||
-            new Date().toISOString(),
+          session_date: sessionData.session_date || new Date().toISOString(),
         })
         .select()
         .single();
@@ -354,8 +244,7 @@ export const useBooks = () => {
       if (error) throw error;
 
       // Update the book's total pages read
-      const newPagesRead =
-        (book.pages_read || 0) + sessionData.pages_read;
+      const newPagesRead = (book.pages_read || 0) + sessionData.pages_read;
       const status =
         newPagesRead >= book.total_pages
           ? "completed"
@@ -397,19 +286,10 @@ export const useBooks = () => {
     onError: (error: any) => {
       toast({
         title: "Erro ao registrar progresso",
-        description: getApiErrorMessage(
-          error,
-          "Erro ao registrar progresso"
-        ),
+        description: getApiErrorMessage(error, "Erro ao registrar progresso"),
         variant: "destructive",
       });
     },
-  });
-
-  const searchBooks = useQuery({
-    queryKey: ["google-books-search"],
-    queryFn: () => [],
-    enabled: false, // Only run when manually triggered
   });
 
   return {
@@ -423,7 +303,6 @@ export const useBooks = () => {
     deleteBookAsync: deleteBook.mutateAsync,
     addReadingSession: addReadingSession.mutate,
     addReadingSessionAsync: addReadingSession.mutateAsync,
-    searchGoogleBooks: searchGoogleBooks,
     isAddingBook: addBook.isPending,
     isUpdatingBook: updateBook.isPending,
     isAddingSession: addReadingSession.isPending,

@@ -9,11 +9,10 @@ export const useUserProfile = (userId: string) => {
       if (!userId) throw new Error("User ID is required");
 
       // Get user profile
-      const { data: profile, error: profileError } =
-        await supabase
-          .from("profiles")
-          .select(
-            `
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select(
+          `
           user_id,
           username,
           full_name,
@@ -21,19 +20,18 @@ export const useUserProfile = (userId: string) => {
           bio,
           created_at,
           current_streak
-        `
-          )
-          .eq("user_id", userId)
-          .single();
+        `,
+        )
+        .eq("user_id", userId)
+        .single();
 
       if (profileError) throw profileError;
 
       // Get user's books
-      const { data: books, error: booksError } =
-        await supabase
-          .from("books")
-          .select(
-            `
+      const { data: books, error: booksError } = await supabase
+        .from("books")
+        .select(
+          `
           id,
           title,
           author,
@@ -44,18 +42,15 @@ export const useUserProfile = (userId: string) => {
           rating,
           created_at,
           updated_at
-        `
-          )
-          .eq("user_id", userId)
-          .order("updated_at", { ascending: false });
+        `,
+        )
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false });
 
       if (booksError) throw booksError;
 
       // Get user's achievements
-      const {
-        data: userAchievements,
-        error: achievementsError,
-      } = await supabase
+      const { data: userAchievements, error: achievementsError } = await supabase
         .from("user_achievements")
         .select(
           `
@@ -71,27 +66,23 @@ export const useUserProfile = (userId: string) => {
             requirement_type,
             requirement_value
           )
-        `
+        `,
         )
         .eq("user_id", userId)
         .order("unlocked_at", { ascending: false });
 
       if (achievementsError) throw achievementsError;
 
-      // Calculate stats
-      const completedBooks =
-        books?.filter(
-          (book) => book.status === "completed"
-        ) || [];
-      const currentlyReading =
-        books?.filter(
-          (book) => book.status === "reading"
-        ) || [];
-      const totalPagesRead =
-        books?.reduce(
-          (sum, book) => sum + (book.pages_read || 0),
-          0
-        ) || 0;
+      const { data: statsData } = await (supabase as any)
+        .from("profile_reading_stats")
+        .select("user_id, books_completed, total_pages_read, points")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const completedBooks = books?.filter((book) => book.status === "completed") || [];
+      const currentlyReading = books?.filter((book) => book.status === "reading") || [];
+      const totalPagesRead = statsData?.total_pages_read ?? 0;
+      const points = statsData?.points ?? 0;
 
       // Determine level using shared helper for consistency
       const level = formatProfileLevel({
@@ -108,7 +99,7 @@ export const useUserProfile = (userId: string) => {
           totalPagesRead,
           totalAchievements: userAchievements?.length || 0,
           level,
-          points: totalPagesRead, // 1 point per page
+          points,
           currentStreak: profile?.current_streak || 0,
         },
       };

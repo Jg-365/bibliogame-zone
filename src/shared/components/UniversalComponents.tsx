@@ -1,6 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 import { useResponsive } from "../utils/responsive";
 
 /**
@@ -42,9 +42,11 @@ export const UniversalLoader: React.FC<UniversalLoaderProps> = ({
     button: "inline-flex items-center gap-2",
   };
 
+  const shouldReduceMotion = useReducedMotion();
+
   const Spinner = () => (
-    <motion.div
-      animate={{ rotate: 360 }}
+    <m.div
+      animate={shouldReduceMotion ? undefined : { rotate: 360 }}
       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
       className={cn("border-2 border-primary border-t-transparent rounded-full", sizes[size])}
     />
@@ -208,14 +210,14 @@ export const BaseCard: React.FC<BaseCardProps> = ({
         variants[variant],
         hover && "transition-shadow hover:shadow-lg",
         clickable && "cursor-pointer transition-all hover:scale-[1.02]",
-        className
+        className,
       )}
       onClick={onClick}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
       onKeyDown={
         clickable
-          ? e => {
+          ? (e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 onClick?.();
@@ -229,7 +231,7 @@ export const BaseCard: React.FC<BaseCardProps> = ({
         <div
           className={cn(
             "flex items-center justify-between gap-2 pt-3 mt-3 border-t",
-            isMobile && "flex-col space-y-2"
+            isMobile && "flex-col space-y-2",
           )}
         >
           {actions}
@@ -285,7 +287,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
     // Basic validation
     const newErrors: Record<string, string> = {};
 
-    fields.forEach(field => {
+    fields.forEach((field) => {
       const value = formData[field.name];
 
       if (field.required && (!value || value.toString().trim() === "")) {
@@ -317,9 +319,9 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
   };
 
   const handleChange = (name: string, value: any) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -328,7 +330,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
       "w-full px-3 py-2 border rounded-md",
       "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
       isMobile && "min-h-[44px]",
-      errors[field.name] && "border-destructive"
+      errors[field.name] && "border-destructive",
     );
 
     switch (field.type) {
@@ -357,7 +359,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             className={baseClassName}
           >
             <option value="">{field.placeholder || "Selecione..."}</option>
-            {field.options?.map(option => (
+            {field.options?.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -371,7 +373,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
             <input
               type="checkbox"
               checked={!!formData[field.name]}
-              onChange={e => handleChange(field.name, e.target.checked)}
+              onChange={(e) => handleChange(field.name, e.target.checked)}
               className="rounded"
             />
             <span className={cn(isMobile ? "text-sm" : "text-base")}>{field.label}</span>
@@ -396,7 +398,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
-      {fields.map(field => (
+      {fields.map((field) => (
         <div key={field.name} className="space-y-2">
           {field.type !== "checkbox" && (
             <label
@@ -404,7 +406,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
               className={cn(
                 "block font-medium",
                 isMobile ? "text-sm" : "text-base",
-                errors[field.name] && "text-destructive"
+                errors[field.name] && "text-destructive",
               )}
             >
               {field.label}
@@ -425,7 +427,7 @@ export const FormBuilder: React.FC<FormBuilderProps> = ({
           "w-full py-2 px-4 bg-primary text-primary-foreground rounded-md",
           "hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed",
           "transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-          isMobile && "min-h-[44px]"
+          isMobile && "min-h-[44px]",
         )}
       >
         {loading ? (
@@ -508,7 +510,7 @@ export const UniversalModal: React.FC<UniversalModalProps> = ({
         className={cn(
           "relative bg-background shadow-lg",
           isFullscreen ? "w-full h-full" : "max-w-lg w-full max-h-[90vh] rounded-lg",
-          className
+          className,
         )}
         role="dialog"
         aria-modal="true"
@@ -519,7 +521,7 @@ export const UniversalModal: React.FC<UniversalModalProps> = ({
           <div
             className={cn(
               "flex items-center justify-between border-b p-4",
-              isFullscreen && "sticky top-0 bg-background z-10"
+              isFullscreen && "sticky top-0 bg-background z-10",
             )}
           >
             <h2 id="modal-title" className="text-lg font-semibold">
@@ -530,7 +532,7 @@ export const UniversalModal: React.FC<UniversalModalProps> = ({
               className={cn(
                 "rounded-sm opacity-70 hover:opacity-100",
                 "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                isMobile && "min-h-[44px] min-w-[44px]"
+                isMobile && "min-h-[44px] min-w-[44px]",
               )}
               aria-label="Fechar modal"
             >
@@ -550,7 +552,7 @@ export const UniversalModal: React.FC<UniversalModalProps> = ({
         <div
           className={cn(
             "flex-1 overflow-y-auto p-4",
-            isFullscreen && "pb-20" // Space for actions
+            isFullscreen && "pb-20", // Space for actions
           )}
         >
           {children}

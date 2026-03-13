@@ -1,82 +1,94 @@
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Search, Plus, BookOpen } from "lucide-react";
-import {
-  useBooks,
-  searchGoogleBooks,
-} from "@/hooks/useBooks";
+﻿import React, { useCallback, useEffect, useRef, useState } from "react";
+import { BookOpen, Plus, Search } from "lucide-react";
+import { useBooks, searchGoogleBooks } from "@/hooks/useBooks";
 import { useToast } from "@/hooks/use-toast";
 import type { GoogleBook } from "@/shared/types";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const DEBOUNCE_MS = 400;
 
 export const BookSearch = () => {
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<
-    GoogleBook[]
-  >([]);
+  const [searchResults, setSearchResults] = useState<GoogleBook[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize] = useState(12);
   const [totalItems, setTotalItems] = useState(0);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
   const { addBook, isAddingBook } = useBooks();
   const { toast } = useToast();
 
-  // Força a renderização quando o componente é montado
-  useEffect(() => {
-    setIsInitialized(true);
-  }, []);
+  const executeSearch = useCallback(
+    async (searchQuery: string, searchPage: number) => {
+      if (!searchQuery.trim()) return;
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
-    setIsSearching(true);
-    try {
-      const { items, totalItems: total } =
-        await searchGoogleBooks(query, page, pageSize);
-      setSearchResults(items);
-      setTotalItems(total);
-      if ((items || []).length === 0) {
+      setIsSearching(true);
+      try {
+        const { items, totalItems: total } = await searchGoogleBooks(
+          searchQuery,
+          searchPage,
+          pageSize,
+        );
+        setSearchResults(items);
+        setTotalItems(total);
+
+        if ((items || []).length === 0) {
+          toast({
+            title: "Nenhum resultado",
+            description: "Não encontramos livros com este termo. Tente outra pesquisa.",
+          });
+        }
+      } catch {
         toast({
-          title: "Nenhum resultado",
-          description:
-            "Não encontramos livros com este termo. Tente outra pesquisa.",
+          title: "Erro na pesquisa",
+          description: "Não foi possível pesquisar livros. Tente novamente.",
+          variant: "destructive",
         });
+      } finally {
+        setIsSearching(false);
       }
-    } catch (error) {
-      toast({
-        title: "Erro na pesquisa",
-        description:
-          "Não foi possível pesquisar livros. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSearching(false);
+    },
+    [pageSize, toast],
+  );
+
+  const handleSearch = useCallback(() => {
+    clearTimeout(debounceTimer.current);
+    executeSearch(query, page);
+  }, [query, page, executeSearch]);
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    setPage(0);
+    clearTimeout(debounceTimer.current);
+
+    if (!value.trim()) {
+      setSearchResults([]);
+      setTotalItems(0);
+      return;
     }
+
+    debounceTimer.current = setTimeout(() => {
+      executeSearch(value, 0);
+    }, DEBOUNCE_MS);
   };
 
+  useEffect(() => () => clearTimeout(debounceTimer.current), []);
+
   useEffect(() => {
-    // Run search when page changes (keeps query stable)
     if (!query.trim()) return;
-    handleSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+    executeSearch(query, page);
+  }, [page, query, executeSearch]);
 
   const handleAddBook = (book: GoogleBook) => {
     const { volumeInfo } = book;
 
     addBook({
       title: volumeInfo.title,
-      author:
-        volumeInfo.authors?.join(", ") ||
-        "Autor desconhecido",
+      author: volumeInfo.authors?.join(", ") || "Autor desconhecido",
       total_pages: volumeInfo.pageCount || 0,
       cover_url: volumeInfo.imageLinks?.thumbnail,
       google_books_id: book.id,
@@ -87,122 +99,106 @@ export const BookSearch = () => {
     });
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
-  // Garantir que o componente seja renderizado
-  if (!isInitialized) {
-    return (
-      <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-10 bg-gray-200 rounded mb-4"></div>
-          <div className="text-center py-8">
-            <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-500">
-              Carregando pesquisa de livros...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex gap-2">
-        <Input
-          placeholder="Pesquisar livros por título, autor ou ISBN..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyPress={handleKeyPress}
-          className="flex-1"
-        />
-        <Button
-          onClick={handleSearch}
-          disabled={isSearching || !query.trim()}
-          size="sm"
-        >
-          <Search className="h-4 w-4" />
-          {isSearching ? "Pesquisando..." : "Pesquisar"}
-        </Button>
-      </div>
+    <div className="space-y-5">
+      <Card className="border-border/70">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              placeholder="Pesquisar livros por título, autor ou ISBN..."
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch();
+                }
+              }}
+              className="flex-1"
+            />
+            <Button onClick={handleSearch} disabled={isSearching || !query.trim()} size="sm">
+              <Search className="mr-2 h-4 w-4" />
+              {isSearching ? "Pesquisando..." : "Pesquisar"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {isSearching && searchResults.length === 0 ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <Card key={idx}>
+              <CardContent className="space-y-3 p-4">
+                <div className="flex gap-3">
+                  <Skeleton className="h-16 w-12 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {searchResults.map((book) => {
           const { volumeInfo } = book;
+
           return (
-            <Card key={book.id} className="h-fit">
+            <Card key={book.id} className="h-full border-border/70">
               <CardHeader className="pb-3">
                 <div className="flex gap-3">
                   {volumeInfo.imageLinks?.thumbnail ? (
                     <img
                       src={volumeInfo.imageLinks.thumbnail}
                       alt={volumeInfo.title}
-                      className="w-12 h-16 object-cover rounded"
+                      className="h-16 w-12 rounded object-cover"
                     />
                   ) : (
-                    <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center">
-                      <BookOpen className="h-6 w-6 text-gray-500" />
+                    <div className="flex h-16 w-12 items-center justify-center rounded bg-muted">
+                      <BookOpen className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-sm leading-tight line-clamp-2">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="line-clamp-2 text-sm leading-tight">
                       {volumeInfo.title}
                     </CardTitle>
-                    <CardDescription className="text-xs mt-1">
-                      {volumeInfo.authors?.join(", ") ||
-                        "Autor desconhecido"}
+                    <CardDescription className="mt-1 text-xs">
+                      {volumeInfo.authors?.join(", ") || "Autor desconhecido"}
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="pt-0 space-y-3">
+              <CardContent className="space-y-3 pt-0">
                 <div className="flex flex-wrap gap-1">
-                  {volumeInfo.pageCount && (
-                    <Badge
-                      variant="secondary"
-                      className="text-xs"
-                    >
-                      {volumeInfo.pageCount} páginas
+                  {volumeInfo.pageCount ? (
+                    <Badge variant="secondary">{volumeInfo.pageCount} páginas</Badge>
+                  ) : null}
+                  {volumeInfo.publishedDate ? (
+                    <Badge variant="outline">
+                      {new Date(volumeInfo.publishedDate).getFullYear()}
                     </Badge>
-                  )}
-                  {volumeInfo.publishedDate && (
-                    <Badge
-                      variant="outline"
-                      className="text-xs"
-                    >
-                      {new Date(
-                        volumeInfo.publishedDate
-                      ).getFullYear()}
-                    </Badge>
-                  )}
+                  ) : null}
                 </div>
 
-                {volumeInfo.categories && (
+                {volumeInfo.categories ? (
                   <div className="flex flex-wrap gap-1">
-                    {volumeInfo.categories
-                      .slice(0, 2)
-                      .map((category, index) => (
-                        <Badge
-                          key={index}
-                          variant="outline"
-                          className="text-xs"
-                        >
-                          {category}
-                        </Badge>
-                      ))}
+                    {volumeInfo.categories.slice(0, 2).map((category, index) => (
+                      <Badge key={index} variant="outline">
+                        {category}
+                      </Badge>
+                    ))}
                   </div>
-                )}
+                ) : null}
 
-                {volumeInfo.description && (
-                  <p className="text-xs text-gray-600 line-clamp-3">
+                {volumeInfo.description ? (
+                  <p className="line-clamp-3 text-xs text-muted-foreground">
                     {volumeInfo.description}
                   </p>
-                )}
+                ) : null}
 
                 <Button
                   onClick={() => handleAddBook(book)}
@@ -210,8 +206,8 @@ export const BookSearch = () => {
                   size="sm"
                   className="w-full"
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar à Biblioteca
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar à biblioteca
                 </Button>
               </CardContent>
             </Card>
@@ -219,60 +215,22 @@ export const BookSearch = () => {
         })}
       </div>
 
-      {/* Pagination controls */}
-      {totalItems > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-6">
-          <div className="text-sm text-gray-600">
-            Mostrando{" "}
-            {Math.min(page * pageSize + 1, totalItems)} -{" "}
-            {Math.min((page + 1) * pageSize, totalItems)} de{" "}
-            {totalItems}
+      {totalItems > 0 ? (
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-muted-foreground">
+            Mostrando {Math.min(page * pageSize + 1, totalItems)} -{" "}
+            {Math.min((page + 1) * pageSize, totalItems)} de {totalItems}
           </div>
 
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="outline"
-              onClick={() =>
-                setPage((p) => Math.max(0, p - 1))
-              }
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
             >
               Anterior
             </Button>
-
-            <div className="hidden sm:flex items-center gap-1">
-              {Array.from({
-                length: Math.min(
-                  7,
-                  Math.ceil(totalItems / pageSize)
-                ),
-              }).map((_, idx) => {
-                // center current page in this small pager window
-                const totalPages = Math.ceil(
-                  totalItems / pageSize
-                );
-                const start = Math.max(
-                  0,
-                  Math.min(page - 3, totalPages - 7)
-                );
-                const p = start + idx;
-                if (p >= totalPages) return null;
-                return (
-                  <Button
-                    key={p}
-                    size="sm"
-                    variant={
-                      p === page ? "default" : "outline"
-                    }
-                    onClick={() => setPage(p)}
-                  >
-                    {p + 1}
-                  </Button>
-                );
-              })}
-            </div>
-
             <Button
               size="sm"
               variant="outline"
@@ -283,19 +241,19 @@ export const BookSearch = () => {
             </Button>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {searchResults.length === 0 &&
-        query &&
-        !isSearching && (
-          <div className="text-center py-8 text-gray-500">
-            <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>
-              Nenhum livro encontrado. Tente uma pesquisa
-              diferente.
+      {searchResults.length === 0 && query && !isSearching ? (
+        <Card className="border-dashed">
+          <CardContent className="py-10 text-center">
+            <BookOpen className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+            <p className="font-medium">Nenhum livro encontrado</p>
+            <p className="text-sm text-muted-foreground">
+              Tente outra combinação de título, autor ou ISBN.
             </p>
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 };

@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from "react";
+﻿import React, { useMemo, useState } from "react";
+import { BookOpen, Filter, Search, Sparkles, Target, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBooks } from "@/hooks/useBooks";
-import { useResponsive } from "@/shared/utils/responsive";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { BookCard } from "@/components/BookCard";
-import { BookOpen, Filter, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -14,128 +14,104 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface BookLibraryProps {
   className?: string;
 }
 
-export const BookLibrary: React.FC<BookLibraryProps> = ({
-  className = "",
-}) => {
-  const { isMobile } = useResponsive();
+export const BookLibrary: React.FC<BookLibraryProps> = ({ className = "" }) => {
   const { books = [], isLoading } = useBooks();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("recent");
   const [filterBy, setFilterBy] = useState("all");
 
-  // Categorize books by status
   const booksByStatus = useMemo(() => {
-    if (!books || !Array.isArray(books)) {
-      return {
-        reading: [],
-        completed: [],
-        wantToRead: [],
-      };
+    if (!Array.isArray(books)) {
+      return { reading: [], completed: [], wantToRead: [] };
     }
+
     return {
-      reading: books.filter(
-        (book) =>
-          book.status === "reading" ||
-          book.status === "lendo"
-      ),
-      completed: books.filter(
-        (book) =>
-          book.status === "completed" ||
-          book.status === "lido"
-      ),
+      reading: books.filter((book) => book.status === "reading" || book.status === "lendo"),
+      completed: books.filter((book) => book.status === "completed" || book.status === "lido"),
       wantToRead: books.filter(
-        (book) =>
-          book.status === "want-to-read" ||
-          book.status === "não lido"
+        (book) => book.status === "want-to-read" || book.status === "não lido",
       ),
     };
   }, [books]);
 
-  // Filter and sort books
-  const filteredAndSortedBooks = useMemo(() => {
-    if (!books || !Array.isArray(books)) return [];
-    let filtered = books;
+  const rewardMissions = useMemo(() => {
+    return booksByStatus.reading
+      .filter((book) => book.total_pages > 0)
+      .map((book) => {
+        const pagesRead = book.pages_read || 0;
+        const remaining = Math.max(0, book.total_pages - pagesRead);
+        const progress = Math.round((pagesRead / book.total_pages) * 100);
 
-    // Apply search filter
+        return {
+          id: book.id,
+          title: book.title,
+          remaining,
+          progress,
+        };
+      })
+      .sort((a, b) => a.remaining - b.remaining)
+      .slice(0, 3);
+  }, [booksByStatus.reading]);
+
+  const filteredAndSortedBooks = useMemo(() => {
+    if (!Array.isArray(books)) return [];
+
+    let filtered = [...books];
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (book) =>
           book.title.toLowerCase().includes(query) ||
           book.author.toLowerCase().includes(query) ||
-          book.genres?.some((genre) =>
-            genre.toLowerCase().includes(query)
-          )
+          book.genres?.some((genre) => genre.toLowerCase().includes(query)),
       );
     }
 
-    // Apply category filter
     if (filterBy !== "all") {
       switch (filterBy) {
         case "reading":
           filtered = filtered.filter(
-            (book) =>
-              book.status === "reading" ||
-              book.status === "lendo"
+            (book) => book.status === "reading" || book.status === "lendo",
           );
           break;
         case "completed":
           filtered = filtered.filter(
-            (book) =>
-              book.status === "completed" ||
-              book.status === "lido"
+            (book) => book.status === "completed" || book.status === "lido",
           );
           break;
         case "want-to-read":
           filtered = filtered.filter(
-            (book) =>
-              book.status === "want-to-read" ||
-              book.status === "não lido"
+            (book) => book.status === "want-to-read" || book.status === "não lido",
           );
           break;
         case "favorites":
-          filtered = filtered.filter(
-            (book) => book.is_favorite
-          );
+          filtered = filtered.filter((book) => book.is_favorite);
           break;
       }
     }
 
-    // Apply sorting
     switch (sortBy) {
       case "recent":
         return filtered.sort(
-          (a, b) =>
-            new Date(b.updated_at).getTime() -
-            new Date(a.updated_at).getTime()
+          (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
         );
       case "title":
-        return filtered.sort((a, b) =>
-          a.title.localeCompare(b.title)
-        );
+        return filtered.sort((a, b) => a.title.localeCompare(b.title));
       case "author":
-        return filtered.sort((a, b) =>
-          a.author.localeCompare(b.author)
-        );
+        return filtered.sort((a, b) => a.author.localeCompare(b.author));
       case "rating":
-        return filtered.sort(
-          (a, b) => (b.rating || 0) - (a.rating || 0)
-        );
+        return filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
       case "progress":
         return filtered.sort((a, b) => {
-          const progressA =
-            a.total_pages > 0
-              ? (a.pages_read || 0) / a.total_pages
-              : 0;
-          const progressB =
-            b.total_pages > 0
-              ? (b.pages_read || 0) / b.total_pages
-              : 0;
+          const progressA = a.total_pages > 0 ? (a.pages_read || 0) / a.total_pages : 0;
+          const progressB = b.total_pages > 0 ? (b.pages_read || 0) / b.total_pages : 0;
           return progressB - progressA;
         });
       default:
@@ -143,23 +119,18 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({
     }
   }, [books, searchQuery, sortBy, filterBy]);
 
-  // Callback para atualizar a lista após ações nos livros
-  const handleBookUpdate = () => {
-    // O hook useBooks já atualiza automaticamente
-  };
-
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="flex gap-4">
-                <div className="bg-slate-200 rounded w-20 h-28"></div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="space-y-4 p-4">
+              <div className="flex gap-3">
+                <Skeleton className="h-28 w-20 rounded-[var(--radius-md)]" />
                 <div className="flex-1 space-y-2">
-                  <div className="bg-slate-200 h-4 rounded w-3/4"></div>
-                  <div className="bg-slate-200 h-3 rounded w-1/2"></div>
-                  <div className="bg-slate-200 h-2 rounded w-full"></div>
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-2/4" />
+                  <Skeleton className="h-2 w-full" />
                 </div>
               </div>
             </CardContent>
@@ -170,117 +141,144 @@ export const BookLibrary: React.FC<BookLibraryProps> = ({
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Stats */}
-      <div className="flex items-center gap-2 text-sm text-slate-600 flex-wrap">
-        <span className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded font-medium">
-          {booksByStatus?.reading?.length || 0} lendo
-        </span>
-        <span className="bg-green-100 text-green-800 px-3 py-1.5 rounded font-medium">
-          {booksByStatus?.completed?.length || 0} concluídos
-        </span>
-        <span className="bg-slate-100 text-slate-800 px-3 py-1.5 rounded font-medium">
-          {booksByStatus?.wantToRead?.length || 0} quero ler
-        </span>
+    <div className={cn("space-y-5", className)}>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant="secondary">{booksByStatus.reading.length} lendo</Badge>
+        <Badge variant="success">{booksByStatus.completed.length} concluídos</Badge>
+        <Badge variant="outline">{booksByStatus.wantToRead.length} quero ler</Badge>
       </div>
 
-      {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Buscar por título, autor ou gênero..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select
-            value={filterBy}
-            onValueChange={setFilterBy}
-          >
-            <SelectTrigger className="w-40">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filtrar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="reading">Lendo</SelectItem>
-              <SelectItem value="completed">
-                Concluídos
-              </SelectItem>
-              <SelectItem value="want-to-read">
-                Quero Ler
-              </SelectItem>
-              <SelectItem value="favorites">
-                Favoritos
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Ordenar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="recent">
-                Mais Recente
-              </SelectItem>
-              <SelectItem value="title">Título</SelectItem>
-              <SelectItem value="author">Autor</SelectItem>
-              <SelectItem value="rating">
-                Avaliação
-              </SelectItem>
-              <SelectItem value="progress">
-                Progresso
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      {rewardMissions.length > 0 ? (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Missões de recompensa
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-0">
+            {rewardMissions.map((mission) => (
+              <button
+                key={mission.id}
+                onClick={() => {
+                  setFilterBy("reading");
+                  setSortBy("progress");
+                  setSearchQuery(mission.title);
+                }}
+                className="flex w-full items-center justify-between rounded-[var(--radius-md)] border border-border/70 bg-card px-3 py-2 text-left transition-colors hover:bg-muted"
+              >
+                <div>
+                  <p className="line-clamp-1 text-sm font-medium">{mission.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {mission.remaining} páginas para concluir
+                  </p>
+                </div>
+                <Badge variant="default">{mission.progress}%</Badge>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
-      {/* Books List */}
+      <Card className="border-border/70">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={filterBy === "reading" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilterBy("reading")}
+            >
+              <Target className="mr-2 h-4 w-4" />
+              Foco leitura
+            </Button>
+            <Button
+              variant={sortBy === "progress" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSortBy("progress")}
+            >
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Mais perto de concluir
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFilterBy("all");
+                setSortBy("recent");
+                setSearchQuery("");
+              }}
+            >
+              Limpar filtros
+            </Button>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por título, autor ou gênero..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Select value={filterBy} onValueChange={setFilterBy}>
+              <SelectTrigger className="w-full lg:w-44">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filtrar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="reading">Lendo</SelectItem>
+                <SelectItem value="completed">Concluídos</SelectItem>
+                <SelectItem value="want-to-read">Quero ler</SelectItem>
+                <SelectItem value="favorites">Favoritos</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full lg:w-44">
+                <SelectValue placeholder="Ordenar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Mais recente</SelectItem>
+                <SelectItem value="title">Título</SelectItem>
+                <SelectItem value="author">Autor</SelectItem>
+                <SelectItem value="rating">Avaliação</SelectItem>
+                <SelectItem value="progress">Progresso</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       {filteredAndSortedBooks.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredAndSortedBooks.map((book) => (
-            <BookCard
-              key={book.id}
-              book={book}
-              onUpdate={handleBookUpdate}
-            />
+            <BookCard key={book.id} book={book} />
           ))}
         </div>
       ) : !books || books.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <BookOpen className="h-16 w-16 mx-auto mb-4 text-slate-300" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">
-              Sua biblioteca está vazia
-            </h3>
-            <p className="text-slate-500 mb-6">
-              Comece adicionando alguns livros à sua
-              coleção!
+        <Card className="border-dashed">
+          <CardContent className="py-12 text-center">
+            <BookOpen className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Sua biblioteca está vazia</h3>
+            <p className="mb-5 text-sm text-muted-foreground">
+              Adicione livros e acompanhe seu progresso.
             </p>
-            <Button
-              onClick={() =>
-                (window.location.href = "#books")
-              }
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              Adicionar Primeiro Livro
+            <Button>
+              <BookOpen className="mr-2 h-4 w-4" />
+              Adicionar primeiro livro
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <Card className="text-center py-8">
-          <CardContent>
-            <Search className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">
-              Nenhum livro encontrado
-            </h3>
-            <p className="text-slate-500">
-              Tente ajustar seus filtros de busca.
-            </p>
+        <Card className="border-dashed">
+          <CardContent className="py-10 text-center">
+            <Search className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Nenhum resultado encontrado</h3>
+            <p className="text-sm text-muted-foreground">Tente ajustar os filtros de busca.</p>
           </CardContent>
         </Card>
       )}

@@ -1,6 +1,8 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Inbox } from "lucide-react";
 
 export const PostSkeleton: React.FC = () => {
   return (
@@ -43,10 +45,7 @@ export const CommentsLoadingSkeleton: React.FC = () => {
   return (
     <div className="space-y-3 mt-4">
       {Array.from({ length: 2 }).map((_, index) => (
-        <div
-          key={index}
-          className="flex items-start space-x-3"
-        >
+        <div key={index} className="flex items-start space-x-3">
           <Skeleton className="w-8 h-8 rounded-full" />
           <div className="flex-1 space-y-2">
             <div className="flex items-center space-x-2">
@@ -76,21 +75,13 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
     <Card className="w-full">
       <CardContent className="p-6 text-center">
         <div className="space-y-4">
-          <div className="text-red-500 font-medium">
-            {message}
-          </div>
-          {error && (
-            <div className="text-sm text-gray-500">
-              {error.message}
-            </div>
-          )}
+          <div className="font-medium text-destructive">{message}</div>
+          <AlertCircle className="mx-auto h-8 w-8 text-destructive/70" />
+          {error && <div className="text-sm text-muted-foreground">{error.message}</div>}
           {onRetry && (
-            <button
-              onClick={onRetry}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            >
+            <Button onClick={onRetry} variant="destructive">
               Tentar novamente
-            </button>
+            </Button>
           )}
         </div>
       </CardContent>
@@ -104,7 +95,8 @@ export const EmptyState: React.FC<{ message?: string }> = ({
   return (
     <Card className="w-full">
       <CardContent className="p-6 text-center">
-        <div className="text-gray-500">{message}</div>
+        <Inbox className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+        <div className="text-muted-foreground">{message}</div>
       </CardContent>
     </Card>
   );
