@@ -32,6 +32,9 @@ export const AIReadingCopilotCard = ({ userId, books }: AIReadingCopilotCardProp
         max_chapters: 4,
         allow_fallback: true,
         current_page: currentBook?.pages_read || undefined,
+        mode: "book-chat",
+        response_style: "objective",
+        avoid_spoilers: true,
       });
       setAnswer(response.answer);
     } catch (error: unknown) {

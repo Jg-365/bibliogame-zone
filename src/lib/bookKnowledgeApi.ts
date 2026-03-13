@@ -13,6 +13,9 @@ type AskBookQuestionPayload = {
   allow_fallback?: boolean;
   current_page?: number;
   current_position?: string;
+  mode?: "book-chat" | "recommendations" | "consistency";
+  response_style?: "objective" | "detailed";
+  avoid_spoilers?: boolean;
 };
 
 type AskBookQuestionResponse = {

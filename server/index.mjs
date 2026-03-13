@@ -23,6 +23,12 @@ import {
 } from "./knowledge-packet.mjs";
 import { ingestBookResearch } from "./book-research.mjs";
 import { summarizeBookChapterHybrid } from "./hybrid-book-summary.mjs";
+import {
+  buildConsistencyFallbackAnswer,
+  buildRecommendationContext,
+  buildRecommendationFallbackAnswer,
+  buildUserLibraryProfile,
+} from "./recommendation-engine.mjs";
 import { runDeduped } from "./request-coordinator.mjs";
 
 const port = Number(process.env.PORT || process.env.READQUEST_API_PORT || 8787);
@@ -440,12 +446,19 @@ const buildMetadataFirstPrompt = ({
   currentPage,
   currentPosition,
   checkpointLabel,
+  mode,
+  responseStyle,
+  avoidSpoilers,
+  userLibraryProfile,
 }) =>
   JSON.stringify(
     {
       instruction:
-        "Voce e um copiloto literario e deve sempre responder de forma util. Use contexto indexado como bonus quando existir. Se nao houver base indexada, use os metadados do livro e seu conhecimento interno sobre a obra. Se nenhum livro tiver sido selecionado, responda como um copiloto geral de leitura. Nunca exija sincronizacao como pre-requisito para responder.",
+        "Voce e um copiloto literario e deve sempre responder de forma util. Use contexto indexado como bonus quando existir. Se nao houver base indexada, use os metadados do livro e seu conhecimento interno sobre a obra. Se nenhum livro tiver sido selecionado, responda como um copiloto geral de leitura. Nunca exija sincronizacao como pre-requisito para responder. Em modo de recomendacao, indique livros concretos com motivo. Em modo de consistencia, entregue um plano acionavel. Em modo de conversa sobre livro, respeite a parte atual do leitor e evite spoilers quando solicitado.",
       context_mode: packet && selectedChapters?.length ? "indexed_plus_metadata" : book ? "metadata_first" : "general",
+      task_mode: mode ?? "book-chat",
+      response_style: responseStyle ?? "objective",
+      spoilers_policy: avoidSpoilers ? "avoid_spoilers" : "spoilers_allowed",
       book_metadata: book
         ? {
             id: book.id,
@@ -457,6 +470,8 @@ const buildMetadataFirstPrompt = ({
             packet_coverage: packet?.book?.coverage ?? null,
           }
         : null,
+      user_library_profile: userLibraryProfile ?? null,
+      recommendation_context: userLibraryProfile ? buildRecommendationContext(userLibraryProfile) : null,
       reading_state: {
         current_page: currentPage ?? null,
         current_position: currentPosition ?? null,
@@ -483,7 +498,22 @@ const buildMetadataFirstPrompt = ({
     2,
   );
 
-const buildMetadataFallbackAnswer = ({ book, question, currentPage, currentPosition }) => {
+const buildMetadataFallbackAnswer = ({
+  book,
+  question,
+  currentPage,
+  currentPosition,
+  mode,
+  userLibraryProfile,
+}) => {
+  if (mode === "recommendations" && userLibraryProfile) {
+    return buildRecommendationFallbackAnswer({ profile: userLibraryProfile });
+  }
+
+  if (mode === "consistency" && userLibraryProfile) {
+    return buildConsistencyFallbackAnswer({ profile: userLibraryProfile });
+  }
+
   const metadataLines = [
     book?.title ? `Livro foco: ${book.title}.` : "",
     book?.author ? `Autor: ${book.author}.` : "",
@@ -505,6 +535,31 @@ const buildMetadataFallbackAnswer = ({ book, question, currentPage, currentPosit
     confidence: book ? 0.36 : 0.24,
     chapters_used: [],
   };
+};
+
+const buildUserLibraryProfileData = async ({ client, userId, currentBook }) => {
+  const [{ data: booksData, error: booksError }, { data: profileData, error: profileError }] = await Promise.all([
+    client
+      .from("books")
+      .select("title, author, total_pages, status, genres, rating")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(80),
+    client
+      .from("profiles")
+      .select("preferred_genres")
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
+
+  if (booksError) throw booksError;
+  if (profileError) throw profileError;
+
+  return buildUserLibraryProfile({
+    books: booksData ?? [],
+    preferredGenres: profileData?.preferred_genres ?? [],
+    currentBook,
+  });
 };
 
 const shouldUseNonBlockingAskFallback = (error, allowFallback) => {
@@ -809,6 +864,9 @@ const handleAsk = async (req, res) => {
   const maxChapters = Math.min(Math.max(payload.max_chapters ?? 5, 1), 5);
   const allowFallback = payload.allow_fallback !== false;
   const bookId = payload.book_id?.trim() || null;
+  const mode = typeof payload.mode === "string" ? payload.mode : "book-chat";
+  const responseStyle = payload.response_style === "detailed" ? "detailed" : "objective";
+  const avoidSpoilers = payload.avoid_spoilers !== false;
 
   let book = null;
   if (bookId) {
@@ -823,7 +881,7 @@ const handleAsk = async (req, res) => {
   }
 
   const normalizedQ = normalizeQuestion(
-    `${payload.user_question}\nbook:${book?.id ?? "general"}\npage:${payload.current_page ?? ""}\nposition:${payload.current_position ?? ""}`,
+    `${payload.user_question}\nmode:${mode}\nstyle:${responseStyle}\nspoilers:${avoidSpoilers ? "avoid" : "allow"}\nbook:${book?.id ?? "general"}\npage:${payload.current_page ?? ""}\nposition:${payload.current_position ?? ""}`,
   );
   const qHash = await sha256Hex(normalizedQ);
   const nowIso = new Date().toISOString();
@@ -851,6 +909,11 @@ const handleAsk = async (req, res) => {
 
   const currentPage = typeof payload.current_page === "number" ? payload.current_page : undefined;
   const currentPosition = payload.current_position?.trim() || undefined;
+  const userLibraryProfile = await buildUserLibraryProfileData({
+    client,
+    userId: user.id,
+    currentBook: book,
+  });
   const { data: nearestCheckpoint } = currentPage && book
     ? await client
         .from("reading_checkpoints")
@@ -890,6 +953,10 @@ const handleAsk = async (req, res) => {
             currentPage,
             currentPosition,
             checkpointLabel: nearestCheckpoint?.chapter_label ?? null,
+            mode,
+            responseStyle,
+            avoidSpoilers,
+            userLibraryProfile,
           }),
           {
             temperature: 0.15,
@@ -928,6 +995,8 @@ const handleAsk = async (req, res) => {
                   question: payload.user_question,
                   currentPage,
                   currentPosition,
+                  mode,
+                  userLibraryProfile,
                 });
           usedLocalQuotaFallback = true;
         } else {

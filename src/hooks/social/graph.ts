@@ -15,6 +15,12 @@ import type { Activity, LeaderboardEntry } from "@/shared/types";
 import { formatProfileLevel } from "@/shared/utils";
 
 const DAYS_TO_CALCULATE_STREAK = 120;
+const DEFAULT_LEADERBOARD_LIMIT = 100;
+
+const buildYearWindow = (year: number) => ({
+  start: new Date(Date.UTC(year, 0, 1)).toISOString(),
+  end: new Date(Date.UTC(year + 1, 0, 1)).toISOString(),
+});
 
 const toDayKey = (value: string) => {
   try {
@@ -413,8 +419,20 @@ export const useIsFollowing = (targetUserId: string) => {
 // â”€â”€â”€ Leaderboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const useLeaderboard = () => {
+  return useLeaderboardWithFilters();
+};
+
+export const useLeaderboardWithFilters = (
+  options: {
+    metric?: "points" | "pages" | "books" | "streak";
+    period?: "all" | number;
+  } = {},
+) => {
+  const metric = options.metric ?? "points";
+  const period = options.period ?? "all";
+
   return useQuery({
-    queryKey: ["leaderboard"],
+    queryKey: ["leaderboard", metric, period],
     queryFn: async (): Promise<LeaderboardEntry[]> => {
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
@@ -422,7 +440,7 @@ export const useLeaderboard = () => {
           "user_id, username, full_name, avatar_url, current_streak, points, books_completed, total_pages_read, level",
         )
         .order("total_pages_read", { ascending: false })
-        .limit(100);
+        .limit(DEFAULT_LEADERBOARD_LIMIT);
 
       if (profilesError) throw profilesError;
       if (!profiles?.length) return [];
@@ -431,14 +449,39 @@ export const useLeaderboard = () => {
       const minSessionDate = new Date();
       minSessionDate.setDate(minSessionDate.getDate() - DAYS_TO_CALCULATE_STREAK);
 
-      const [statsRows, { data: sessionsData, error: sessionsError }] = await Promise.all([
-        fetchReadingStatsByUsers(userIds),
-        supabase
-          .from("reading_sessions")
-          .select("user_id, session_date")
-          .in("user_id", userIds)
-          .gte("session_date", minSessionDate.toISOString()),
-      ]);
+      const requests =
+        period === "all"
+          ? Promise.all([
+              fetchReadingStatsByUsers(userIds),
+              supabase
+                .from("reading_sessions")
+                .select("user_id, session_date")
+                .in("user_id", userIds)
+                .gte("session_date", minSessionDate.toISOString()),
+            ])
+          : (() => {
+              const yearWindow = buildYearWindow(Number(period));
+              return Promise.all([
+                Promise.resolve([]),
+                supabase
+                  .from("reading_sessions")
+                  .select("user_id, session_date, pages_read")
+                  .in("user_id", userIds)
+                  .gte("session_date", yearWindow.start)
+                  .lt("session_date", yearWindow.end),
+                supabase
+                  .from("books")
+                  .select("user_id, date_completed, status")
+                  .in("user_id", userIds)
+                  .in("status", ["completed", "lido"])
+                  .gte("date_completed", yearWindow.start)
+                  .lt("date_completed", yearWindow.end),
+              ]);
+            })();
+
+      const [statsRows, sessionsResponse, completedBooksResponse] = await requests;
+      const sessionsData = sessionsResponse.data ?? [];
+      const sessionsError = sessionsResponse.error;
 
       if (sessionsError) throw sessionsError;
 
@@ -448,19 +491,52 @@ export const useLeaderboard = () => {
       });
 
       const sessionsByUser = new Map<string, string[]>();
+      const pagesByUser = new Map<string, number>();
       (sessionsData ?? []).forEach((session) => {
         const list = sessionsByUser.get(session.user_id) ?? [];
         if (session.session_date) list.push(session.session_date);
         sessionsByUser.set(session.user_id, list);
+        if ("pages_read" in session) {
+          pagesByUser.set(
+            session.user_id,
+            (pagesByUser.get(session.user_id) ?? 0) + Number(session.pages_read || 0),
+          );
+        }
+      });
+
+      const completedBooksByUser = new Map<string, number>();
+      (completedBooksResponse?.data ?? []).forEach((book) => {
+        completedBooksByUser.set(book.user_id, (completedBooksByUser.get(book.user_id) ?? 0) + 1);
       });
 
       const leaderboardEntries = profiles.map((profile) => {
-        const stats = deriveUserStats({
-          userId: profile.user_id,
-          statsByUser,
-          sessionsByUser,
-          fallbackStreak: profile.current_streak,
-        });
+        const stats =
+          period === "all"
+            ? deriveUserStats({
+                userId: profile.user_id,
+                statsByUser,
+                sessionsByUser,
+                fallbackStreak: profile.current_streak,
+              })
+            : {
+                booksCompleted: completedBooksByUser.get(profile.user_id) ?? 0,
+                totalPagesRead: pagesByUser.get(profile.user_id) ?? 0,
+                readingStreak: calculateConsecutiveStreak(
+                  sessionsByUser.get(profile.user_id) ?? [],
+                ),
+                points:
+                  (pagesByUser.get(profile.user_id) ?? 0) +
+                  (completedBooksByUser.get(profile.user_id) ?? 0) * 50,
+              };
+
+        const metricValue =
+          metric === "pages"
+            ? stats.totalPagesRead
+            : metric === "books"
+              ? stats.booksCompleted
+              : metric === "streak"
+                ? stats.readingStreak
+                : stats.points;
 
         return {
           id: profile.user_id,
@@ -475,12 +551,20 @@ export const useLeaderboard = () => {
           booksCompleted: stats.booksCompleted,
           totalPagesRead: stats.totalPagesRead,
           readingStreak: stats.readingStreak,
+          metricValue,
+          metricType: metric,
+          period,
           rank: 0,
         };
       });
 
       return leaderboardEntries
-        .sort((a, b) => b.points - a.points)
+        .sort(
+          (a, b) =>
+            (b.metricValue ?? 0) - (a.metricValue ?? 0) ||
+            b.points - a.points ||
+            b.totalPagesRead - a.totalPagesRead,
+        )
         .map((entry, index) => ({
           ...entry,
           rank: index + 1,

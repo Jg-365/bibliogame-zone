@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Bot, Search, Send, Settings2, Sparkles, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader, PageSection, PageShell } from "@/components/layout/PageLayout";
@@ -25,21 +25,26 @@ import { askBookQuestion, ingestBookKnowledge } from "@/lib/bookKnowledgeApi";
 import { useFeatureFlags } from "@/lib/featureFlags";
 
 type CopilotMode = "book-chat" | "recommendations" | "consistency";
+
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   pendingQuestion?: string;
   needsSpoilerConsent?: boolean;
+  meta?: {
+    confidence?: number;
+    tags?: string[];
+  };
 };
 
 const SPOILER_PATTERN =
   /spoiler|final|desfecho|twist|revela|revelacao|morre|morreu|o que acontece|explica o fim/i;
 
 const modeCopy: Record<CopilotMode, string> = {
-  "book-chat": "Converse sobre o trecho atual do livro com foco em compreensão.",
-  recommendations: "Recomende próximos livros com justificativa objetiva.",
-  consistency: "Crie um plano semanal de leitura com metas realistas.",
+  "book-chat": "Converse sobre o trecho atual do livro com clareza, contexto e zero ruído.",
+  recommendations: "Receba próximas leituras com justificativa alinhada ao seu gosto real.",
+  consistency: "Monte um plano de leitura sustentável, com metas leves e recorrentes.",
 };
 
 const knowledgeStatusMeta: Record<
@@ -52,8 +57,15 @@ const knowledgeStatusMeta: Record<
   failed: { label: "Metadados apenas", variant: "muted" },
 };
 
+const modePlaceholders: Record<CopilotMode, string> = {
+  "book-chat": "Ex.: o que eu devo prestar atenção nesta parte do livro?",
+  recommendations: "Ex.: me recomende 5 sci-fi após esse livro, com ordem ideal de leitura",
+  consistency: "Ex.: monte uma rotina para eu terminar esse livro sem cansar",
+};
+
 const chatKey = (userId: string) => `rq:copilot:chat:${userId}`;
 const posKey = (userId: string, bookId: string) => `rq:copilot:position:${userId}:${bookId}`;
+
 const parseChat = (raw: string | null): ChatMessage[] => {
   if (!raw) return [];
   try {
@@ -63,6 +75,91 @@ const parseChat = (raw: string | null): ChatMessage[] => {
     return [];
   }
 };
+
+const buildResponseTags = (response: {
+  context_mode?: "indexed" | "metadata" | "general" | "cached";
+  used_local_quota_fallback?: boolean;
+  cached?: boolean;
+}) => {
+  const tags = [
+    response.context_mode === "indexed"
+      ? "base indexada"
+      : response.context_mode === "metadata"
+        ? "metadados"
+        : response.context_mode === "general"
+          ? "modo livre"
+          : response.context_mode === "cached"
+            ? "cache"
+            : "",
+    response.used_local_quota_fallback ? "base local" : "",
+    response.cached ? "resposta em cache" : "",
+  ].filter(Boolean);
+
+  return tags;
+};
+
+const getPromptSuggestions = ({ mode, bookTitle }: { mode: CopilotMode; bookTitle?: string }) => {
+  if (mode === "recommendations") {
+    return [
+      bookTitle
+        ? `Quais são os próximos 5 livros no clima de ${bookTitle}?`
+        : "Quais 5 ficções científicas combinam com meu histórico?",
+      "Quero recomendações de sci-fi com ideias grandes e boa fluidez.",
+      "Me indique livros mais curtos, mas ainda muito inteligentes.",
+      "Separe sugestões por ordem ideal: fácil, médio e desafiador.",
+    ];
+  }
+
+  if (mode === "consistency") {
+    return [
+      "Monte uma rotina leve para eu ler todos os dias.",
+      "Como encaixar leitura em dias corridos sem perder ritmo?",
+      "Crie uma meta semanal realista para meu momento atual.",
+      "Se eu travar no meio do livro, qual plano de retomada você sugere?",
+    ];
+  }
+
+  return [
+    "O que está mais importante nesta parte da leitura?",
+    "Quais temas devo observar nas próximas páginas?",
+    "Me explique esta parte sem spoilers do que vem depois.",
+    "Quais personagens ou ideias merecem mais atenção agora?",
+  ];
+};
+
+const EmptyState = ({
+  title,
+  description,
+  suggestions,
+  onSelect,
+}: {
+  title: string;
+  description: string;
+  suggestions: string[];
+  onSelect: (value: string) => void;
+}) => (
+  <div className="flex h-full min-h-[40vh] flex-col items-center justify-center px-4 text-center">
+    <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-3 text-primary">
+      <Sparkles className="h-5 w-5" />
+    </div>
+    <h3 className="text-lg font-semibold">{title}</h3>
+    <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>
+    <div className="mt-6 flex max-w-3xl flex-wrap justify-center gap-2">
+      {suggestions.map((suggestion) => (
+        <Button
+          key={suggestion}
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-auto rounded-full px-3 py-2 text-left whitespace-normal"
+          onClick={() => onSelect(suggestion)}
+        >
+          {suggestion}
+        </Button>
+      ))}
+    </div>
+  </div>
+);
 
 export const CopilotPage = () => {
   const { user } = useAuth();
@@ -110,6 +207,11 @@ export const CopilotPage = () => {
       : { label: "Sem base", variant: "muted" as const }
     : { label: "Modo livre", variant: "secondary" as const };
 
+  const suggestions = useMemo(
+    () => getPromptSuggestions({ mode, bookTitle: selectedBook?.title }),
+    [mode, selectedBook?.title],
+  );
+
   useEffect(() => {
     if (!user?.id) return;
     setMessages(parseChat(window.localStorage.getItem(chatKey(user.id))));
@@ -147,54 +249,35 @@ export const CopilotPage = () => {
     return selectedBook?.pages_read ?? 0;
   }, [currentPageInput, selectedBook?.pages_read]);
 
-  const buildEnhancedQuestion = (question: string, allowSpoilers: boolean) =>
-    [
-      `MODO: ${modeCopy[mode]}`,
-      selectedBook ? `LIVRO FOCO: ${selectedBook.title} - ${selectedBook.author}` : "",
-      currentPage ? `PAGINA ATUAL: ${currentPage}` : "",
-      currentPosition ? `POSICAO EXATA: ${currentPosition}` : "",
-      knowledgeSearchHint ? `PESQUISA NA BASE: ${knowledgeSearchHint}` : "",
-      allowSpoilers ? "SPOILERS: PERMITIDO NESTA RESPOSTA" : "SPOILERS: EVITAR",
-      detailedAnswer ? "FORMATO: detalhado" : "FORMATO: objetivo",
-      `PERGUNTA: ${question}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-  const askCopilot = async (question: string, allowSpoilers: boolean) => {
+  const askCopilot = async (question: string, allowSpoilersNow: boolean) => {
     setLoading(true);
     try {
+      const effectiveQuestion = knowledgeSearchHint.trim()
+        ? `${question}\n\nFoco extra desejado: ${knowledgeSearchHint.trim()}`
+        : question;
+
       const response = await askBookQuestion({
         book_id: selectedBook?.id,
-        user_question: buildEnhancedQuestion(question, allowSpoilers),
+        user_question: effectiveQuestion,
         max_chapters: 5,
         allow_fallback: allowFallbackWeb,
         current_page: currentPage || undefined,
         current_position: currentPosition || undefined,
+        mode,
+        response_style: detailedAnswer ? "detailed" : "objective",
+        avoid_spoilers: !allowSpoilersNow,
       });
-
-      const suffixFlags = [
-        response.context_mode === "indexed"
-          ? "base indexada"
-          : response.context_mode === "metadata"
-            ? "metadados"
-            : response.context_mode === "general"
-              ? "modo livre"
-              : "",
-        response.used_local_quota_fallback ? "base local" : "",
-        response.cached ? "cache" : "",
-      ]
-        .filter(Boolean)
-        .join(" | ");
 
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: `${response.answer}\n\n[confianca: ${(response.confidence ?? 0.5).toFixed(2)}${
-            suffixFlags ? ` | ${suffixFlags}` : ""
-          }]`,
+          content: response.answer,
+          meta: {
+            confidence: response.confidence,
+            tags: buildResponseTags(response),
+          },
         },
       ]);
     } catch (error: unknown) {
@@ -214,7 +297,7 @@ export const CopilotPage = () => {
     setInput("");
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", content: question }]);
 
-    if (avoidSpoilers && SPOILER_PATTERN.test(question)) {
+    if (mode === "book-chat" && avoidSpoilers && SPOILER_PATTERN.test(question)) {
       setMessages((prev) => [
         ...prev,
         {
@@ -243,8 +326,8 @@ export const CopilotPage = () => {
               needsSpoilerConsent: false,
               pendingQuestion: undefined,
               content: allow
-                ? "Spoilers autorizados para esta resposta."
-                : "Perfeito, sem spoilers.",
+                ? "Spoilers autorizados apenas para esta resposta."
+                : "Perfeito, sigo sem spoilers.",
             }
           : m,
       ),
@@ -307,7 +390,7 @@ export const CopilotPage = () => {
       <PageHeader
         icon={Bot}
         title="Copiloto"
-        description="Chat-first com Gemini no backend. Metadados funcionam como base, e a indexação entra como reforço quando existir."
+        description="Chat-first com contexto do seu histórico. Metadados sustentam o fluxo base, e a indexação entra como reforço premium."
         actions={
           <>
             <Badge variant="secondary">Gemini backend</Badge>
@@ -319,10 +402,13 @@ export const CopilotPage = () => {
       <PageSection>
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between border-b border-border/60 pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Chat
-            </CardTitle>
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Chat
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">{modeCopy[mode]}</p>
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -335,60 +421,119 @@ export const CopilotPage = () => {
           </CardHeader>
 
           <CardContent className="p-0">
-            <div ref={scrollRef} className="h-[62vh] space-y-3 overflow-y-auto px-4 py-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm ${
-                      message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-border/70 bg-card"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                    {message.needsSpoilerConsent ? (
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => void resolveSpoilerConsent(message.id, true)}
-                          disabled={loading}
-                        >
-                          Sim, com spoilers
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => void resolveSpoilerConsent(message.id, false)}
-                          disabled={loading}
-                        >
-                          Não, sem spoilers
-                        </Button>
+            <div ref={scrollRef} className="h-[62vh] overflow-y-auto px-4 py-4">
+              {messages.length === 0 ? (
+                <EmptyState
+                  title="Uma conversa boa começa com um bom foco"
+                  description={
+                    selectedBook
+                      ? `Seu livro atual é ${selectedBook.title}. Você pode conversar sobre o trecho atual, pedir recomendações conectadas ao seu gosto ou montar um plano de leitura com base no seu ritmo.`
+                      : "Você pode conversar em modo livre, pedir recomendações com base no seu histórico ou montar um plano de leitura recorrente."
+                  }
+                  suggestions={suggestions}
+                  onSelect={setInput}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm ${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-border/70 bg-card shadow-sm"
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                        {message.meta ? (
+                          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
+                            {typeof message.meta.confidence === "number" ? (
+                              <Badge variant="outline">
+                                Confianca {Math.round(message.meta.confidence * 100)}%
+                              </Badge>
+                            ) : null}
+                            {message.meta.tags?.map((tag) => (
+                              <Badge key={tag} variant="secondary">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                        {message.needsSpoilerConsent ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => void resolveSpoilerConsent(message.id, true)}
+                              disabled={loading}
+                            >
+                              Sim, com spoilers
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => void resolveSpoilerConsent(message.id, false)}
+                              disabled={loading}
+                            >
+                              Não, sem spoilers
+                            </Button>
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
+                    </div>
+                  ))}
+                  {loading ? (
+                    <div className="flex justify-start">
+                      <div className="rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm text-muted-foreground">
+                        Pensando na melhor resposta para o seu momento de leitura...
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ))}
-              {loading ? (
-                <p className="text-sm text-muted-foreground">Consultando base...</p>
-              ) : null}
+              )}
             </div>
 
             <div className="border-t border-border/60 p-4">
               <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((suggestion) => (
+                    <Button
+                      key={suggestion}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => setInput(suggestion)}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </div>
+
                 <Textarea
                   rows={3}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Pergunte sobre o livro com base na pesquisa já indexada..."
+                  placeholder={modePlaceholders[mode]}
                 />
-                <div className="flex items-center justify-between gap-2">
-                  <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    {selectedBook ? `${selectedBook.title} (pag ${currentPage || 0})` : "Sem livro"}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                      <BookOpen className="h-3.5 w-3.5" />
+                      {selectedBook
+                        ? `${selectedBook.title} · página ${currentPage || 0}`
+                        : "Modo livre"}
+                    </div>
+                    {knowledgeSearchHint ? (
+                      <div className="text-xs text-muted-foreground">
+                        Foco extra ativo: <strong>{knowledgeSearchHint}</strong>
+                      </div>
+                    ) : null}
                   </div>
+
                   <div className="flex items-center gap-2">
                     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                       <SheetTrigger asChild>
@@ -402,8 +547,8 @@ export const CopilotPage = () => {
                         </SheetHeader>
                         <div className="mt-4 space-y-4">
                           <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-xs text-muted-foreground">
-                            Modelo atual do backend: <strong>Gemini</strong>. A seleção de modelo
-                            continua centralizada no servidor por enquanto.
+                            Modelo atual do backend: <strong>Gemini</strong>. A orquestração de
+                            contexto acontece no servidor e já usa histórico de leitura como base.
                           </div>
 
                           <div className="space-y-2">
@@ -421,7 +566,7 @@ export const CopilotPage = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Livro</Label>
+                            <Label>Livro foco</Label>
                             <Select value={selectedBookId} onValueChange={setSelectedBookId}>
                               <SelectTrigger>
                                 <SelectValue />
@@ -469,11 +614,11 @@ export const CopilotPage = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <Label>Pesquisa na base</Label>
+                            <Label>Foco extra</Label>
                             <Input
                               value={knowledgeSearchHint}
                               onChange={(e) => setKnowledgeSearchHint(e.target.value)}
-                              placeholder="Ex.: conflito entre personagens"
+                              placeholder="Ex.: personagens, atmosfera, conflito"
                             />
                           </div>
 
@@ -495,8 +640,8 @@ export const CopilotPage = () => {
 
                           <Separator />
                           <p className="text-xs text-muted-foreground">
-                            Esta tela usa apenas base pré-indexada no fluxo principal. Busca web só
-                            ocorre como fallback controlado no backend.
+                            A conversa funciona mesmo sem base indexada. Quando houver indexação,
+                            ela entra como camada extra de precisão.
                           </p>
                         </div>
                       </SheetContent>
