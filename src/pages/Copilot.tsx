@@ -70,11 +70,17 @@ const posKey = (userId: string, bookId: string) => `rq:copilot:position:${userId
 
 const formatModelLabel = (model?: string) => {
   if (!model) return "Gemini 3.1 Flash Lite";
-  const normalized = model.replace(/local-fallback/i, "Base local");
-  return normalized
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  if (/local-fallback/i.test(model)) return "Base local";
+
+  const normalized = model.replace(/\s*\(cache\)\s*/i, "");
+  const lookup: Record<string, string> = {
+    "gemini-3.1-flash-lite": "Gemini 3.1 Flash Lite",
+    "gemini-2.5-flash": "Gemini 2.5 Flash",
+    "gemma-3-27b-it": "Gemma 3 27B Instruct",
+    "gemma-3-12b-it": "Gemma 3 12B Instruct",
+  };
+
+  return lookup[normalized] ?? normalized;
 };
 
 const parseChat = (raw: string | null): ChatMessage[] => {
@@ -376,7 +382,7 @@ export const CopilotPage = () => {
       if (!result.success) {
         toast({
           title: "Pesquisa parcial",
-          description: result.error || "Nao houve base suficiente para indexar este livro agora.",
+          description: result.error || "Não houve base suficiente para indexar este livro agora.",
           variant: "destructive",
         });
         return;

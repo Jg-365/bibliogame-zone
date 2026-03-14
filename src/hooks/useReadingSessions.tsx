@@ -135,7 +135,7 @@ export const useReadingSessions = () => {
       // First, get the current book data
       const { data: book, error: bookError } = await supabase
         .from("books")
-        .select("pages_read, total_pages, status")
+        .select("pages_read, total_pages, status, reading_started_at, date_completed")
         .eq("id", sessionData.book_id)
         .eq("user_id", user.id)
         .single();
@@ -183,6 +183,9 @@ export const useReadingSessions = () => {
         .update({
           pages_read: newPagesRead,
           status: status,
+          reading_started_at: book.reading_started_at || new Date().toISOString(),
+          date_completed:
+            status === "completed" ? book.date_completed || new Date().toISOString() : null,
         })
         .eq("id", sessionData.book_id)
         .eq("user_id", user.id);

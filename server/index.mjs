@@ -37,11 +37,11 @@ const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 const KNOWLEDGE_FRESH_MS = 1000 * 60 * 60 * 24;
 const MAX_SOURCE_RESULTS = 6;
 const DEFAULT_CHAT_MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
-const DEFAULT_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemma-3-27b";
+const DEFAULT_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemma-3-27b-it";
 const RECOMMENDATION_MODEL =
-  process.env.GEMINI_RECOMMENDATION_MODEL || DEFAULT_FALLBACK_MODEL || "gemma-3-27b";
+  process.env.GEMINI_RECOMMENDATION_MODEL || DEFAULT_FALLBACK_MODEL || "gemma-3-27b-it";
 const CONSISTENCY_MODEL =
-  process.env.GEMINI_CONSISTENCY_MODEL || "gemma-3-12b";
+  process.env.GEMINI_CONSISTENCY_MODEL || "gemma-3-12b-it";
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in environment.");
@@ -50,6 +50,27 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const json = (res, status, body) => {
   res.writeHead(status, corsHeaders);
   res.end(JSON.stringify(body));
+};
+
+const inferAskMode = (requestedMode, question) => {
+  const normalized = normalizeQuestion(question ?? "");
+  if (
+    /\b(recomende|recomendacao|recomendacoes|indique|indicacoes|proximos livros|proxima leitura)\b/.test(
+      normalized,
+    )
+  ) {
+    return "recommendations";
+  }
+
+  if (
+    /\b(rotina|meta|consistencia|planejamento|plano de leitura|ritmo de leitura|habito)\b/.test(
+      normalized,
+    )
+  ) {
+    return "consistency";
+  }
+
+  return requestedMode;
 };
 
 class InvalidJsonBodyError extends Error {
@@ -874,7 +895,8 @@ const handleAsk = async (req, res) => {
   const maxChapters = Math.min(Math.max(payload.max_chapters ?? 5, 1), 5);
   const allowFallback = payload.allow_fallback !== false;
   const bookId = payload.book_id?.trim() || null;
-  const mode = typeof payload.mode === "string" ? payload.mode : "book-chat";
+  const requestedMode = typeof payload.mode === "string" ? payload.mode : "book-chat";
+  const mode = inferAskMode(requestedMode, payload.user_question);
   const responseStyle = payload.response_style === "detailed" ? "detailed" : "objective";
   const avoidSpoilers = payload.avoid_spoilers !== false;
   const modelForMode =
@@ -1135,6 +1157,19 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, corsHeaders);
       res.end();
       return;
+    }
+
+    if (req.url === "/api/health" && req.method === "GET") {
+      return json(res, 200, {
+        ok: true,
+        packet_version: PACKET_VERSION,
+        models: {
+          chat: DEFAULT_CHAT_MODEL,
+          fallback: DEFAULT_FALLBACK_MODEL,
+          recommendations: RECOMMENDATION_MODEL,
+          consistency: CONSISTENCY_MODEL,
+        },
+      });
     }
 
     if (req.url === "/api/book-knowledge/ingest" && req.method === "POST") {

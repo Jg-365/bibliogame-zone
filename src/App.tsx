@@ -75,7 +75,7 @@ const queryClient = new QueryClient({
 const PageLoader = () => {
   const shouldReduceMotion = useReducedMotion();
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex min-h-[100svh] min-h-dvh items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
         <div className="relative w-10 h-10">
           <div className="absolute inset-0 rounded-full border-4 border-primary/15" />
@@ -166,7 +166,7 @@ const AppContent = () => {
 
   return (
     <NotificationSystemSimple>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-[100svh] min-h-dvh bg-background">
         {AnnouncerComponent && <AnnouncerComponent />}
 
         <ResponsiveNavigation currentPage={currentPage} onNavigate={handleNavigate} />

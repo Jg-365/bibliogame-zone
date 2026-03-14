@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, type LucideIcon } from "lucide-react";
 
-const pageShellVariants = cva("cozy-background min-h-screen", {
+const pageShellVariants = cva("cozy-background min-h-[100svh] min-h-dvh", {
   variants: {
     density: {
       compact: "py-4 sm:py-6",

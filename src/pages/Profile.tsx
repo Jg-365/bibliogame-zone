@@ -17,6 +17,7 @@ import { ProfileManager } from "@/components/ProfileManager";
 import { RetentionMetricsCard } from "@/components/RetentionMetricsCard";
 import { useToast } from "@/hooks/use-toast";
 import { ingestBookKnowledge } from "@/lib/bookKnowledgeApi";
+import { isBookCompletedInYear } from "@/lib/readingProgress";
 import { calculateReadingPoints, formatProfileLevel } from "@/shared/utils";
 import { useProfileAppearance } from "@/hooks/useProfileAppearance";
 import {
@@ -71,8 +72,8 @@ const ProfilePage = () => {
   );
 
   const currentYear = new Date().getFullYear();
-  const completedThisYear = completedBooks.filter(
-    (b) => new Date(b.date_completed || b.updated_at).getFullYear() === currentYear,
+  const completedThisYear = completedBooks.filter((book) =>
+    isBookCompletedInYear(book, currentYear, readingSessions || []),
   ).length;
 
   const totalPages = (readingSessions || []).reduce(

@@ -1,4 +1,4 @@
-const RECOMMENDATION_CATALOG = [
+﻿const RECOMMENDATION_CATALOG = [
   {
     title: "A Floresta Sombria",
     author: "Cixin Liu",
@@ -324,8 +324,8 @@ export const buildConsistencyFallbackAnswer = ({ profile }) => {
   return {
     answer: [
       "## Plano semanal sugerido",
-      `1. Foque em **${focusBooks} livro(s)** por vez para reduzir friccao de retomada.`,
-      `2. Meta diaria sugerida: **${Math.max(15, Math.min(40, Math.round(pace / 12) || 20))} páginas** em um bloco curto.`,
+      `1. Foque em **${focusBooks} livro(s)** por vez para reduzir fricção de retomada.`,
+      `2. Meta diária sugerida: **${Math.max(15, Math.min(40, Math.round(pace / 12) || 20))} páginas** em um bloco curto.`,
       "3. Reserve um bloco maior no fim de semana para avançar nas partes mais densas.",
       "4. Feche cada sessão anotando a próxima cena, ideia ou objetivo para facilitar a volta.",
       "5. Se a semana apertar, priorize continuidade em vez de volume: ler pouco ainda conta.",
@@ -334,3 +334,5 @@ export const buildConsistencyFallbackAnswer = ({ profile }) => {
     chapters_used: [],
   };
 };
+
+

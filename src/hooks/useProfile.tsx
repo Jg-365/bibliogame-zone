@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useAuth } from "./useAuth";
@@ -35,7 +35,6 @@ export const useProfile = () => {
   const queryClient = useQueryClient();
 
   const forceRefresh = () => {
-    console.log("ðŸ”„ ForÃ§ando refresh do perfil");
     queryClient.invalidateQueries({
       queryKey: ["profile", user?.id],
     });
@@ -63,12 +62,7 @@ export const useProfile = () => {
 
   const updateProfile = useMutation({
     mutationFn: async (updates: ProfileUpdateFields) => {
-      if (!user?.id) throw new Error("UsuÃ¡rio nÃ£o autenticado");
-
-      console.log("ðŸ”„ Atualizando perfil:", {
-        userId: user.id,
-        updates,
-      });
+      if (!user?.id) throw new Error("Usuário não autenticado");
 
       const { data, error } = await supabase
         .from("profiles")
@@ -78,22 +72,17 @@ export const useProfile = () => {
         .single();
 
       if (error) {
-        console.error("âŒ Erro ao atualizar perfil:", error);
         throw new Error(`Erro no banco de dados: ${error.message}`);
       }
-
-      console.log("âœ… Perfil atualizado com sucesso:", data);
       return data;
     },
     onSuccess: (data) => {
-      console.log("ðŸŽ‰ Sucesso na mutaÃ§Ã£o, invalidando cache");
-
-      // Invalidar mÃºltiplas queries relacionadas
+      // Invalidar múltiplas queries relacionadas
       queryClient.invalidateQueries({
         queryKey: ["profile"],
       });
 
-      // ForÃ§ar refetch imediato
+      // Forçar refetch imediato
       queryClient.refetchQueries({
         queryKey: ["profile", user?.id],
       });
@@ -103,11 +92,10 @@ export const useProfile = () => {
 
       toast({
         title: "Perfil atualizado!",
-        description: "Suas informaÃ§Ãµes foram salvas com sucesso.",
+        description: "Suas informações foram salvas com sucesso.",
       });
     },
     onError: (error: any) => {
-      console.error("ðŸ’¥ Erro na mutaÃ§Ã£o:", error);
       toast({
         title: "Erro ao atualizar perfil",
         description: error.message || "Ocorreu um erro inesperado",
@@ -118,7 +106,7 @@ export const useProfile = () => {
 
   // Recompute profile stats from reading_sessions (pages read) and books
   const recomputeFromSessions = async () => {
-    if (!user?.id) throw new Error("UsuÃ¡rio nÃ£o autenticado");
+    if (!user?.id) throw new Error("Usuário não autenticado");
     // 1) Load all sessions grouped by book
     const { data: sessionsData, error: sessionsError } = await supabase
       .from("reading_sessions")
@@ -210,8 +198,8 @@ export const useProfile = () => {
     queryClient.setQueryData(["profile", user.id], data);
 
     toast({
-      title: "EstatÃ­sticas recalculadas",
-      description: "Os dados do perfil foram atualizados a partir das sessÃµes de leitura.",
+      title: "Estatísticas recalculadas",
+      description: "Os dados do perfil foram atualizados a partir das sessões de leitura.",
     });
 
     return data;

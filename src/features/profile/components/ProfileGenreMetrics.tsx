@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { BarChart3, BookOpen, Library, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

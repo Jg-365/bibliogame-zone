@@ -1,5 +1,5 @@
-/**
- * Social Graph hooks â€” follows, leaderboard, user search.
+﻿/**
+ * Social Graph hooks Ã¢â‚¬â€ follows, leaderboard, user search.
  *
  * Canonical home: `@/hooks/social`.
  * Re-exported from `@/hooks/useSocial` for backward compatibility.
@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { fetchReadingStatsByUsers } from "@/hooks/useReadingStats";
 import { trackEvent } from "@/lib/analytics";
+import { getBookCompletionReference } from "@/lib/readingProgress";
 import type { Activity, LeaderboardEntry } from "@/shared/types";
 import { formatProfileLevel } from "@/shared/utils";
 
@@ -109,7 +110,7 @@ const deriveUserStats = ({
   };
 };
 
-// â”€â”€â”€ Activity feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Activity feed Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 export const useActivity = () => {
   const { user } = useAuth();
@@ -194,7 +195,7 @@ export const useActivity = () => {
               id: `book-progress-${book.id}`,
               userId: book.user_id,
               type: "reading_progress",
-              description: `estÃ¡ lendo "${book.title}" - ${book.pages_read}/${book.total_pages} pÃ¡ginas`,
+              description: `estÃƒÂ¡ lendo "${book.title}" - ${book.pages_read}/${book.total_pages} pÃƒÂ¡ginas`,
               metadata: {
                 book_title: book.title,
                 author: book.author,
@@ -252,7 +253,7 @@ export const useActivity = () => {
   });
 };
 
-// â”€â”€â”€ Follows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Follows Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 export const useFollows = () => {
   const { user } = useAuth();
@@ -300,7 +301,7 @@ export const useFollowUser = () => {
   return useMutation({
     mutationFn: async (targetUserId: string) => {
       if (!user?.id) throw new Error("User not authenticated");
-      if (user.id === targetUserId) throw new Error("VocÃª nÃ£o pode seguir a si mesmo");
+      if (user.id === targetUserId) throw new Error("VocÃƒÂª nÃƒÂ£o pode seguir a si mesmo");
 
       const { data: targetProfile, error: profileError } = await supabase
         .from("profiles")
@@ -308,7 +309,7 @@ export const useFollowUser = () => {
         .eq("user_id", targetUserId)
         .single();
 
-      if (profileError || !targetProfile) throw new Error("UsuÃ¡rio nÃ£o encontrado");
+      if (profileError || !targetProfile) throw new Error("UsuÃƒÂ¡rio nÃƒÂ£o encontrado");
 
       const { data: existingFollow } = await supabase
         .from("follows")
@@ -317,7 +318,7 @@ export const useFollowUser = () => {
         .eq("following_id", targetUserId)
         .single();
 
-      if (existingFollow) throw new Error("VocÃª jÃ¡ segue este usuÃ¡rio");
+      if (existingFollow) throw new Error("VocÃƒÂª jÃƒÂ¡ segue este usuÃƒÂ¡rio");
 
       const { data, error } = await supabase
         .from("follows")
@@ -342,8 +343,8 @@ export const useFollowUser = () => {
         queryKey: ["activity-feed"],
       });
       toast({
-        title: "UsuÃ¡rio seguido!",
-        description: "VocÃª agora segue este usuÃ¡rio.",
+        title: "UsuÃƒÂ¡rio seguido!",
+        description: "VocÃƒÂª agora segue este usuÃƒÂ¡rio.",
       });
       await trackEvent({
         userId: user?.id,
@@ -354,7 +355,7 @@ export const useFollowUser = () => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erro ao seguir usuÃ¡rio",
+        title: "Erro ao seguir usuÃƒÂ¡rio",
         description: error.message,
         variant: "destructive",
       });
@@ -390,7 +391,7 @@ export const useUnfollowUser = () => {
       });
       toast({
         title: "Deixou de seguir",
-        description: "VocÃª nÃ£o segue mais este usuÃ¡rio.",
+        description: "VocÃƒÂª nÃƒÂ£o segue mais este usuÃƒÂ¡rio.",
       });
       await trackEvent({
         userId: user?.id,
@@ -429,7 +430,7 @@ export const useIsFollowing = (targetUserId: string) => {
   });
 };
 
-// â”€â”€â”€ Leaderboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Leaderboard Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 export const useLeaderboard = () => {
   return useLeaderboardWithFilters();
@@ -478,13 +479,13 @@ export const useLeaderboardWithFilters = (
                 Promise.resolve([]),
                 supabase
                   .from("reading_sessions")
-                  .select("user_id, session_date, pages_read")
+                  .select("user_id, book_id, session_date, pages_read")
                   .in("user_id", userIds)
                   .gte("session_date", yearWindow.start)
                   .lt("session_date", yearWindow.end),
                 supabase
                   .from("books")
-                  .select("user_id, date_completed, updated_at, status")
+                  .select("id, user_id, date_completed, updated_at, status")
                   .in("user_id", userIds)
                   .in("status", ["completed", "lido"]),
               ]);
@@ -519,7 +520,15 @@ export const useLeaderboardWithFilters = (
       (completedBooksResponse?.data ?? []).forEach((book) => {
         if (period !== "all") {
           const yearWindow = buildYearWindow(Number(period));
-          const completionReference = book.date_completed || book.updated_at;
+          const completionReference = getBookCompletionReference(
+            {
+              id: book.id,
+              status: book.status,
+              date_completed: book.date_completed,
+              updated_at: book.updated_at,
+            },
+            sessionsData ?? [],
+          );
           if (!isWithinYearWindow(completionReference, yearWindow)) return;
         }
         completedBooksByUser.set(book.user_id, (completedBooksByUser.get(book.user_id) ?? 0) + 1);
@@ -598,7 +607,7 @@ export const useLeaderboardHash = () => {
   return useMemo(() => new Map((list as LeaderboardEntry[]).map((u) => [u.id, u])), [list]);
 };
 
-// â”€â”€â”€ User search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ User search Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 export const useSearchUsers = () => {
   return useMutation({

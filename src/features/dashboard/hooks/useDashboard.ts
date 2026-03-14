@@ -1,13 +1,16 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBooks } from "@/hooks/useBooks";
 import { useProfile } from "@/hooks/useProfile";
+import { useReadingSessions } from "@/hooks/useReadingSessions";
+import { isBookCompletedInYear } from "@/lib/readingProgress";
 import { getLevelInfo, type UserProgress } from "../utils/levelUtils";
 
 export const useDashboard = () => {
   const { user, signOut } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
   const { books, isLoading: booksLoading } = useBooks();
+  const { sessions = [] } = useReadingSessions();
   const [selectedTab, setSelectedTab] = useState("overview");
 
   const userStats: UserProgress = useMemo(() => {
@@ -50,7 +53,7 @@ export const useDashboard = () => {
           [],
         wantToRead:
           books.filter(
-            (book) => book && (book.status === "nÃ£o lido" || book.status === "want-to-read"),
+            (book) => book && (book.status === "não lido" || book.status === "want-to-read"),
           ) || [],
         abandoned: books.filter((book) => book && book.status === "abandonado") || [],
       };
@@ -67,8 +70,8 @@ export const useDashboard = () => {
 
   const readingStats = useMemo(() => {
     const currentYear = new Date().getFullYear();
-    const completedThisYear = booksByStatus.completed.filter(
-      (book) => new Date(book.date_completed || book.updated_at).getFullYear() === currentYear,
+    const completedThisYear = booksByStatus.completed.filter((book) =>
+      isBookCompletedInYear(book, currentYear, sessions),
     );
 
     return {
@@ -82,7 +85,7 @@ export const useDashboard = () => {
           books.filter((book) => book.rating).length
         : 0,
     };
-  }, [books, booksByStatus]);
+  }, [books, booksByStatus, sessions]);
 
   const isLoading = profileLoading || booksLoading;
 

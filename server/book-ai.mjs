@@ -452,8 +452,8 @@ export const callGeminiJson = async (prompt, opts = {}) => {
   const models = [
     configuredModel,
     process.env.GEMINI_FALLBACK_MODEL,
-    "gemma-3-27b",
-    "gemma-3-12b",
+    "gemma-3-27b-it",
+    "gemma-3-12b-it",
     "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
   ].filter(

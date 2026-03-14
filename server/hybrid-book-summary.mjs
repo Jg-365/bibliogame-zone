@@ -7,8 +7,8 @@ const FALLBACK_MODELS = [
   process.env.GEMINI_FALLBACK_MODEL,
   process.env.GEMINI_MODEL,
   process.env.GEMINI_HYBRID_FALLBACK_MODEL,
-  "gemma-3-27b",
-  "gemma-3-12b",
+  "gemma-3-27b-it",
+  "gemma-3-12b-it",
   "gemini-2.5-flash",
 ].filter((value, index, array) => value && array.indexOf(value) === index);
 
