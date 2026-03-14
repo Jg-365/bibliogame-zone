@@ -103,28 +103,60 @@ export const useBooks = () => {
   const updateBook = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
       if (!user?.id) throw new Error("User not authenticated");
+      const normalizedUpdates = { ...updates };
+
+      if (
+        ["completed", "lido"].includes(String(normalizedUpdates.status)) &&
+        !normalizedUpdates.date_completed
+      ) {
+        normalizedUpdates.date_completed = new Date().toISOString();
+      }
 
       // If updates contains pages_read, validate against total_pages
-      if (typeof updates.pages_read === "number") {
+      if (typeof normalizedUpdates.pages_read === "number") {
         const { data: book, error: bookError } = await supabase
           .from("books")
-          .select("total_pages")
+          .select("total_pages, status, reading_started_at, date_completed")
           .eq("id", id)
           .eq("user_id", user.id)
           .single();
 
         if (bookError) throw bookError;
 
-        if (updates.pages_read > book.total_pages) {
+        if (normalizedUpdates.pages_read > book.total_pages) {
           throw new Error(
-            `Não é possível definir ${updates.pages_read} páginas lidas. O livro tem apenas ${book.total_pages} páginas.`,
+            `Não é possível definir ${normalizedUpdates.pages_read} páginas lidas. O livro tem apenas ${book.total_pages} páginas.`,
           );
+        }
+
+        if (
+          normalizedUpdates.pages_read > 0 &&
+          !book.reading_started_at &&
+          !normalizedUpdates.reading_started_at
+        ) {
+          normalizedUpdates.reading_started_at = new Date().toISOString();
+        }
+
+        const nextStatus =
+          normalizedUpdates.status ||
+          (normalizedUpdates.pages_read >= book.total_pages
+            ? "completed"
+            : normalizedUpdates.pages_read > 0
+              ? "reading"
+              : book.status);
+
+        if (
+          ["completed", "lido"].includes(String(nextStatus)) &&
+          !normalizedUpdates.date_completed &&
+          !book.date_completed
+        ) {
+          normalizedUpdates.date_completed = new Date().toISOString();
         }
       }
 
       const { data, error } = await (supabase as any)
         .from("books")
-        .update(updates)
+        .update(normalizedUpdates)
         .eq("id", id)
         .eq("user_id", user.id)
         .select()
@@ -209,7 +241,7 @@ export const useBooks = () => {
       // First, get the current book data and validate pages
       const { data: book, error: bookError } = await supabase
         .from("books")
-        .select("pages_read, total_pages")
+        .select("pages_read, total_pages, reading_started_at")
         .eq("id", sessionData.book_id)
         .eq("user_id", user.id)
         .single();
@@ -225,7 +257,7 @@ export const useBooks = () => {
       const remaining = book.total_pages - (book.pages_read || 0);
       if (sessionData.pages_read > remaining) {
         throw new Error(
-          `Não é possível adicionar ${sessionData.pages_read} páginas — restam apenas ${remaining} páginas.`,
+          `Não é possível adicionar ${sessionData.pages_read} páginas - restam apenas ${remaining} páginas.`,
         );
       }
 
@@ -258,6 +290,8 @@ export const useBooks = () => {
         .update({
           pages_read: newPagesRead,
           status: status,
+          reading_started_at: book.reading_started_at || new Date().toISOString(),
+          date_completed: status === "completed" ? new Date().toISOString() : null,
         })
         .eq("id", sessionData.book_id)
         .eq("user_id", user.id);

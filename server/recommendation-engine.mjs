@@ -61,7 +61,7 @@ const RECOMMENDATION_CATALOG = [
     genres: ["ficcao cientifica", "space opera", "politico"],
     pages: 544,
     hooks: ["ecologia", "politica", "religiao", "escala"],
-    why: "Une densidade politica, construçao de mundo e ambicao intelectual de alto nivel.",
+    why: "Une densidade politica, construção de mundo e ambicao intelectual de alto nivel.",
   },
   {
     title: "Neuromancer",
@@ -100,7 +100,7 @@ const RECOMMENDATION_CATALOG = [
     author: "Neil Gaiman",
     genres: ["fantasia", "literario", "sombrio"],
     pages: 208,
-    hooks: ["imaginaçao", "sensibilidade", "estranheza"],
+    hooks: ["imaginação", "sensibilidade", "estranheza"],
     why: "Uma rota de descanso elegante se voce quiser variar sem perder atmosfera e impacto.",
   },
   {
@@ -289,18 +289,18 @@ export const buildRecommendationFallbackAnswer = ({ profile }) => {
   if (!picks.length) {
     return {
       answer:
-        "Posso recomendar melhor quando houver pelo menos alguns livros ou generos no seu historico. Mesmo assim, para ficcao cientifica de alto nivel eu comecaria por Duna, Fundacao e Children of Time.",
+        "## Recomendações iniciais\n\nMesmo com pouco histórico, eu começaria por:\n\n- **Duna**, de Frank Herbert\n- **Fundação**, de Isaac Asimov\n- **Children of Time**, de Adrian Tchaikovsky\n\nSe quiser, depois eu reorganizo por densidade, ritmo ou ambição conceitual.",
       confidence: 0.42,
       chapters_used: [],
     };
   }
 
   const intro = profile.currentBook?.title
-    ? `Com base no clima de "${profile.currentBook.title}" e no seu historico de leitura, eu seguiria por estas opcoes:`
-    : "Com base no seu historico de leitura, estas sao as proximas melhores apostas:";
+    ? `## Próximas leituras no clima de **${profile.currentBook.title}**`
+    : "## Próximas leituras para o seu perfil";
 
   const lines = picks.map(
-    (item, index) => `${index + 1}. ${item.title}, de ${item.author} — ${item.why}`,
+    (item, index) => `${index + 1}. **${item.title}**, de ${item.author} - ${item.why}`,
   );
 
   const closing = profile.topGenres?.length
@@ -323,11 +323,11 @@ export const buildConsistencyFallbackAnswer = ({ profile }) => {
 
   return {
     answer: [
-      "Plano semanal sugerido para manter constancia sem perder prazer de leitura:",
-      `1. Foque em ${focusBooks} livro(s) por vez para reduzir friccao de retomada.`,
-      `2. Meta diaria sugerida: ${Math.max(15, Math.min(40, Math.round(pace / 12) || 20))} paginas em um bloco curto.`,
-      "3. Reserve um bloco maior no fim de semana para avancar nas partes mais densas.",
-      "4. Sempre feche a sessao anotando a proxima cena, ideia ou objetivo para facilitar a volta.",
+      "## Plano semanal sugerido",
+      `1. Foque em **${focusBooks} livro(s)** por vez para reduzir friccao de retomada.`,
+      `2. Meta diaria sugerida: **${Math.max(15, Math.min(40, Math.round(pace / 12) || 20))} páginas** em um bloco curto.`,
+      "3. Reserve um bloco maior no fim de semana para avançar nas partes mais densas.",
+      "4. Feche cada sessão anotando a próxima cena, ideia ou objetivo para facilitar a volta.",
       "5. Se a semana apertar, priorize continuidade em vez de volume: ler pouco ainda conta.",
     ].join("\n"),
     confidence: 0.56,

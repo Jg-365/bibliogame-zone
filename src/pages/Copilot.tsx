@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { BookOpen, Bot, Search, Send, Settings2, Sparkles, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader, PageSection, PageShell } from "@/components/layout/PageLayout";
@@ -35,6 +36,7 @@ type ChatMessage = {
   meta?: {
     confidence?: number;
     tags?: string[];
+    modelUsed?: string;
   };
 };
 
@@ -65,6 +67,15 @@ const modePlaceholders: Record<CopilotMode, string> = {
 
 const chatKey = (userId: string) => `rq:copilot:chat:${userId}`;
 const posKey = (userId: string, bookId: string) => `rq:copilot:position:${userId}:${bookId}`;
+
+const formatModelLabel = (model?: string) => {
+  if (!model) return "Gemini 3.1 Flash Lite";
+  const normalized = model.replace(/local-fallback/i, "Base local");
+  return normalized
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
 
 const parseChat = (raw: string | null): ChatMessage[] => {
   if (!raw) return [];
@@ -249,6 +260,15 @@ export const CopilotPage = () => {
     return selectedBook?.pages_read ?? 0;
   }, [currentPageInput, selectedBook?.pages_read]);
 
+  const latestModelUsed = useMemo(
+    () =>
+      [...messages]
+        .reverse()
+        .find((message) => message.role === "assistant" && message.meta?.modelUsed)?.meta
+        ?.modelUsed,
+    [messages],
+  );
+
   const askCopilot = async (question: string, allowSpoilersNow: boolean) => {
     setLoading(true);
     try {
@@ -277,6 +297,7 @@ export const CopilotPage = () => {
           meta: {
             confidence: response.confidence,
             tags: buildResponseTags(response),
+            modelUsed: response.model_used,
           },
         },
       ]);
@@ -393,7 +414,7 @@ export const CopilotPage = () => {
         description="Chat-first com contexto do seu histórico. Metadados sustentam o fluxo base, e a indexação entra como reforço premium."
         actions={
           <>
-            <Badge variant="secondary">Gemini backend</Badge>
+            <Badge variant="secondary">{formatModelLabel(latestModelUsed)}</Badge>
             <Badge variant={knowledgeStatusBadge.variant}>{knowledgeStatusBadge.label}</Badge>
           </>
         }
@@ -424,7 +445,7 @@ export const CopilotPage = () => {
             <div ref={scrollRef} className="h-[62vh] overflow-y-auto px-4 py-4">
               {messages.length === 0 ? (
                 <EmptyState
-                  title="Uma conversa boa começa com um bom foco"
+                  title="Uma conversa boa começa com um foco claro"
                   description={
                     selectedBook
                       ? `Seu livro atual é ${selectedBook.title}. Você pode conversar sobre o trecho atual, pedir recomendações conectadas ao seu gosto ou montar um plano de leitura com base no seu ritmo.`
@@ -441,18 +462,31 @@ export const CopilotPage = () => {
                       className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm ${
+                        className={`max-w-[min(100%,44rem)] overflow-hidden rounded-2xl px-4 py-3 text-sm ${
                           message.role === "user"
                             ? "bg-primary text-primary-foreground"
                             : "border border-border/70 bg-card shadow-sm"
                         }`}
                       >
-                        <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                        {message.role === "assistant" ? (
+                          <div className="prose prose-sm prose-slate dark:prose-invert max-w-none break-words prose-p:my-2 prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-strong:text-foreground prose-headings:text-foreground">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap break-words leading-relaxed">
+                            {message.content}
+                          </p>
+                        )}
                         {message.meta ? (
                           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
                             {typeof message.meta.confidence === "number" ? (
                               <Badge variant="outline">
-                                Confianca {Math.round(message.meta.confidence * 100)}%
+                                Confiança {Math.round(message.meta.confidence * 100)}%
+                              </Badge>
+                            ) : null}
+                            {message.meta.modelUsed ? (
+                              <Badge variant="outline">
+                                {formatModelLabel(message.meta.modelUsed)}
                               </Badge>
                             ) : null}
                             {message.meta.tags?.map((tag) => (
@@ -497,19 +531,21 @@ export const CopilotPage = () => {
 
             <div className="border-t border-border/60 p-4">
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {suggestions.map((suggestion) => (
-                    <Button
-                      key={suggestion}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-full"
-                      onClick={() => setInput(suggestion)}
-                    >
-                      {suggestion}
-                    </Button>
-                  ))}
+                <div className="-mx-1 overflow-x-auto pb-1">
+                  <div className="flex w-max min-w-full gap-2 px-1">
+                    {suggestions.map((suggestion) => (
+                      <Button
+                        key={suggestion}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-auto max-w-[85vw] shrink-0 rounded-full px-4 py-2 text-left whitespace-normal sm:max-w-none"
+                        onClick={() => setInput(suggestion)}
+                      >
+                        {suggestion}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
 
                 <Textarea
@@ -517,6 +553,7 @@ export const CopilotPage = () => {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={modePlaceholders[mode]}
+                  className="min-h-[120px] resize-none"
                 />
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -547,8 +584,10 @@ export const CopilotPage = () => {
                         </SheetHeader>
                         <div className="mt-4 space-y-4">
                           <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-xs text-muted-foreground">
-                            Modelo atual do backend: <strong>Gemini</strong>. A orquestração de
-                            contexto acontece no servidor e já usa histórico de leitura como base.
+                            Modelo ativo no backend:{" "}
+                            <strong>{formatModelLabel(latestModelUsed)}</strong>. O servidor escolhe
+                            automaticamente o melhor modelo por tarefa e usa metadados como base
+                            mínima, mesmo sem indexação.
                           </div>
 
                           <div className="space-y-2">

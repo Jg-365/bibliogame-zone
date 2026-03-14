@@ -22,6 +22,7 @@ interface ProfileUpdateFields {
   total_pages_read?: number;
   current_streak?: number;
   longest_streak?: number;
+  daily_page_goal?: number | null;
   is_private?: boolean;
   theme?: "light" | "dark";
   notifications_enabled?: boolean;
@@ -34,7 +35,7 @@ export const useProfile = () => {
   const queryClient = useQueryClient();
 
   const forceRefresh = () => {
-    console.log("🔄 Forçando refresh do perfil");
+    console.log("ðŸ”„ ForÃ§ando refresh do perfil");
     queryClient.invalidateQueries({
       queryKey: ["profile", user?.id],
     });
@@ -62,9 +63,9 @@ export const useProfile = () => {
 
   const updateProfile = useMutation({
     mutationFn: async (updates: ProfileUpdateFields) => {
-      if (!user?.id) throw new Error("Usuário não autenticado");
+      if (!user?.id) throw new Error("UsuÃ¡rio nÃ£o autenticado");
 
-      console.log("🔄 Atualizando perfil:", {
+      console.log("ðŸ”„ Atualizando perfil:", {
         userId: user.id,
         updates,
       });
@@ -77,22 +78,22 @@ export const useProfile = () => {
         .single();
 
       if (error) {
-        console.error("❌ Erro ao atualizar perfil:", error);
+        console.error("âŒ Erro ao atualizar perfil:", error);
         throw new Error(`Erro no banco de dados: ${error.message}`);
       }
 
-      console.log("✅ Perfil atualizado com sucesso:", data);
+      console.log("âœ… Perfil atualizado com sucesso:", data);
       return data;
     },
     onSuccess: (data) => {
-      console.log("🎉 Sucesso na mutação, invalidando cache");
+      console.log("ðŸŽ‰ Sucesso na mutaÃ§Ã£o, invalidando cache");
 
-      // Invalidar múltiplas queries relacionadas
+      // Invalidar mÃºltiplas queries relacionadas
       queryClient.invalidateQueries({
         queryKey: ["profile"],
       });
 
-      // Forçar refetch imediato
+      // ForÃ§ar refetch imediato
       queryClient.refetchQueries({
         queryKey: ["profile", user?.id],
       });
@@ -102,11 +103,11 @@ export const useProfile = () => {
 
       toast({
         title: "Perfil atualizado!",
-        description: "Suas informações foram salvas com sucesso.",
+        description: "Suas informaÃ§Ãµes foram salvas com sucesso.",
       });
     },
     onError: (error: any) => {
-      console.error("💥 Erro na mutação:", error);
+      console.error("ðŸ’¥ Erro na mutaÃ§Ã£o:", error);
       toast({
         title: "Erro ao atualizar perfil",
         description: error.message || "Ocorreu um erro inesperado",
@@ -117,7 +118,7 @@ export const useProfile = () => {
 
   // Recompute profile stats from reading_sessions (pages read) and books
   const recomputeFromSessions = async () => {
-    if (!user?.id) throw new Error("Usuário não autenticado");
+    if (!user?.id) throw new Error("UsuÃ¡rio nÃ£o autenticado");
     // 1) Load all sessions grouped by book
     const { data: sessionsData, error: sessionsError } = await supabase
       .from("reading_sessions")
@@ -209,8 +210,8 @@ export const useProfile = () => {
     queryClient.setQueryData(["profile", user.id], data);
 
     toast({
-      title: "Estatísticas recalculadas",
-      description: "Os dados do perfil foram atualizados a partir das sessões de leitura.",
+      title: "EstatÃ­sticas recalculadas",
+      description: "Os dados do perfil foram atualizados a partir das sessÃµes de leitura.",
     });
 
     return data;
@@ -220,6 +221,7 @@ export const useProfile = () => {
     profile,
     isLoading,
     updateProfile: updateProfile.mutate,
+    updateProfileAsync: updateProfile.mutateAsync,
     isUpdating: updateProfile.isPending,
     forceRefresh,
     recomputeFromSessions,

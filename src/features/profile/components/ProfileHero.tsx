@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Bell, Flame, RefreshCw, Settings, Star, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -64,23 +64,38 @@ export const ProfileHero = ({
           </Avatar>
 
           <div className="flex-1 space-y-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h1 className="text-2xl font-bold sm:text-3xl">{fullName || "Seu perfil"}</h1>
                 {username ? <p className="text-muted-foreground">@{username}</p> : null}
               </div>
-              <div className="flex items-center gap-2">
-                <Button onClick={onSyncKnowledge} size="sm" disabled={isSyncingKnowledge}>
+              <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto">
+                <Button
+                  onClick={onSyncKnowledge}
+                  size="sm"
+                  disabled={isSyncingKnowledge}
+                  className="w-full sm:w-auto"
+                >
                   <RefreshCw
                     className={`mr-2 h-4 w-4 ${isSyncingKnowledge ? "animate-spin" : ""}`}
                   />
                   {isSyncingKnowledge ? "Sincronizando..." : "Sincronizar livros"}
                 </Button>
-                <Button variant="outline" size="sm" onClick={onOpenNotifications}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenNotifications}
+                  className="w-full sm:w-auto"
+                >
                   <Bell className="mr-2 h-4 w-4" />
                   Notificações
                 </Button>
-                <Button variant="outline" size="sm" onClick={onOpenSettings}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenSettings}
+                  className="w-full sm:w-auto"
+                >
                   <Settings className="mr-2 h-4 w-4" />
                   Editar perfil
                 </Button>

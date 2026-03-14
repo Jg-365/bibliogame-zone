@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Award, Bell, Book, Flame } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -48,6 +48,8 @@ const ProfilePage = () => {
   const { sessions: readingSessions, deleteSession, isDeletingSession } = useReadingSessions();
 
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("books");
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSyncingKnowledge, setIsSyncingKnowledge] = useState(false);
@@ -70,7 +72,7 @@ const ProfilePage = () => {
 
   const currentYear = new Date().getFullYear();
   const completedThisYear = completedBooks.filter(
-    (b) => b.date_completed && new Date(b.date_completed).getFullYear() === currentYear,
+    (b) => new Date(b.date_completed || b.updated_at).getFullYear() === currentYear,
   ).length;
 
   const totalPages = (readingSessions || []).reduce(
@@ -335,11 +337,18 @@ const ProfilePage = () => {
         averageDaysToComplete={averageDaysToComplete}
       />
 
-      <ProfileGenreMetrics items={genreMetrics} />
+      <ProfileGenreMetrics
+        items={genreMetrics}
+        activeGenre={selectedGenre}
+        onSelectGenre={(genre) => {
+          setSelectedGenre(genre);
+          setActiveTab("books");
+        }}
+      />
 
       {retentionEnabled ? <RetentionMetricsCard /> : null}
 
-      <Tabs defaultValue="books" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mx-auto grid w-full max-w-2xl grid-cols-3">
           <TabsTrigger value="books" className="flex items-center gap-2">
             <Book className="h-4 w-4" />
@@ -360,6 +369,7 @@ const ProfilePage = () => {
             readingBooks={readingBooks}
             completedBooks={completedBooks}
             onSelectBook={(bookId) => setSelectedBookId(bookId)}
+            selectedGenre={selectedGenre}
           />
         </TabsContent>
 
@@ -388,7 +398,7 @@ const ProfilePage = () => {
       />
 
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-[min(96vw,42rem)] overflow-y-auto px-4 sm:px-6">
           <DialogHeader>
             <DialogTitle>Editar perfil</DialogTitle>
           </DialogHeader>
@@ -397,7 +407,7 @@ const ProfilePage = () => {
       </Dialog>
 
       <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-[min(96vw,48rem)] overflow-y-auto px-4 sm:px-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />

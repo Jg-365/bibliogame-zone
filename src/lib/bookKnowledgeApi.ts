@@ -28,6 +28,7 @@ type AskBookQuestionResponse = {
   needs_reindex?: boolean;
   context_mode?: "indexed" | "metadata" | "general" | "cached";
   cached?: boolean;
+  model_used?: string;
   error?: string;
 };
 

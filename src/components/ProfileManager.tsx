@@ -184,7 +184,7 @@ export const ProfileManager = () => {
   return (
     <Card className="mx-auto w-full max-w-2xl border-border/70">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>Gerenciar perfil</CardTitle>
             <CardDescription>
@@ -205,7 +205,7 @@ export const ProfileManager = () => {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <Avatar className="h-20 w-20">
             <AvatarImage
               src={isEditing ? formData.avatar_url : profile.avatar_url || ""}
@@ -217,7 +217,7 @@ export const ProfileManager = () => {
           </Avatar>
 
           {isEditing ? (
-            <div>
+            <div className="min-w-0">
               <Label htmlFor="avatar-upload" className="cursor-pointer">
                 <Button variant="outline" size="sm" asChild>
                   <span>
@@ -250,7 +250,7 @@ export const ProfileManager = () => {
                       // no-op
                     }
                   }}
-                  className="mt-1 block rounded-md border px-2 py-1 text-sm"
+                  className="mt-1 block w-full rounded-md border px-2 py-1 text-sm sm:w-auto"
                 >
                   <option value="cover">Cortar</option>
                   <option value="contain">Ajustar</option>

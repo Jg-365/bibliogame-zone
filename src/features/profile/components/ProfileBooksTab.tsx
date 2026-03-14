@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+﻿import React, { useMemo, useState } from "react";
 import { m } from "framer-motion";
 import { Book, BookOpen, Search, Star } from "lucide-react";
 import type { Book as BookType } from "@/shared/types";
@@ -11,6 +11,7 @@ interface ProfileBooksTabProps {
   readingBooks: BookType[];
   completedBooks: BookType[];
   onSelectBook: (bookId: string) => void;
+  selectedGenre?: string | null;
 }
 
 const getBestCoverUrl = (coverUrl?: string) => {
@@ -115,9 +116,14 @@ export const ProfileBooksTab = ({
   readingBooks,
   completedBooks,
   onSelectBook,
+  selectedGenre,
 }: ProfileBooksTabProps) => {
   const [query, setQuery] = useState("");
-  const [genreFilter, setGenreFilter] = useState("all");
+  const [genreFilter, setGenreFilter] = useState(selectedGenre || "all");
+
+  React.useEffect(() => {
+    setGenreFilter(selectedGenre || "all");
+  }, [selectedGenre]);
 
   const availableGenres = useMemo(() => {
     const counts = new Map<string, number>();

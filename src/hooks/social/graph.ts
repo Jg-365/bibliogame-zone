@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Social Graph hooks â€” follows, leaderboard, user search.
  *
  * Canonical home: `@/hooks/social`.
@@ -28,6 +28,19 @@ const toDayKey = (value: string) => {
   } catch {
     return "";
   }
+};
+
+const isWithinYearWindow = (
+  value: string | null | undefined,
+  yearWindow: { start: string; end: string },
+) => {
+  if (!value) return false;
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return false;
+  return (
+    timestamp >= new Date(yearWindow.start).getTime() &&
+    timestamp < new Date(yearWindow.end).getTime()
+  );
 };
 
 const calculateConsecutiveStreak = (sessionDates: string[]) => {
@@ -471,11 +484,9 @@ export const useLeaderboardWithFilters = (
                   .lt("session_date", yearWindow.end),
                 supabase
                   .from("books")
-                  .select("user_id, date_completed, status")
+                  .select("user_id, date_completed, updated_at, status")
                   .in("user_id", userIds)
-                  .in("status", ["completed", "lido"])
-                  .gte("date_completed", yearWindow.start)
-                  .lt("date_completed", yearWindow.end),
+                  .in("status", ["completed", "lido"]),
               ]);
             })();
 
@@ -506,6 +517,11 @@ export const useLeaderboardWithFilters = (
 
       const completedBooksByUser = new Map<string, number>();
       (completedBooksResponse?.data ?? []).forEach((book) => {
+        if (period !== "all") {
+          const yearWindow = buildYearWindow(Number(period));
+          const completionReference = book.date_completed || book.updated_at;
+          if (!isWithinYearWindow(completionReference, yearWindow)) return;
+        }
         completedBooksByUser.set(book.user_id, (completedBooksByUser.get(book.user_id) ?? 0) + 1);
       });
 

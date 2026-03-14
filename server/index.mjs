@@ -36,6 +36,12 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 const KNOWLEDGE_FRESH_MS = 1000 * 60 * 60 * 24;
 const MAX_SOURCE_RESULTS = 6;
+const DEFAULT_CHAT_MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+const DEFAULT_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemma-3-27b";
+const RECOMMENDATION_MODEL =
+  process.env.GEMINI_RECOMMENDATION_MODEL || DEFAULT_FALLBACK_MODEL || "gemma-3-27b";
+const CONSISTENCY_MODEL =
+  process.env.GEMINI_CONSISTENCY_MODEL || "gemma-3-12b";
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in environment.");
@@ -171,7 +177,7 @@ const sourceRelevanceScore = (source, book) => {
   score += titleMatches * 2.5;
   score += authorMatches * 1.5;
 
-  if (/chapter|capitulo|capítulo/i.test(`${source.title ?? ""} ${source.content_text ?? ""}`)) score += 2;
+  if (/chapter|capitulo|capÃ­tulo/i.test(`${source.title ?? ""} ${source.content_text ?? ""}`)) score += 2;
   if (/summary|resumo|analysis|analise|guide|guia/i.test(`${source.title ?? ""} ${source.content_text ?? ""}`)) score += 1.5;
 
   return score;
@@ -353,8 +359,11 @@ ${question}
 const buildLocalAnswerFromContext = ({ bookTitle, selectedChapters, analyses, events, currentPage, currentPosition }) => {
   if (!selectedChapters.length) {
     return {
-      answer:
-        "A base local desse livro ainda esta insuficiente para responder com seguranca. Tente sincronizar o livro novamente quando houver mais fontes por capitulo.",
+      answer: [
+        "## Base local ainda curta",
+        "Ainda nao encontrei material suficiente por capitulo para responder com seguranca total.",
+        "Posso continuar ajudando com base em metadados e contexto geral do livro, e a indexacao mais profunda entra como bonus quando estiver pronta.",
+      ].join("\n\n"),
       confidence: 0.22,
       chapters_used: [],
     };
@@ -393,10 +402,11 @@ const buildLocalAnswerFromContext = ({ bookTitle, selectedChapters, analyses, ev
 
   return {
     answer: [
-      `Estou respondendo com a base local ja indexada de "${bookTitle}" porque o modelo de IA atingiu limite temporario.`,
+      `## Resposta com base local`,
+      `Usei a base local ja indexada de **"${bookTitle}"** porque o modelo principal atingiu um limite temporario.`,
       readingHint,
       chapterSummaries,
-      "Se quiser, posso continuar com respostas baseadas somente nessa base ate a quota voltar ao normal.",
+      "Se quiser, continuo a conversa so com essa base local ate a quota normalizar.",
     ]
       .filter(Boolean)
       .join("\n\n"),
@@ -454,7 +464,7 @@ const buildMetadataFirstPrompt = ({
   JSON.stringify(
     {
       instruction:
-        "Voce e um copiloto literario e deve sempre responder de forma util. Use contexto indexado como bonus quando existir. Se nao houver base indexada, use os metadados do livro e seu conhecimento interno sobre a obra. Se nenhum livro tiver sido selecionado, responda como um copiloto geral de leitura. Nunca exija sincronizacao como pre-requisito para responder. Em modo de recomendacao, indique livros concretos com motivo. Em modo de consistencia, entregue um plano acionavel. Em modo de conversa sobre livro, respeite a parte atual do leitor e evite spoilers quando solicitado.",
+        "Voce e um copiloto literario premium e deve sempre responder de forma util. Use contexto indexado como bonus quando existir. Se nao houver base indexada, use os metadados do livro e seu conhecimento interno sobre a obra. Se nenhum livro tiver sido selecionado, responda como um copiloto geral de leitura. Nunca exija sincronizacao como pre-requisito para responder. Em modo de recomendacao, indique livros concretos com motivo. Em modo de consistencia, entregue um plano acionavel. Em modo de conversa sobre livro, respeite a parte atual do leitor e evite spoilers quando solicitado. Formate a resposta final em Markdown limpo, escaneavel e elegante, com paragrafos curtos, bullets quando fizer sentido e sem prefacios burocraticos.",
       context_mode: packet && selectedChapters?.length ? "indexed_plus_metadata" : book ? "metadata_first" : "general",
       task_mode: mode ?? "book-chat",
       response_style: responseStyle ?? "objective",
@@ -489,7 +499,7 @@ const buildMetadataFirstPrompt = ({
       })),
       question,
       output_format: {
-        answer: "string",
+        answer: "string em Markdown",
         confidence: "number 0..1",
         chapters_used: ["chapter-id"],
       },
@@ -526,9 +536,9 @@ const buildMetadataFallbackAnswer = ({
 
   return {
     answer: [
-      "Estou respondendo em modo de contingencia, sem depender de base indexada completa.",
-      metadataLines || "Nenhum metadado detalhado do livro estava disponivel, entao a resposta deve ser lida como orientacao geral.",
-      `Pergunta considerada: ${question}`,
+      "## Resposta em modo flexivel",
+      metadataLines || "Nao havia metadados detalhados do livro disponiveis, entao estou usando uma orientacao geral e util.",
+      `**Pergunta considerada:** ${question}`,
     ]
       .filter(Boolean)
       .join("\n\n"),
@@ -867,6 +877,12 @@ const handleAsk = async (req, res) => {
   const mode = typeof payload.mode === "string" ? payload.mode : "book-chat";
   const responseStyle = payload.response_style === "detailed" ? "detailed" : "objective";
   const avoidSpoilers = payload.avoid_spoilers !== false;
+  const modelForMode =
+    mode === "recommendations"
+      ? RECOMMENDATION_MODEL
+      : mode === "consistency"
+        ? CONSISTENCY_MODEL
+        : DEFAULT_CHAT_MODEL;
 
   let book = null;
   if (bookId) {
@@ -902,6 +918,7 @@ const handleAsk = async (req, res) => {
         chapters_used: cacheHit.chapters_used ?? [],
         cached: true,
         used_fallback: false,
+        model_used: `${modelForMode} (cache)`,
         context_mode: "cached",
       });
     }
@@ -959,6 +976,7 @@ const handleAsk = async (req, res) => {
             userLibraryProfile,
           }),
           {
+            model: modelForMode,
             temperature: 0.15,
             maxOutputTokens: 1200,
           },
@@ -1024,6 +1042,8 @@ const handleAsk = async (req, res) => {
         maxChapters,
       );
       const answerText = finalAnswer.answer?.trim() || "Nao foi possivel gerar uma resposta confiavel.";
+      const modelUsed =
+        finalAnswer.model_used ?? (usedLocalQuotaFallback ? "local-fallback" : modelForMode);
 
       if (book) {
         await client.from("questions_log").insert({
@@ -1057,6 +1077,7 @@ const handleAsk = async (req, res) => {
         chapters_used: chaptersUsed,
         used_fallback: false,
         used_local_quota_fallback: usedLocalQuotaFallback,
+        model_used: modelUsed,
         context_mode: packet && selectedChapters.length ? "indexed" : book ? "metadata" : "general",
         cached: false,
       };

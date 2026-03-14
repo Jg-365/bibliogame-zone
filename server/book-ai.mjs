@@ -91,12 +91,12 @@ export const extractKeywords = (text, limit = 8) => {
 
 export const extractCharacters = (text, limit = 6) => {
   const matches =
-    text.match(/\b[A-ZÁÀÃÂÉÊÍÓÔÕÚÇ][a-záàãâéêíóôõúç]+(?:\s+[A-ZÁÀÃÂÉÊÍÓÔÕÚÇ][a-záàãâéêíóôõúç]+)?\b/g) ??
+    text.match(/\b[A-ZÃÃ€ÃƒÃ‚Ã‰ÃŠÃÃ“Ã”Ã•ÃšÃ‡][a-zÃ¡Ã Ã£Ã¢Ã©ÃªÃ­Ã³Ã´ÃµÃºÃ§]+(?:\s+[A-ZÃÃ€ÃƒÃ‚Ã‰ÃŠÃÃ“Ã”Ã•ÃšÃ‡][a-zÃ¡Ã Ã£Ã¢Ã©ÃªÃ­Ã³Ã´ÃµÃºÃ§]+)?\b/g) ??
     [];
   const blacklist = new Set([
     "Chapter",
     "Capitulo",
-    "Capítulo",
+    "CapÃ­tulo",
     "Resumo",
     "Summary",
     "Google Books",
@@ -136,7 +136,7 @@ const parseChapterNumber = (raw) => {
 };
 
 export const extractChapterSections = (text, sourceMeta = {}) => {
-  const matcher = /(?:^|\s)(chapter|cap[íi]tulo)\s+([0-9ivxlcdm]+)(?:\s*[:\-]\s*([^\n\r]{3,120}))?/gim;
+  const matcher = /(?:^|\s)(chapter|cap[Ã­i]tulo)\s+([0-9ivxlcdm]+)(?:\s*[:\-]\s*([^\n\r]{3,120}))?/gim;
   const matches = [...text.matchAll(matcher)];
   if (!matches.length) return [];
 
@@ -345,8 +345,8 @@ const extractJson = (raw) => {
 const normalizeJsonText = (raw) =>
   String(raw ?? "")
     .replace(/^\uFEFF/, "")
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
+    .replace(/[â€œâ€]/g, '"')
+    .replace(/[â€˜â€™]/g, "'")
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .trim();
@@ -412,7 +412,7 @@ const repairJsonWithGemini = async ({ url, prompt, rawOutput, opts }) => {
                   "- Preserve o significado.",
                   "- Retorne apenas JSON.",
                   "- Feche strings e objetos corretamente.",
-                  prompt ? `- Siga o schema implícito do prompt original: ${prompt.slice(0, 1200)}` : "",
+                  prompt ? `- Siga o schema implÃ­cito do prompt original: ${prompt.slice(0, 1200)}` : "",
                   "",
                   "Resposta original:",
                   rawOutput,
@@ -495,15 +495,29 @@ export const callGeminiJson = async (prompt, opts = {}) => {
     const extractedText = extractJson(text).trim();
 
     try {
-      return tryParseJsonCandidate(extractedText);
+      const parsed = tryParseJsonCandidate(extractedText);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return {
+          ...parsed,
+          model_used: model,
+        };
+      }
+      return parsed;
     } catch (parseError) {
       try {
-        return await repairJsonWithGemini({
+        const repaired = await repairJsonWithGemini({
           url,
           prompt,
           rawOutput: extractedText,
           opts,
         });
+        if (repaired && typeof repaired === "object" && !Array.isArray(repaired)) {
+          return {
+            ...repaired,
+            model_used: model,
+          };
+        }
+        return repaired;
       } catch {
         const message = parseError instanceof Error ? parseError.message : "Invalid JSON from Gemini.";
         const error = new Error(`gemini_invalid_json: ${message}`);
