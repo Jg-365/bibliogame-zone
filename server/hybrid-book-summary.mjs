@@ -1,13 +1,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { braveSearch, normalizeQuestion } from "./book-ai.mjs";
 
-const DEFAULT_MODEL = process.env.GEMINI_HYBRID_MODEL || "gemini-1.5-flash";
+const DEFAULT_MODEL = process.env.GEMINI_HYBRID_MODEL || process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 const FALLBACK_MODELS = [
   DEFAULT_MODEL,
+  process.env.GEMINI_FALLBACK_MODEL,
   process.env.GEMINI_MODEL,
   process.env.GEMINI_HYBRID_FALLBACK_MODEL,
+  "gemma-3-27b",
+  "gemma-3-12b",
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
 ].filter((value, index, array) => value && array.indexOf(value) === index);
 
 const JSON_SCHEMA_EXAMPLE = {

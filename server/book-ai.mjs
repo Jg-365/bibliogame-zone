@@ -448,8 +448,15 @@ export const callGeminiJson = async (prompt, opts = {}) => {
   if (!apiKey) {
     throw new Error("Missing GEMINI_API_KEY.");
   }
-  const configuredModel = opts.model ?? process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
-  const models = [configuredModel, "gemini-2.0-flash", "gemini-2.5-flash"].filter(
+  const configuredModel = opts.model ?? process.env.GEMINI_MODEL ?? "gemini-3.1-flash-lite";
+  const models = [
+    configuredModel,
+    process.env.GEMINI_FALLBACK_MODEL,
+    "gemma-3-27b",
+    "gemma-3-12b",
+    "gemini-2.5-flash",
+    "gemini-3.1-flash-lite",
+  ].filter(
     (model, index, array) => model && array.indexOf(model) === index,
   );
 
