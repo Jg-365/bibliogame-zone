@@ -1,3 +1,8 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+
 const ENTITY_MAP = {
   amp: "&",
   lt: "<",
@@ -309,6 +314,59 @@ export const braveSearch = async (query, count = 8) => {
   return duckDuckGoSearch(query, count);
 };
 
+const duckDuckGoPythonScript = `
+import json
+import sys
+try:
+    from duckduckgo_search import DDGS
+except Exception:
+    print("[]")
+    sys.exit(0)
+
+query = sys.argv[1] if len(sys.argv) > 1 else ""
+limit = int(sys.argv[2]) if len(sys.argv) > 2 else 8
+
+results = []
+with DDGS() as ddgs:
+    for item in ddgs.text(query, max_results=limit):
+        results.append({
+            "url": item.get("href") or item.get("url") or "",
+            "title": item.get("title") or "",
+            "description": item.get("body") or item.get("snippet") or "",
+            "siteName": ""
+        })
+
+print(json.dumps(results, ensure_ascii=False))
+`;
+
+const duckDuckGoPythonSearch = async (query, count = 8) => {
+  const bins = [process.env.PYTHON_BIN, "python3", "python"].filter(Boolean);
+
+  for (const bin of bins) {
+    try {
+      const { stdout } = await execFileAsync(bin, ["-c", duckDuckGoPythonScript, query, String(count)], {
+        timeout: 9000,
+        maxBuffer: 1024 * 1024,
+      });
+      const parsed = JSON.parse(String(stdout ?? "[]"));
+      if (!Array.isArray(parsed)) continue;
+      const normalized = parsed
+        .map((item) => ({
+          url: String(item?.url ?? "").trim(),
+          title: String(item?.title ?? "").trim(),
+          description: String(item?.description ?? "").trim(),
+          siteName: "",
+        }))
+        .filter((item) => item.url.startsWith("http"));
+      if (normalized.length) return normalized.slice(0, Math.max(1, count));
+    } catch {
+      // try next python binary
+    }
+  }
+
+  return [];
+};
+
 const normalizeDuckduckgoUrl = (rawUrl) => {
   if (!rawUrl) return "";
   if (rawUrl.startsWith("//")) return `https:${rawUrl}`;
@@ -326,6 +384,9 @@ const stripHtml = (value) =>
 
 export const duckDuckGoSearch = async (query, count = 8) => {
   try {
+    const pythonResults = await duckDuckGoPythonSearch(query, count);
+    if (pythonResults.length) return pythonResults;
+
     const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
     const response = await fetchWithRetry(
       url,
@@ -512,15 +573,15 @@ export const callGeminiJson = async (prompt, opts = {}) => {
     throw new Error("Missing GEMINI_API_KEY.");
   }
   const configuredModel = opts.model ?? process.env.GEMINI_MODEL ?? "gemini-3.1-flash-lite";
-  const models = [
-    configuredModel,
-    process.env.GEMINI_FALLBACK_MODEL,
-    "gemma-3-27b-it",
-    "gemma-3-12b-it",
-    "gemini-3.1-flash-lite",
-  ].filter(
-    (model, index, array) => model && array.indexOf(model) === index,
-  );
+  const models = opts.allowModelFallback === false
+    ? [configuredModel]
+    : [
+        configuredModel,
+        process.env.GEMINI_FALLBACK_MODEL,
+        "gemma-3-27b-it",
+        "gemma-3-12b-it",
+        "gemini-3.1-flash-lite",
+      ].filter((model, index, array) => model && array.indexOf(model) === index);
 
   let lastError = "Unknown Gemini error";
 
@@ -547,6 +608,49 @@ export const callGeminiJson = async (prompt, opts = {}) => {
 
     if (!response.ok) {
       const body = await response.text();
+
+      if (response.status === 400 && /json mode is not enabled/i.test(body)) {
+        const plainResponse = await fetchWithRetry(
+          url,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      text: `${prompt}\n\nResponda em JSON valido, sem markdown e sem comentarios.`,
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                temperature: opts.temperature ?? 0.2,
+                maxOutputTokens: opts.maxOutputTokens ?? 4096,
+              },
+            }),
+          },
+          { timeoutMs: 20000, retries: 0, retryStatuses: [500, 502, 503, 504], baseDelayMs: 1200 },
+        );
+
+        if (plainResponse.ok) {
+          const plainData = await plainResponse.json();
+          const plainText = plainData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+          const parsed = tryParseJsonCandidate(extractJson(plainText).trim());
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            return {
+              ...parsed,
+              model_used: model,
+            };
+          }
+          return parsed;
+        }
+      }
+
       lastError = `gemini_error_${response.status}: ${body.slice(0, 300)}`;
       if (response.status === 404 || response.status === 400) continue;
       throw new Error(lastError);

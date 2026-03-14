@@ -37,11 +37,9 @@ const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 const KNOWLEDGE_FRESH_MS = 1000 * 60 * 60 * 24;
 const MAX_SOURCE_RESULTS = 6;
 const DEFAULT_CHAT_MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
-const DEFAULT_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemma-3-27b-it";
-const RECOMMENDATION_MODEL =
-  process.env.GEMINI_RECOMMENDATION_MODEL || DEFAULT_FALLBACK_MODEL || "gemma-3-27b-it";
-const CONSISTENCY_MODEL =
-  process.env.GEMINI_CONSISTENCY_MODEL || "gemma-3-12b-it";
+const DEFAULT_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.1-flash-lite";
+const RECOMMENDATION_MODEL = process.env.GEMINI_RECOMMENDATION_MODEL || DEFAULT_CHAT_MODEL;
+const CONSISTENCY_MODEL = process.env.GEMINI_CONSISTENCY_MODEL || DEFAULT_CHAT_MODEL;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in environment.");
@@ -899,12 +897,7 @@ const handleAsk = async (req, res) => {
   const mode = inferAskMode(requestedMode, payload.user_question);
   const responseStyle = payload.response_style === "detailed" ? "detailed" : "objective";
   const avoidSpoilers = payload.avoid_spoilers !== false;
-  const modelForMode =
-    mode === "recommendations"
-      ? RECOMMENDATION_MODEL
-      : mode === "consistency"
-        ? CONSISTENCY_MODEL
-        : DEFAULT_CHAT_MODEL;
+  const modelForMode = DEFAULT_CHAT_MODEL;
 
   let book = null;
   if (bookId) {
@@ -1001,6 +994,7 @@ const handleAsk = async (req, res) => {
             model: modelForMode,
             temperature: 0.15,
             maxOutputTokens: 2200,
+            allowModelFallback: false,
           },
         );
       } catch (error) {
