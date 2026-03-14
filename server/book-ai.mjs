@@ -277,7 +277,9 @@ const fetchWithRetry = async (url, init, options = {}) => {
 
 export const braveSearch = async (query, count = 8) => {
   const key = process.env.BRAVE_SEARCH_API_KEY;
-  if (!key) return [];
+  if (!key) {
+    return duckDuckGoSearch(query, count);
+  }
   const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}`;
   const response = await fetchWithRetry(
     url,
@@ -290,9 +292,11 @@ export const braveSearch = async (query, count = 8) => {
     },
     { timeoutMs: 12000, retries: 1, retryStatuses: [500, 502, 503, 504], baseDelayMs: 1200 },
   );
-  if (!response.ok) return [];
+  if (!response.ok) {
+    return duckDuckGoSearch(query, count);
+  }
   const data = await response.json();
-  return (data.web?.results ?? [])
+  const braveResults = (data.web?.results ?? [])
     .map((item) => ({
       url: item.url ?? "",
       title: item.title ?? "",
@@ -300,6 +304,65 @@ export const braveSearch = async (query, count = 8) => {
       siteName: item.profile?.name ?? "",
     }))
     .filter((item) => item.url.startsWith("http"));
+
+  if (braveResults.length > 0) return braveResults;
+  return duckDuckGoSearch(query, count);
+};
+
+const normalizeDuckduckgoUrl = (rawUrl) => {
+  if (!rawUrl) return "";
+  if (rawUrl.startsWith("//")) return `https:${rawUrl}`;
+  if (rawUrl.startsWith("/l/?")) {
+    const qs = rawUrl.split("?")[1] ?? "";
+    const params = new URLSearchParams(qs);
+    const target = params.get("uddg");
+    return target ? decodeURIComponent(target) : "";
+  }
+  return rawUrl;
+};
+
+const stripHtml = (value) =>
+  decodeEntities(String(value ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+
+export const duckDuckGoSearch = async (query, count = 8) => {
+  try {
+    const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const response = await fetchWithRetry(
+      url,
+      {
+        method: "GET",
+        headers: {
+          "User-Agent": "ReadQuestBot/1.0 (+https://readquest.app)",
+        },
+      },
+      { timeoutMs: 12000, retries: 1, retryStatuses: [429, 500, 502, 503, 504], baseDelayMs: 1200 },
+    );
+
+    if (!response.ok) return [];
+    const html = await response.text();
+    const matches = [
+      ...html.matchAll(
+        /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?(?:<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>|<div[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/div>)?/gi,
+      ),
+    ];
+
+    const results = matches
+      .slice(0, Math.max(1, count))
+      .map((match) => {
+        const normalizedUrl = normalizeDuckduckgoUrl(match[1]);
+        return {
+          url: normalizedUrl,
+          title: stripHtml(match[2]),
+          description: stripHtml(match[3] || match[4] || ""),
+          siteName: "",
+        };
+      })
+      .filter((item) => item.url.startsWith("http"));
+
+    return results;
+  } catch {
+    return [];
+  }
 };
 
 export const htmlToCleanText = (html) => {
@@ -454,7 +517,6 @@ export const callGeminiJson = async (prompt, opts = {}) => {
     process.env.GEMINI_FALLBACK_MODEL,
     "gemma-3-27b-it",
     "gemma-3-12b-it",
-    "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
   ].filter(
     (model, index, array) => model && array.indexOf(model) === index,

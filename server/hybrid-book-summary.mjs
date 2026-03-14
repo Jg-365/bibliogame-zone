@@ -9,7 +9,7 @@ const FALLBACK_MODELS = [
   process.env.GEMINI_HYBRID_FALLBACK_MODEL,
   "gemma-3-27b-it",
   "gemma-3-12b-it",
-  "gemini-2.5-flash",
+  "gemini-3.1-flash-lite",
 ].filter((value, index, array) => value && array.indexOf(value) === index);
 
 const JSON_SCHEMA_EXAMPLE = {

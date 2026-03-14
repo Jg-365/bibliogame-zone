@@ -65,7 +65,7 @@ const modePlaceholders: Record<CopilotMode, string> = {
   consistency: "Ex.: monte uma rotina para eu terminar esse livro sem cansar",
 };
 
-const chatKey = (userId: string) => `rq:copilot:chat:${userId}`;
+const chatKey = (userId: string) => `rq:copilot:chat:v3:${userId}`;
 const posKey = (userId: string, bookId: string) => `rq:copilot:position:${userId}:${bookId}`;
 
 const formatModelLabel = (model?: string) => {
@@ -75,7 +75,6 @@ const formatModelLabel = (model?: string) => {
   const normalized = model.replace(/\s*\(cache\)\s*/i, "");
   const lookup: Record<string, string> = {
     "gemini-3.1-flash-lite": "Gemini 3.1 Flash Lite",
-    "gemini-2.5-flash": "Gemini 2.5 Flash",
     "gemma-3-27b-it": "Gemma 3 27B Instruct",
     "gemma-3-12b-it": "Gemma 3 12B Instruct",
   };
@@ -175,6 +174,15 @@ const EmptyState = ({
         </Button>
       ))}
     </div>
+  </div>
+);
+
+const TypingIndicator = () => (
+  <div className="inline-flex items-center gap-1.5">
+    <span className="sr-only">Copiloto digitando</span>
+    <span className="h-2 w-2 animate-bounce rounded-full bg-primary/80 [animation-delay:0ms]" />
+    <span className="h-2 w-2 animate-bounce rounded-full bg-primary/80 [animation-delay:140ms]" />
+    <span className="h-2 w-2 animate-bounce rounded-full bg-primary/80 [animation-delay:280ms]" />
   </div>
 );
 
@@ -468,7 +476,7 @@ export const CopilotPage = () => {
                       className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`max-w-[min(100%,44rem)] overflow-hidden rounded-2xl px-4 py-3 text-sm ${
+                        className={`max-w-[min(100%,44rem)] rounded-2xl px-4 py-3 text-sm ${
                           message.role === "user"
                             ? "bg-primary text-primary-foreground"
                             : "border border-border/70 bg-card shadow-sm"
@@ -526,8 +534,9 @@ export const CopilotPage = () => {
                   ))}
                   {loading ? (
                     <div className="flex justify-start">
-                      <div className="rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm text-muted-foreground">
-                        Pensando na melhor resposta para o seu momento de leitura...
+                      <div className="space-y-2 rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm text-muted-foreground">
+                        <TypingIndicator />
+                        <p>Pensando na melhor resposta para o seu momento de leitura...</p>
                       </div>
                     </div>
                   ) : null}
