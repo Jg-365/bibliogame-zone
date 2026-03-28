@@ -121,6 +121,7 @@ const RecommendationShelf = ({
 
 export const BookSearch = () => {
   const [query, setQuery] = useState("");
+  const [activeQuery, setActiveQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GoogleBook[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(0);
@@ -134,6 +135,7 @@ export const BookSearch = () => {
     async (searchQuery: string, searchPage: number) => {
       if (!searchQuery.trim()) return;
 
+      setActiveQuery(searchQuery);
       setIsSearching(true);
       try {
         const { items, totalItems: total } = await searchGoogleBooks(
@@ -222,8 +224,9 @@ export const BookSearch = () => {
 
   const handleSearch = useCallback(() => {
     clearTimeout(debounceTimer.current);
-    executeSearch(query, page);
-  }, [query, page, executeSearch]);
+    executeSearch(query, 0);
+    setPage(0);
+  }, [query, executeSearch]);
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
@@ -233,6 +236,7 @@ export const BookSearch = () => {
     if (!value.trim()) {
       setSearchResults([]);
       setTotalItems(0);
+      setActiveQuery("");
       return;
     }
 
@@ -243,10 +247,12 @@ export const BookSearch = () => {
 
   useEffect(() => () => clearTimeout(debounceTimer.current), []);
 
-  useEffect(() => {
-    if (!query.trim()) return;
-    executeSearch(query, page);
-  }, [page, query, executeSearch]);
+  const handlePageChange = (nextPage: number) => {
+    if (!activeQuery.trim()) return;
+    const clampedPage = Math.max(0, nextPage);
+    setPage(clampedPage);
+    executeSearch(activeQuery, clampedPage);
+  };
 
   const handleAddBook = (book: GoogleBook) => {
     const { volumeInfo } = book;
@@ -436,7 +442,7 @@ export const BookSearch = () => {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              onClick={() => handlePageChange(page - 1)}
               disabled={page === 0}
             >
               Anterior
@@ -444,7 +450,7 @@ export const BookSearch = () => {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => handlePageChange(page + 1)}
               disabled={(page + 1) * pageSize >= totalItems}
             >
               Próxima
