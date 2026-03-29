@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+﻿import React, { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Plus, Search, Sparkles } from "lucide-react";
 import { useBooks, searchGoogleBooks } from "@/hooks/useBooks";
@@ -21,15 +21,19 @@ const getRecommendationQueries = ({
   currentAuthor?: string;
 }) => {
   const queries: string[] = [];
+
   if (currentAuthor) {
     queries.push(`inauthor:"${currentAuthor}" fiction`);
   }
+
   topGenres.slice(0, 1).forEach((genre) => {
     queries.push(`subject:"${genre}"`);
   });
+
   if (!queries.length) {
     queries.push('subject:"Science Fiction"');
   }
+
   return queries.slice(0, 1);
 };
 
@@ -51,16 +55,17 @@ const RecommendationShelf = ({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Sparkles className="h-4 w-4 text-primary" />
-          Recomendados para voc�
+          Recomendados para você
         </CardTitle>
         <CardDescription>
-          Sele��o baseada nos g�neros e autores que j� aparecem na sua biblioteca.
+          Seleção baseada nos gêneros e autores que já aparecem na sua biblioteca.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {books.map((book) => {
             const { volumeInfo } = book;
+
             return (
               <Card key={book.id} className="h-full border-border/70">
                 <CardHeader className="pb-3">
@@ -107,7 +112,7 @@ const RecommendationShelf = ({
                     className="w-full"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Adicionar � biblioteca
+                    Adicionar à biblioteca
                   </Button>
                 </CardContent>
               </Card>
@@ -141,19 +146,20 @@ export const BookSearch = () => {
           searchPage,
           pageSize,
         );
+
         setSearchResults(items);
         setTotalItems(total);
 
         if ((items || []).length === 0) {
           toast({
             title: "Nenhum resultado",
-            description: "N�o encontramos livros com este termo. Tente outra pesquisa.",
+            description: "Não encontramos livros com este termo. Tente outra pesquisa.",
           });
         }
       } catch {
         toast({
           title: "Erro na pesquisa",
-          description: "N�o foi poss�vel pesquisar livros. Tente novamente.",
+          description: "Não foi possível pesquisar livros. Tente novamente.",
           variant: "destructive",
         });
       } finally {
@@ -294,7 +300,7 @@ export const BookSearch = () => {
             }}
           >
             <Input
-              placeholder="Pesquisar livros por t�tulo, autor ou ISBN..."
+              placeholder="Pesquisar livros por título, autor ou ISBN..."
               value={queryInput}
               onChange={(e) => handleQueryChange(e.target.value)}
               className="flex-1"
@@ -410,7 +416,7 @@ export const BookSearch = () => {
               <CardContent className="space-y-3 pt-0">
                 <div className="flex flex-wrap gap-1">
                   {volumeInfo.pageCount ? (
-                    <Badge variant="secondary">{volumeInfo.pageCount} p�ginas</Badge>
+                    <Badge variant="secondary">{volumeInfo.pageCount} páginas</Badge>
                   ) : null}
                   {volumeInfo.publishedDate ? (
                     <Badge variant="outline">
@@ -442,7 +448,7 @@ export const BookSearch = () => {
                   className="w-full"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Adicionar � biblioteca
+                  Adicionar à biblioteca
                 </Button>
               </CardContent>
             </Card>
@@ -467,7 +473,7 @@ export const BookSearch = () => {
               onClick={handleNextPage}
               disabled={(page + 1) * pageSize >= totalItems}
             >
-              Pr�xima
+              Próxima
             </Button>
           </div>
         </div>
@@ -479,7 +485,7 @@ export const BookSearch = () => {
             <BookOpen className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
             <p className="font-medium">Nenhum livro encontrado</p>
             <p className="text-sm text-muted-foreground">
-              Tente outra combina��o de t�tulo, autor ou ISBN.
+              Tente outra combinação de título, autor ou ISBN.
             </p>
           </CardContent>
         </Card>

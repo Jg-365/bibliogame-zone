@@ -3,9 +3,10 @@ import type { GoogleBook } from "@/shared/types";
 const GOOGLE_BOOKS_API = "https://www.googleapis.com/books/v1/volumes";
 const GOOGLE_BOOKS_API_KEY = String(import.meta.env.VITE_GOOGLE_BOOKS_API_KEY ?? "").trim();
 
-const SEARCH_CACHE_TTL_MS = 15 * 60 * 1000;
+const SEARCH_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const MIN_REQUEST_INTERVAL_MS = 800;
 const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
+const SEARCH_CACHE_STORAGE_PREFIX = "rq:google-books-cache:v1:";
 
 type SearchResult = { items: GoogleBook[]; totalItems: number };
 type SearchCacheEntry = { result: SearchResult; expiresAt: number };
@@ -26,18 +27,57 @@ const sleep = (ms: number) =>
 const getCacheKey = (query: string, page: number, pageSize: number) =>
   `${normalise(query)}::${page}::${pageSize}`;
 
+const getStorageKey = (cacheKey: string) => `${SEARCH_CACHE_STORAGE_PREFIX}${cacheKey}`;
+
+const hasLocalStorage = () =>
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+
+const readPersistedCache = (cacheKey: string): SearchCacheEntry | null => {
+  if (!hasLocalStorage()) return null;
+  try {
+    const raw = window.localStorage.getItem(getStorageKey(cacheKey));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as SearchCacheEntry | null;
+    if (!parsed || !parsed.result || typeof parsed.expiresAt !== "number") return null;
+
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const persistCache = (cacheKey: string, entry: SearchCacheEntry) => {
+  if (!hasLocalStorage()) return;
+  try {
+    window.localStorage.setItem(getStorageKey(cacheKey), JSON.stringify(entry));
+  } catch {
+    // ignore storage quota/private mode errors
+  }
+};
+
 const getCachedResult = (cacheKey: string, allowStale = false): SearchResult | null => {
-  const cached = searchCache.get(cacheKey);
+  let cached = searchCache.get(cacheKey);
+  if (!cached) {
+    const persisted = readPersistedCache(cacheKey);
+    if (persisted) {
+      searchCache.set(cacheKey, persisted);
+      cached = persisted;
+    }
+  }
+
   if (!cached) return null;
   if (!allowStale && cached.expiresAt < Date.now()) return null;
   return cached.result;
 };
 
 const cacheResult = (cacheKey: string, result: SearchResult) => {
-  searchCache.set(cacheKey, {
+  const cacheEntry: SearchCacheEntry = {
     result,
     expiresAt: Date.now() + SEARCH_CACHE_TTL_MS,
-  });
+  };
+  searchCache.set(cacheKey, cacheEntry);
+  persistCache(cacheKey, cacheEntry);
 };
 
 const waitForRequestSlot = async () => {
