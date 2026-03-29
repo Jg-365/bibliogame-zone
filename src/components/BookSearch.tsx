@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Plus, Search, Sparkles } from "lucide-react";
 import { useBooks, searchGoogleBooks } from "@/hooks/useBooks";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toBookCoverUrl } from "@/lib/media";
 
-const DEBOUNCE_MS = 400;
+const MIN_QUERY_LENGTH = 2;
 
 const getRecommendationQueries = ({
   topGenres,
@@ -24,13 +24,13 @@ const getRecommendationQueries = ({
   if (currentAuthor) {
     queries.push(`inauthor:"${currentAuthor}" fiction`);
   }
-  topGenres.slice(0, 2).forEach((genre) => {
+  topGenres.slice(0, 1).forEach((genre) => {
     queries.push(`subject:"${genre}"`);
   });
   if (!queries.length) {
-    queries.push('subject:"Science Fiction"', 'subject:"Fantasy"');
+    queries.push('subject:"Science Fiction"');
   }
-  return queries.slice(0, 2);
+  return queries.slice(0, 1);
 };
 
 const RecommendationShelf = ({
@@ -51,10 +51,10 @@ const RecommendationShelf = ({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Sparkles className="h-4 w-4 text-primary" />
-          Recomendados para você
+          Recomendados para voc�
         </CardTitle>
         <CardDescription>
-          Seleção baseada nos gêneros e autores que já aparecem na sua biblioteca.
+          Sele��o baseada nos g�neros e autores que j� aparecem na sua biblioteca.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -107,7 +107,7 @@ const RecommendationShelf = ({
                     className="w-full"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Adicionar à biblioteca
+                    Adicionar � biblioteca
                   </Button>
                 </CardContent>
               </Card>
@@ -120,13 +120,13 @@ const RecommendationShelf = ({
 };
 
 export const BookSearch = () => {
-  const [query, setQuery] = useState("");
+  const [queryInput, setQueryInput] = useState("");
+  const [activeQuery, setActiveQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GoogleBook[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize] = useState(12);
   const [totalItems, setTotalItems] = useState(0);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
   const { books, addBook, isAddingBook } = useBooks();
   const { toast } = useToast();
 
@@ -147,13 +147,13 @@ export const BookSearch = () => {
         if ((items || []).length === 0) {
           toast({
             title: "Nenhum resultado",
-            description: "Não encontramos livros com este termo. Tente outra pesquisa.",
+            description: "N�o encontramos livros com este termo. Tente outra pesquisa.",
           });
         }
       } catch {
         toast({
           title: "Erro na pesquisa",
-          description: "Não foi possível pesquisar livros. Tente novamente.",
+          description: "N�o foi poss�vel pesquisar livros. Tente novamente.",
           variant: "destructive",
         });
       } finally {
@@ -161,6 +161,25 @@ export const BookSearch = () => {
       }
     },
     [pageSize, toast],
+  );
+
+  const triggerSearch = useCallback(
+    async (rawQuery: string, nextPage = 0) => {
+      const normalized = rawQuery.trim();
+
+      if (normalized.length < MIN_QUERY_LENGTH) {
+        toast({
+          title: "Busca muito curta",
+          description: "Digite pelo menos 2 caracteres para pesquisar.",
+        });
+        return;
+      }
+
+      setActiveQuery(normalized);
+      setPage(nextPage);
+      await executeSearch(normalized, nextPage);
+    },
+    [executeSearch, toast],
   );
 
   const libraryGenreChips = useMemo(() => {
@@ -193,7 +212,7 @@ export const BookSearch = () => {
       recommendationQueries,
       books.map((book) => book.id).join(","),
     ],
-    enabled: recommendationQueries.length > 0,
+    enabled: recommendationQueries.length > 0 && !activeQuery.trim(),
     staleTime: 1000 * 60 * 60 * 12,
     queryFn: async () => {
       const libraryKeys = new Set(
@@ -220,33 +239,32 @@ export const BookSearch = () => {
     },
   });
 
-  const handleSearch = useCallback(() => {
-    clearTimeout(debounceTimer.current);
-    executeSearch(query, page);
-  }, [query, page, executeSearch]);
-
-  const handleQueryChange = (value: string) => {
-    setQuery(value);
-    setPage(0);
-    clearTimeout(debounceTimer.current);
+  const handleQueryChange = useCallback((value: string) => {
+    setQueryInput(value);
 
     if (!value.trim()) {
+      setActiveQuery("");
+      setPage(0);
       setSearchResults([]);
       setTotalItems(0);
-      return;
     }
+  }, []);
 
-    debounceTimer.current = setTimeout(() => {
-      executeSearch(value, 0);
-    }, DEBOUNCE_MS);
-  };
+  const handleSearch = useCallback(() => {
+    void triggerSearch(queryInput, 0);
+  }, [queryInput, triggerSearch]);
 
-  useEffect(() => () => clearTimeout(debounceTimer.current), []);
+  const handlePrevPage = useCallback(() => {
+    if (!activeQuery.trim() || page === 0) return;
+    const nextPage = Math.max(0, page - 1);
+    void triggerSearch(activeQuery, nextPage);
+  }, [activeQuery, page, triggerSearch]);
 
-  useEffect(() => {
-    if (!query.trim()) return;
-    executeSearch(query, page);
-  }, [page, query, executeSearch]);
+  const handleNextPage = useCallback(() => {
+    if (!activeQuery.trim() || (page + 1) * pageSize >= totalItems) return;
+    const nextPage = page + 1;
+    void triggerSearch(activeQuery, nextPage);
+  }, [activeQuery, page, pageSize, totalItems, triggerSearch]);
 
   const handleAddBook = (book: GoogleBook) => {
     const { volumeInfo } = book;
@@ -268,23 +286,24 @@ export const BookSearch = () => {
     <div className="space-y-5">
       <Card className="border-border/70">
         <CardContent className="space-y-4 p-4">
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <form
+            className="flex flex-col gap-2 sm:flex-row"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSearch();
+            }}
+          >
             <Input
-              placeholder="Pesquisar livros por título, autor ou ISBN..."
-              value={query}
+              placeholder="Pesquisar livros por t�tulo, autor ou ISBN..."
+              value={queryInput}
               onChange={(e) => handleQueryChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch();
-                }
-              }}
               className="flex-1"
             />
-            <Button onClick={handleSearch} disabled={isSearching || !query.trim()} size="sm">
+            <Button type="submit" disabled={isSearching || !queryInput.trim()} size="sm">
               <Search className="mr-2 h-4 w-4" />
               {isSearching ? "Pesquisando..." : "Pesquisar"}
             </Button>
-          </div>
+          </form>
 
           {libraryGenreChips.length ? (
             <div className="flex flex-wrap gap-2">
@@ -293,7 +312,10 @@ export const BookSearch = () => {
                   key={genre}
                   variant="secondary"
                   className="cursor-pointer"
-                  onClick={() => handleQueryChange(genre)}
+                  onClick={() => {
+                    setQueryInput(genre);
+                    void triggerSearch(genre, 0);
+                  }}
                 >
                   {genre}
                 </Badge>
@@ -303,7 +325,7 @@ export const BookSearch = () => {
         </CardContent>
       </Card>
 
-      {!query.trim() ? (
+      {!activeQuery.trim() ? (
         recommendationResults.isLoading ? (
           <Card className="border-border/70">
             <CardContent className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -327,7 +349,10 @@ export const BookSearch = () => {
           <RecommendationShelf
             books={recommendationResults.data ?? []}
             onAdd={handleAddBook}
-            onSearchByGenre={handleQueryChange}
+            onSearchByGenre={(genre) => {
+              setQueryInput(genre);
+              void triggerSearch(genre, 0);
+            }}
             isAdding={isAddingBook}
           />
         )
@@ -385,7 +410,7 @@ export const BookSearch = () => {
               <CardContent className="space-y-3 pt-0">
                 <div className="flex flex-wrap gap-1">
                   {volumeInfo.pageCount ? (
-                    <Badge variant="secondary">{volumeInfo.pageCount} páginas</Badge>
+                    <Badge variant="secondary">{volumeInfo.pageCount} p�ginas</Badge>
                   ) : null}
                   {volumeInfo.publishedDate ? (
                     <Badge variant="outline">
@@ -417,7 +442,7 @@ export const BookSearch = () => {
                   className="w-full"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Adicionar à biblioteca
+                  Adicionar � biblioteca
                 </Button>
               </CardContent>
             </Card>
@@ -433,33 +458,28 @@ export const BookSearch = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
+            <Button size="sm" variant="outline" onClick={handlePrevPage} disabled={page === 0}>
               Anterior
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setPage((p) => p + 1)}
+              onClick={handleNextPage}
               disabled={(page + 1) * pageSize >= totalItems}
             >
-              Próxima
+              Pr�xima
             </Button>
           </div>
         </div>
       ) : null}
 
-      {searchResults.length === 0 && query && !isSearching ? (
+      {searchResults.length === 0 && activeQuery && !isSearching ? (
         <Card className="border-dashed">
           <CardContent className="py-10 text-center">
             <BookOpen className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
             <p className="font-medium">Nenhum livro encontrado</p>
             <p className="text-sm text-muted-foreground">
-              Tente outra combinação de título, autor ou ISBN.
+              Tente outra combina��o de t�tulo, autor ou ISBN.
             </p>
           </CardContent>
         </Card>

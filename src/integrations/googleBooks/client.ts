@@ -1,6 +1,112 @@
 import type { GoogleBook } from "@/shared/types";
 
 const GOOGLE_BOOKS_API = "https://www.googleapis.com/books/v1/volumes";
+const GOOGLE_BOOKS_API_KEY = String(import.meta.env.VITE_GOOGLE_BOOKS_API_KEY ?? "").trim();
+
+const SEARCH_CACHE_TTL_MS = 15 * 60 * 1000;
+const MIN_REQUEST_INTERVAL_MS = 800;
+const RATE_LIMIT_COOLDOWN_MS = 60 * 1000;
+
+type SearchResult = { items: GoogleBook[]; totalItems: number };
+type SearchCacheEntry = { result: SearchResult; expiresAt: number };
+
+const searchCache = new Map<string, SearchCacheEntry>();
+const inFlightRequests = new Map<string, Promise<SearchResult>>();
+
+let lastRequestAt = 0;
+let rateLimitedUntil = 0;
+
+const emptySearchResult = (): SearchResult => ({ items: [], totalItems: 0 });
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const getCacheKey = (query: string, page: number, pageSize: number) =>
+  `${normalise(query)}::${page}::${pageSize}`;
+
+const getCachedResult = (cacheKey: string, allowStale = false): SearchResult | null => {
+  const cached = searchCache.get(cacheKey);
+  if (!cached) return null;
+  if (!allowStale && cached.expiresAt < Date.now()) return null;
+  return cached.result;
+};
+
+const cacheResult = (cacheKey: string, result: SearchResult) => {
+  searchCache.set(cacheKey, {
+    result,
+    expiresAt: Date.now() + SEARCH_CACHE_TTL_MS,
+  });
+};
+
+const waitForRequestSlot = async () => {
+  const elapsed = Date.now() - lastRequestAt;
+  if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+    await sleep(MIN_REQUEST_INTERVAL_MS - elapsed);
+  }
+  lastRequestAt = Date.now();
+};
+
+const getRetryAfterMs = (response: Response) => {
+  const retryAfterSeconds = Number(response.headers.get("retry-after"));
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+  return RATE_LIMIT_COOLDOWN_MS;
+};
+
+const fetchWithGuards = async (url: string, cacheKey: string): Promise<SearchResult> => {
+  const cached = getCachedResult(cacheKey);
+  if (cached) return cached;
+
+  const inFlight = inFlightRequests.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const requestPromise = (async () => {
+    if (Date.now() < rateLimitedUntil) {
+      return getCachedResult(cacheKey, true) ?? emptySearchResult();
+    }
+
+    await waitForRequestSlot();
+
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    if (response.status === 429) {
+      rateLimitedUntil = Date.now() + getRetryAfterMs(response);
+      return getCachedResult(cacheKey, true) ?? emptySearchResult();
+    }
+
+    if (!response.ok) {
+      return getCachedResult(cacheKey, true) ?? emptySearchResult();
+    }
+
+    const data = (await response.json()) as {
+      items?: GoogleBook[];
+      totalItems?: number;
+    };
+
+    const result: SearchResult = {
+      items: data.items ?? [],
+      totalItems: data.totalItems ?? 0,
+    };
+
+    cacheResult(cacheKey, result);
+    return result;
+  })();
+
+  inFlightRequests.set(cacheKey, requestPromise);
+
+  try {
+    return await requestPromise;
+  } finally {
+    inFlightRequests.delete(cacheKey);
+  }
+};
 
 /**
  * Normalises a string for scoring: lowercase, strip punctuation/symbols, collapse whitespace.
@@ -63,21 +169,12 @@ export async function searchGoogleBooks(
 ): Promise<{ items: GoogleBook[]; totalItems: number }> {
   try {
     const startIndex = page * pageSize;
-    const url = `${GOOGLE_BOOKS_API}?q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${pageSize}`;
+    const baseQuery = `q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${pageSize}`;
+    const keyParam = GOOGLE_BOOKS_API_KEY ? `&key=${encodeURIComponent(GOOGLE_BOOKS_API_KEY)}` : "";
+    const url = `${GOOGLE_BOOKS_API}?${baseQuery}${keyParam}`;
 
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`Google Books API error: ${response.status}`);
-    }
-
-    const data = (await response.json()) as {
-      items?: GoogleBook[];
-      totalItems?: number;
-    };
-
-    const items: GoogleBook[] = data.items ?? [];
-    const totalItems: number = data.totalItems ?? 0;
+    const cacheKey = getCacheKey(query, page, pageSize);
+    const { items, totalItems } = await fetchWithGuards(url, cacheKey);
 
     const tokens = normalise(query).split(" ").filter(Boolean);
 
@@ -88,7 +185,7 @@ export async function searchGoogleBooks(
 
     return { items: ranked, totalItems };
   } catch (error) {
-    console.error("[googleBooks] search error:", error);
+    console.warn("[googleBooks] search error:", error);
     return { items: [], totalItems: 0 };
   }
 }

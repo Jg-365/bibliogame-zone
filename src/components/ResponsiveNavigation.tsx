@@ -171,7 +171,7 @@ const ResponsiveNavigation = ({
     return (
       <header
         className={cn(
-          "glass-nav fixed left-0 right-0 top-0 z-50 border-b border-border/50",
+          "glass-nav safe-area-pt fixed left-0 right-0 top-0 z-50 border-b border-border/50",
           className,
         )}
       >
@@ -229,7 +229,7 @@ const ResponsiveNavigation = ({
     <>
       <header
         className={cn(
-          "glass-nav fixed left-0 right-0 top-0 z-50 border-b border-border/50",
+          "glass-nav safe-area-pt fixed left-0 right-0 top-0 z-50 border-b border-border/50",
           className,
         )}
       >

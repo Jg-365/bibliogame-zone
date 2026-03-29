@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="rqBg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111A33" />
+      <stop offset="1" stop-color="#0B1226" />
+    </linearGradient>
+    <linearGradient id="rqPage" x1="16" y1="18" x2="48" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F7FF" />
+      <stop offset="1" stop-color="#E3E8FF" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#rqBg)" />
+  <path
+    d="M32 47V20.5C28.3 17.8 24.5 16.5 18.5 16.5H14C11.8 16.5 10 18.3 10 20.5V42C10 44.2 11.8 46 14 46H18.5C24.1 46 28.1 47.1 32 50Z"
+    fill="url(#rqPage)"
+    stroke="#8B5CF6"
+    stroke-width="2.8"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M32 47V20.5C35.7 17.8 39.5 16.5 45.5 16.5H50C52.2 16.5 54 18.3 54 20.5V42C54 44.2 52.2 46 50 46H45.5C39.9 46 35.9 47.1 32 50Z"
+    fill="url(#rqPage)"
+    stroke="#8B5CF6"
+    stroke-width="2.8"
+    stroke-linejoin="round"
+  />
+  <path d="M32 18V49" stroke="#8B5CF6" stroke-width="2.8" stroke-linecap="round" />
+  <path d="M16.5 25H24" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" />
+  <path d="M40 25H47.5" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" />
+</svg>
