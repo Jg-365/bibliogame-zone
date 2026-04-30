@@ -11,13 +11,25 @@ const SEARCH_CACHE_STORAGE_PREFIX = "rq:google-books-cache:v1:";
 type SearchResult = { items: GoogleBook[]; totalItems: number };
 type SearchCacheEntry = { result: SearchResult; expiresAt: number };
 
+class GoogleBooksSearchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GoogleBooksSearchError";
+  }
+}
+
 const searchCache = new Map<string, SearchCacheEntry>();
 const inFlightRequests = new Map<string, Promise<SearchResult>>();
 
 let lastRequestAt = 0;
 let rateLimitedUntil = 0;
 
-const emptySearchResult = (): SearchResult => ({ items: [], totalItems: 0 });
+export const resetGoogleBooksSearchStateForTests = () => {
+  searchCache.clear();
+  inFlightRequests.clear();
+  lastRequestAt = 0;
+  rateLimitedUntil = 0;
+};
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -96,6 +108,16 @@ const getRetryAfterMs = (response: Response) => {
   return RATE_LIMIT_COOLDOWN_MS;
 };
 
+const buildHttpErrorMessage = (response: Response) => {
+  if (response.status === 403) {
+    return "A busca de livros foi bloqueada pelo Google Books. Verifique a chave da API.";
+  }
+  if (response.status === 429) {
+    return "A busca de livros atingiu o limite de requisições. Tente novamente em instantes.";
+  }
+  return `A busca de livros falhou com erro HTTP ${response.status}.`;
+};
+
 const fetchWithGuards = async (url: string, cacheKey: string): Promise<SearchResult> => {
   const cached = getCachedResult(cacheKey);
   if (cached) return cached;
@@ -105,24 +127,38 @@ const fetchWithGuards = async (url: string, cacheKey: string): Promise<SearchRes
 
   const requestPromise = (async () => {
     if (Date.now() < rateLimitedUntil) {
-      return getCachedResult(cacheKey, true) ?? emptySearchResult();
+      const stale = getCachedResult(cacheKey, true);
+      if (stale) return stale;
+      throw new GoogleBooksSearchError(
+        "A busca de livros atingiu o limite de requisições. Tente novamente em instantes.",
+      );
     }
 
     await waitForRequestSlot();
 
-    const response = await fetch(url, {
-      headers: {
-        accept: "application/json",
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          accept: "application/json",
+        },
+      });
+    } catch {
+      const stale = getCachedResult(cacheKey, true);
+      if (stale) return stale;
+      throw new GoogleBooksSearchError(
+        "Não foi possível conectar ao Google Books. Verifique sua conexão e tente novamente.",
+      );
+    }
 
     if (response.status === 429) {
       rateLimitedUntil = Date.now() + getRetryAfterMs(response);
-      return getCachedResult(cacheKey, true) ?? emptySearchResult();
     }
 
     if (!response.ok) {
-      return getCachedResult(cacheKey, true) ?? emptySearchResult();
+      const stale = getCachedResult(cacheKey, true);
+      if (stale) return stale;
+      throw new GoogleBooksSearchError(buildHttpErrorMessage(response));
     }
 
     const data = (await response.json()) as {
@@ -207,25 +243,20 @@ export async function searchGoogleBooks(
   page = 0,
   pageSize = 10,
 ): Promise<{ items: GoogleBook[]; totalItems: number }> {
-  try {
-    const startIndex = page * pageSize;
-    const baseQuery = `q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${pageSize}`;
-    const keyParam = GOOGLE_BOOKS_API_KEY ? `&key=${encodeURIComponent(GOOGLE_BOOKS_API_KEY)}` : "";
-    const url = `${GOOGLE_BOOKS_API}?${baseQuery}${keyParam}`;
+  const startIndex = page * pageSize;
+  const baseQuery = `q=${encodeURIComponent(query)}&startIndex=${startIndex}&maxResults=${pageSize}`;
+  const keyParam = GOOGLE_BOOKS_API_KEY ? `&key=${encodeURIComponent(GOOGLE_BOOKS_API_KEY)}` : "";
+  const url = `${GOOGLE_BOOKS_API}?${baseQuery}${keyParam}`;
 
-    const cacheKey = getCacheKey(query, page, pageSize);
-    const { items, totalItems } = await fetchWithGuards(url, cacheKey);
+  const cacheKey = getCacheKey(query, page, pageSize);
+  const { items, totalItems } = await fetchWithGuards(url, cacheKey);
 
-    const tokens = normalise(query).split(" ").filter(Boolean);
+  const tokens = normalise(query).split(" ").filter(Boolean);
 
-    const ranked = items
-      .map((item) => ({ item, score: scoreItem(item, tokens) }))
-      .sort((a, b) => b.score - a.score)
-      .map(({ item }) => item);
+  const ranked = items
+    .map((item) => ({ item, score: scoreItem(item, tokens) }))
+    .sort((a, b) => b.score - a.score)
+    .map(({ item }) => item);
 
-    return { items: ranked, totalItems };
-  } catch (error) {
-    console.warn("[googleBooks] search error:", error);
-    return { items: [], totalItems: 0 };
-  }
+  return { items: ranked, totalItems };
 }
